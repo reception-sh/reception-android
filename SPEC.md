@@ -147,7 +147,8 @@ Studio's Compose template) would move it a second time, and before Android 11 a 
 insets at all, so the composer would stay behind the keyboard; while a chat is embedded such a window is set to
 `adjustResize` and gets its own mode back when the last embedded chat in it leaves (`ui/EmbeddedKeyboardMode`, counted
 per window: the window is the one that shows the composition, so a chat in a Compose `Dialog` or a platform dialog
-adjusts that dialog's window and never the activity's, `ui/KeyboardWindow`; a Compose `Dialog` measures its content
+adjusts that dialog's window and never the activity's, `ui/KeyboardWindow`, and a retained composition moved to
+another window releases the old window when its view detaches and adjusts the new one when it attaches; a Compose `Dialog` measures its content
 against the display, so it cannot shrink with a resized window: its window adjusts nothing from Android 11, where the
 IME insets alone lift the composer, and pans before, where only a resize would send IME insets; a Compose `Dialog` is
 recognized by its content view's class, `DialogLayout`, whose name the consumer R8 rules keep, while every other

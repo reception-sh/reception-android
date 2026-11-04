@@ -1,5 +1,6 @@
 package sh.reception.ui
 
+import android.view.ViewGroup
 import android.view.Window
 import android.widget.FrameLayout
 import android.view.WindowManager.LayoutParams
@@ -13,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogWindowProvider
@@ -156,5 +158,50 @@ class EmbeddedKeyboardWindowsTest {
         dialog.dismiss()
         ShadowLooper.idleMainLooper()
         assertEquals(LayoutParams.SOFT_INPUT_ADJUST_PAN, window.adjust)
+    }
+
+    @Test
+    fun aRetainedChatMovedToAnotherWindowAdjustsTheNewWindowAndReleasesTheOld() {
+        val activity = Robolectric.buildActivity(ComponentActivity::class.java).setup().get()
+        activity.window.setSoftInputMode(LayoutParams.SOFT_INPUT_ADJUST_PAN)
+        // The composition outlives detaching: it ends only with the activity.
+        val chat = ComposeView(activity).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnLifecycleDestroyed(activity))
+            setContent { EmbeddedKeyboardAdjustment() }
+        }
+        activity.setContentView(chat)
+        ShadowLooper.idleMainLooper()
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_RESIZE, activity.window.adjust)
+
+        val dialog = ComponentDialog(activity)
+        val window = checkNotNull(dialog.window)
+        window.setSoftInputMode(LayoutParams.SOFT_INPUT_ADJUST_PAN)
+        activity.setContentView(FrameLayout(activity))
+        dialog.setContentView(chat)
+        dialog.show()
+        ShadowLooper.idleMainLooper()
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_PAN, activity.window.adjust)
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_RESIZE, window.adjust)
+
+        dialog.dismiss()
+        ShadowLooper.idleMainLooper()
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_PAN, window.adjust)
+        (chat.parent as ViewGroup).removeView(chat)
+        activity.setContentView(chat)
+        ShadowLooper.idleMainLooper()
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_RESIZE, activity.window.adjust)
+
+        // The chat leaving the composition releases the window once; detaching afterwards releases nothing again.
+        val otherChat = ComposeView(activity).apply { setContent { EmbeddedKeyboardAdjustment() } }
+        activity.addContentView(otherChat, ViewGroup.LayoutParams(0, 0))
+        chat.setContent {}
+        ShadowLooper.idleMainLooper()
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_RESIZE, activity.window.adjust)
+        (chat.parent as ViewGroup).removeView(chat)
+        ShadowLooper.idleMainLooper()
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_RESIZE, activity.window.adjust)
+        (otherChat.parent as ViewGroup).removeView(otherChat)
+        ShadowLooper.idleMainLooper()
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_PAN, activity.window.adjust)
     }
 }
