@@ -2,6 +2,20 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-04: Fixes 8 done (see verification/fixes-8.md), one commit each. T-1 a superseding paid-access read is
+  installed before the previous one is cancelled. T-2 the token gate waits for credentials that changed during a save.
+  T-3 the trampoline restores any app-rooted Recents task (also without activity records), never its own. T-4
+  `ui/CoveredSheet`: a sheet covered in its own task while another task is in front comes back above the cover (task
+  moved to the front, reorder from the activity that resumes there; `AppTask.startActivity` ignores the flag). T-5 the
+  chat model counts its started/resumed chats, so removing one of two embedded chats keeps the other running. T-6 the
+  sheet (and its lightbox) is restored after process death: a random presentation token per presentation, recorded
+  with the namespace in `sh.reception.presentation`; any dismissal or reset clears it; the first configure cancels
+  nothing. T-7 an unread listener removed during a delivery is skipped. T-8 configure-dependent tests select requests
+  by path. SPEC: plugins turn routing off before configure. Example (debug): `…COVER`/`…LOGOUT` broadcasts, a second
+  embedded chat. 422 tests, 5× `--rerun-tasks` green; live T-3..T-6 StrictMode-clean. Open: Flutter/RN configure too
+  late for the sheet restore. Next, Phase E: full verification matrix (SPEC.md Verification), `tool/release_check.sh`,
+  README, CONTRIBUTING, CHANGELOG, Maven Central dry run; the Flutter and React Native plugins call the routing hook
+  before configure.
 - 2026-11-04: Fixes 7 done (see verification/fixes-7.md), one commit each. S7-1 internal
   `Reception.setNotificationRoutingEnabled` (plugins' `handlesNotifications: false`: pending tap discarded, drain
   cancelled, taps only bring the app forward; plugins must call it before `Reception.configure`). S7-2
