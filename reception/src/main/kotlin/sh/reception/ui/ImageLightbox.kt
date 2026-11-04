@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroidSize
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -27,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -77,19 +79,29 @@ internal fun ImageLightbox(attachment: Attachment, onDismiss: () -> Unit) {
                     .pointerInput(distance) {
                         awaitEachGesture {
                             awaitFirstDown(requireUnconsumed = false)
+                            // Movement within the touch slop stays a tap, so the double-tap detector sees it complete.
+                            var zoomed = 1f
+                            var panned = Offset.Zero
+                            var pastTouchSlop = false
                             do {
                                 val event = awaitPointerEvent()
                                 val zoom = event.calculateZoom()
                                 val pan = event.calculatePan()
-                                // A tap moves nothing and stays with the double-tap detector.
-                                if (zoom != 1f || (scale > Theme.MINIMUM_ZOOM && pan != Offset.Zero)) {
+                                if (!pastTouchSlop) {
+                                    zoomed *= zoom
+                                    panned += pan
+                                    val zoomMotion = abs(1 - zoomed) * event.calculateCentroidSize(useCurrent = false)
+                                    pastTouchSlop = zoomMotion > viewConfiguration.touchSlop ||
+                                        panned.getDistance() > viewConfiguration.touchSlop
+                                }
+                                if (!pastTouchSlop) continue
+                                if (zoom != 1f || scale > Theme.MINIMUM_ZOOM) {
                                     scale = (scale * zoom).coerceIn(Theme.MINIMUM_ZOOM, Theme.MAXIMUM_ZOOM)
                                     offset = clamped(offset + pan, scale)
-                                    event.changes.forEach { it.consume() }
-                                } else if (pan != Offset.Zero) {
+                                } else {
                                     scope.launch { drag.snapTo(drag.value + pan.y) }
-                                    event.changes.forEach { it.consume() }
                                 }
+                                event.changes.forEach { if (it.positionChanged()) it.consume() }
                             } while (event.changes.any { it.pressed })
                             if (abs(drag.value) > distance) onDismiss() else scope.launch { drag.animateTo(0f) }
                         }
