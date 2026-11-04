@@ -46,6 +46,15 @@ internal object ApplicationLifecycle : DefaultLifecycleObserver, Application.Act
         if (!registering) ReceptionState.applicationEnteredBackground()
     }
 
+    /**
+     * A host that configures after its activity resumed (the Flutter and React Native plugins) hands that activity
+     * over, so the chat and a pending tap have an activity before the next resume.
+     */
+    fun noteCurrentActivity(activity: Activity) {
+        if (activity.isFinishing || activity.isDestroyed) return
+        onActivityResumed(activity)
+    }
+
     override fun onActivityResumed(activity: Activity) {
         resumed = WeakReference(activity)
         // A new per-app or system language recreates activities, so the app language is read again.
@@ -58,7 +67,6 @@ internal object ApplicationLifecycle : DefaultLifecycleObserver, Application.Act
     }
 
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
-        ReceptionPush.activityCreated(activity, savedInstanceState)
         SetupCheck.activityCreated(activity)
     }
 
@@ -68,7 +76,5 @@ internal object ApplicationLifecycle : DefaultLifecycleObserver, Application.Act
 
     override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
 
-    override fun onActivityDestroyed(activity: Activity) {
-        ReceptionPush.activityDestroyed(activity)
-    }
+    override fun onActivityDestroyed(activity: Activity) = Unit
 }

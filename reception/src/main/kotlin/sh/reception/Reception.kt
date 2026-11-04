@@ -14,7 +14,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
-import sh.reception.client.PushNotifications
 import sh.reception.configuration.AppearanceIcon
 import sh.reception.strings.Strings
 import sh.reception.ui.ChatPresenter
@@ -345,13 +344,7 @@ public object Reception {
      * false and stay yours. Any thread.
      */
     @JvmStatic
-    public fun handlePushMessage(context: Context, data: Map<String, String>): Boolean {
-        if (PushNotifications.payload(data) == null) return false
-        val application = context.applicationContext
-        val payload = data.toMap()
-        MainThread.run { ReceptionPush.handleMessage(application, payload) }
-        return true
-    }
+    public fun handlePushMessage(context: Context, data: Map<String, String>): Boolean = ReceptionPush.receive(context, data)
 
     /**
      * Routes a Reception notification you handled yourself: refreshes [unreadCount] and, with [openChat], opens the
@@ -359,15 +352,8 @@ public object Reception {
      */
     @JvmStatic
     @JvmOverloads
-    public fun handlePushNotification(data: Map<String, String>, openChat: Boolean = true): Boolean {
-        if (PushNotifications.payload(data) == null) {
-            Log.debug { "Push payload ignored, no conversation id" }
-            return false
-        }
-        val payload = data.toMap()
-        MainThread.run { ReceptionPush.handleNotification(payload, openChat) }
-        return true
-    }
+    public fun handlePushNotification(data: Map<String, String>, openChat: Boolean = true): Boolean =
+        ReceptionPush.route(data, openChat)
 
     /**
      * Fetches the FCM token and hands it to Reception when notifications are allowed and Firebase Messaging is in the

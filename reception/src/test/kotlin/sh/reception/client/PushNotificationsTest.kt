@@ -19,6 +19,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import sh.reception.R
+import sh.reception.ui.ReceptionNotificationActivity
 
 /** Which FCM messages are Reception's, the badge count a reply shows, and which notifications reading removes. */
 @RunWith(RobolectricTestRunner::class)
@@ -64,7 +65,7 @@ class PushNotificationsTest {
     }
 
     @Test
-    fun aPostedReplyCarriesItsCountAndOpensTheLauncherWithTheConversation() {
+    fun aPostedReplyCarriesItsCountAndTapsGoToTheSdksActivity() {
         val payload = requireNotNull(PushNotifications.payload(mapOf("reception" to "c1", "title" to "Team", "body" to "Hi")))
         assertTrue(PushNotifications.post(context, payload, "n1", number = 4, color = null,
             smallIcon = R.drawable.reception_symbol_notifications))
@@ -74,6 +75,7 @@ class PushNotificationsTest {
         assertEquals(PushNotifications.CHANNEL, posted.channelId)
         assertEquals(NotificationManager.IMPORTANCE_HIGH, manager.getNotificationChannel(PushNotifications.CHANNEL).importance)
         val intent = shadowOf(posted.contentIntent).savedIntent
+        assertEquals(ReceptionNotificationActivity::class.java.name, intent.component?.className)
         assertEquals("c1", intent.getStringExtra(PushNotifications.EXTRA_CONVERSATION))
         assertEquals("n1", intent.getStringExtra(PushNotifications.EXTRA_NOTIFICATION))
     }

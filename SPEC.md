@@ -180,8 +180,8 @@ like the iOS `willPresent` policy. The payload is `{ reception: "<conversationId
 Reception payload it sets `hasConversation`, refreshes unread and, unless the chat is open, posts a notification
 (channel `reception_replies`, name localized "Support replies", importance high, sound when `sound` is set, the
 badge number when `updatesAppBadge`, `setGroup(conversationId)`, tag `reception`, id from the conversation) whose
-content intent launches the host's launcher activity (`PackageManager.getLaunchIntentForPackage`) with the extras
-`sh.reception.conversationId` and `sh.reception.notificationId`; it returns true and the host does nothing else. Any
+content intent starts the SDK's `ReceptionNotificationActivity` with the extras `sh.reception.conversationId` and
+`sh.reception.notificationId` (see taps below); it returns true and the host does nothing else. Any
 other payload returns false and the host keeps its own handling. `ReceptionMessagingService` is a ready-made service
 that does only this (and forwards `onNewToken` to `setPushToken`), for hosts without a messaging service of their own.
 `handlePushMessage` takes a `Context` because FCM can start the process for a message before anything configured the
@@ -204,19 +204,27 @@ A host with its own `FirebaseMessagingService` must not add it (only one service
 delivers no FCM message to a force-stopped app (Settings → Force stop, `am force-stop`) until the person opens it again;
 a process the system killed receives them and starts for them.
 
-Taps need no host code: `Reception`'s activity-lifecycle callback reads those extras from every created activity
-(not one recreated from saved state or relaunched from Recents), from `onNewIntent` of every `ComponentActivity`
-(through `addOnNewIntentListener`; the content intent carries `FLAG_ACTIVITY_SINGLE_TOP`, so a running app's launcher
-activity on top receives it there) and from `activity.intent` on every resume (for other activities that call
-`setIntent`), removes them, deduplicates by notification id (last 64 keys, like the Flutter plugin's
-`NotificationRouting`; a receipt records its id, so its later tap only opens) and routes them through
-`handlePushNotification(data, openChat = true)`, which opens the chat on the next resumed activity when none is resumed
-yet. A tap read before configure waits as the pending tap and opens the chat 500 ms after configure. When another of
-the app's activities is on top of the launcher activity, the system only brings the task to the front and the chat does
-not open; plain `Activity` hosts that do not call `setIntent` in `onNewIntent` (Flutter's `FlutterActivity`) leave
-running-app taps to their plugin. `handlePushNotification` is the iOS routing call: it recognizes
-`reception`, sets `hasConversation`, opens the chat when asked, refreshes unread, returns true; it never posts a
-notification. Hosts that own their tap handling call it themselves.
+Taps need no host code. The content intent targets `ReceptionNotificationActivity` (library manifest:
+`exported="false"`, `noHistory`, `Theme.NoDisplay`, the default task affinity so it joins the app's task; not
+`excludeFromRecents`, because as the root of a cold start's task that flag stays in the task's base intent and hides
+the app's whole task from Recents). Its `onCreate` records the tap and finishes; it never draws. The tap already brought an existing task
+of the app forward (with its state, and recreated from saved state when the process had died), so finishing reveals
+whatever activity is on top. Only as the root of a new task (no task of the app existed) does it first start the
+host's launcher intent (`getLaunchIntentForPackage` with `FLAG_ACTIVITY_NEW_TASK`), so the app starts cold; inside an
+existing task that intent would stack another launcher activity whenever the task's root intent differs from it. Android 12+ blocks only service and receiver trampolines, not activity
+ones. Routing follows the Flutter plugin's `NotificationRouting` (keys are notification ids, last 64; a receipt
+records its id, so its later tap only opens): after configure, a tap that routes opens the chat over the next resumed
+activity, whichever it is; a repeated tap of the same notification is ignored, another notification opens again. A
+tap before configure waits as the pending tap (latest wins, every other tap meanwhile is recorded and absorbed) and
+opens the chat once, 500 ms after configure, so the settings the app applies right after `configure` come first.
+A recreated trampoline or one relaunched from Recents (`FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY`, when the task it
+rooted has no activities left) routes nothing and only starts the app. The host's activities and their intents are
+never read. `handlePushNotification` is the iOS routing call: it recognizes `reception`, sets `hasConversation`,
+opens the chat when asked (over the resumed activity, or the next one), refreshes unread, returns true; it never posts
+a notification. Hosts that own their tap handling call it themselves.
+
+`onNewToken` stages the token even before notifications are allowed, as iOS stages the APNs token whenever it
+arrives; the service only sends once the device reports a token, and posting checks the permission.
 
 `registerForPushIfAuthorized()` mirrors iOS: it registers only when notifications are allowed now
 (`NotificationManagerCompat.areNotificationsEnabled()`, which also covers `POST_NOTIFICATIONS` on Android 13+) and

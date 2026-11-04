@@ -13,10 +13,11 @@ import androidx.core.content.ContextCompat
 import sh.reception.Log
 import sh.reception.ReceptionLocalization
 import sh.reception.strings.Strings
+import sh.reception.ui.ReceptionNotificationActivity
 
 /**
  * The notifications the SDK posts for replies (SPEC.md, Push notifications): one per conversation on the
- * `reception_replies` channel, tagged `reception`, opening the app's launcher activity with the conversation.
+ * `reception_replies` channel, tagged `reception`; a tap goes to [ReceptionNotificationActivity] with the conversation.
  */
 internal object PushNotifications {
     const val CHANNEL: String = "reception_replies"
@@ -57,13 +58,14 @@ internal object PushNotifications {
             Log.debug { "Notification not shown, notifications disabled" }
             return false
         }
-        val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
-            ?: return false.also { Log.error { "Notification not shown, the app has no launcher activity" } }
-        // A running app gets the tap in its launcher activity (onNewIntent) instead of a second instance.
-        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        if (context.packageManager.getLaunchIntentForPackage(context.packageName) == null) {
+            return false.also { Log.error { "Notification not shown, the app has no launcher activity" } }
+        }
+        val tap = Intent(context, ReceptionNotificationActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             .putExtra(EXTRA_CONVERSATION, payload.conversationId)
             .putExtra(EXTRA_NOTIFICATION, notificationId)
-        val content = PendingIntent.getActivity(context, id(payload.conversationId), launch,
+        val content = PendingIntent.getActivity(context, id(payload.conversationId), tap,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         // Created on every post, so the channel's name follows the app's language.
         manager.createNotificationChannel(

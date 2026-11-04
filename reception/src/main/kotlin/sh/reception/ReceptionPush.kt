@@ -2,13 +2,8 @@ package sh.reception
 
 import android.app.Activity
 import android.content.Context
-import android.content.Intent
-import android.os.BadParcelableException
-import android.os.Bundle
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.app.OnNewIntentProvider
-import androidx.core.util.Consumer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -22,7 +17,6 @@ import sh.reception.client.PushNotifications
 import sh.reception.client.hasConversation
 import sh.reception.ui.ChatPresenter
 import java.util.UUID
-import java.util.WeakHashMap
 
 /** Push receipt, notification taps and token registration behind the facade (SPEC.md, Push notifications). Main thread only. */
 internal object ReceptionPush {
@@ -35,10 +29,29 @@ internal object ReceptionPush {
     private var registration: Job? = null
     private var drain: Job? = null
     private var opensWhenResumed = false
-    private val newIntentListeners = WeakHashMap<Activity, Consumer<Intent>>()
 
-    /** `Reception.handlePushMessage`: [data] is a Reception payload. */
-    fun handleMessage(context: Context, data: Map<String, String>) {
+    /** `Reception.handlePushMessage`, from any thread: recognizes the payload here, handles it on the main thread. */
+    fun receive(context: Context, data: Map<String, String>): Boolean {
+        if (PushNotifications.payload(data) == null) return false
+        val application = context.applicationContext
+        val payload = data.toMap()
+        MainThread.run { handleMessage(application, payload) }
+        return true
+    }
+
+    /** `Reception.handlePushNotification`, from any thread. */
+    fun route(data: Map<String, String>, openChat: Boolean): Boolean {
+        if (PushNotifications.payload(data) == null) {
+            Log.debug { "Push payload ignored, no conversation id" }
+            return false
+        }
+        val payload = data.toMap()
+        MainThread.run { handleNotification(payload, openChat) }
+        return true
+    }
+
+    /** [data] is a Reception payload. */
+    private fun handleMessage(context: Context, data: Map<String, String>) {
         val payload = PushNotifications.payload(data) ?: return
         Log.debug { "Push payload recognized, conversation ${payload.conversationId}" }
         val key = UUID.randomUUID().toString()
@@ -70,10 +83,7 @@ internal object ReceptionPush {
     /** Opens the chat over the resumed activity, or over the next one when the app is still starting. */
     private fun requestOpen() {
         if (ReceptionState.session == null) return Log.error { "openChat called before configure, ignored" }
-        if (ApplicationLifecycle.currentActivity == null) {
-            opensWhenResumed = true
-            return Log.debug { "Chat opens once an activity is resumed" }
-        }
+        if (ApplicationLifecycle.currentActivity == null) return openWhenResumed()
         ChatPresenter.open()
     }
 
@@ -105,53 +115,33 @@ internal object ReceptionPush {
         }
     }
 
-    fun activityCreated(activity: Activity, savedInstanceState: Bundle?) {
-        // A recreated activity keeps the intent of a tap that was handled already.
-        if (savedInstanceState == null) read(activity.intent)
-        val provider = activity as? OnNewIntentProvider ?: return
-        val listener = Consumer<Intent> { read(it) }
-        newIntentListeners[activity] = listener
-        provider.addOnNewIntentListener(listener)
-    }
-
-    fun activityResumed(activity: Activity) {
-        // Activities that are not ComponentActivity see a tap on a running app only if they call setIntent.
-        read(activity.intent)
-        if (!opensWhenResumed) return
-        opensWhenResumed = false
-        // After the activity's own onResume, so the sheet starts over a settled screen.
-        activity.window?.decorView?.post { if (ReceptionState.session != null) ChatPresenter.open() }
-    }
-
-    fun activityDestroyed(activity: Activity) {
-        val listener = newIntentListeners.remove(activity) ?: return
-        (activity as? OnNewIntentProvider)?.removeOnNewIntentListener(listener)
-    }
-
-    private fun read(intent: Intent?) {
-        intent ?: return
-        val conversationId: String
-        val key: String
-        try {
-            conversationId = intent.getStringExtra(PushNotifications.EXTRA_CONVERSATION)?.takeIf { it.isNotEmpty() } ?: return
-            key = intent.getStringExtra(PushNotifications.EXTRA_NOTIFICATION)?.takeIf { it.isNotEmpty() } ?: conversationId
-        } catch (_: BadParcelableException) {
-            return
-        }
-        intent.removeExtra(PushNotifications.EXTRA_CONVERSATION)
-        intent.removeExtra(PushNotifications.EXTRA_NOTIFICATION)
-        // Reopening from Recents replays the original launch intent.
-        if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
+    /** A tap on one of the SDK's notifications, from [sh.reception.ui.ReceptionNotificationActivity]. */
+    fun notificationTapped(key: String, conversationId: String) {
         if (ReceptionState.session == null) {
             routing.queueTap(key, conversationId)
             return Log.debug { "Notification tap kept until configure" }
         }
         when (routing.action(key, openChat = true)) {
-            NotificationRouting.Action.RECEIVE_AND_OPEN ->
-                handleNotification(mapOf(PushNotifications.PAYLOAD_KEY to conversationId), openChat = true)
-            NotificationRouting.Action.OPEN -> requestOpen()
-            NotificationRouting.Action.RECEIVE, NotificationRouting.Action.IGNORE -> Unit
+            NotificationRouting.Action.RECEIVE_AND_OPEN -> {
+                received(conversationId)
+                openWhenResumed()
+            }
+            NotificationRouting.Action.OPEN -> openWhenResumed()
+            NotificationRouting.Action.RECEIVE, NotificationRouting.Action.IGNORE -> Log.debug { "Notification tap ignored, handled already" }
         }
+    }
+
+    /** The tap brings the app forward; the chat opens over the activity that resumes then. */
+    private fun openWhenResumed() {
+        opensWhenResumed = true
+        Log.debug { "Chat opens once an activity is resumed" }
+    }
+
+    fun activityResumed(activity: Activity) {
+        if (!opensWhenResumed) return
+        opensWhenResumed = false
+        // After the activity's own onResume, so the sheet starts over a settled screen.
+        activity.window?.decorView?.post { if (ReceptionState.session != null) ChatPresenter.open() }
     }
 
     /** Unread reached [count]; with `updatesAppBadge`, read replies leave the notification shade. */

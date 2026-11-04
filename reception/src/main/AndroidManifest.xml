@@ -24,6 +24,13 @@
             android:theme="@style/Reception.Chat"
             android:windowSoftInputMode="adjustResize"
             tools:targetApi="33" />
+        <!-- The target of notification taps: records the tap, brings the app forward and finishes, never drawn. Not
+             excludeFromRecents: as the root of a cold start's task it would hide the app's whole task from Recents. -->
+        <activity
+            android:name="sh.reception.ui.ReceptionNotificationActivity"
+            android:exported="false"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay" />
         <!-- For apps without a messaging service of their own; the app adds the MESSAGING_EVENT intent filter. -->
         <service
             android:name="sh.reception.ReceptionMessagingService"
