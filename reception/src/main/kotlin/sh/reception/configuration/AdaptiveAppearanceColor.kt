@@ -2,6 +2,8 @@ package sh.reception.configuration
 
 import androidx.compose.ui.graphics.Color
 import kotlinx.serialization.Serializable
+import sh.reception.ReceptionColor
+import sh.reception.ReceptionLocalization
 
 /** A published color: optional opaque `#RRGGBB` variants for light and dark mode. */
 @Serializable
@@ -31,7 +33,7 @@ internal class AdaptiveColor(val light: Color?, val dark: Color?) {
     companion object {
         val unset: AdaptiveColor = AdaptiveColor(null, null)
 
-        /** The app's color, the same in both modes; null keeps the native default. */
-        fun of(color: Color?): AdaptiveColor = AdaptiveColor(color, color)
+        /** The app's color in both modes, resources through the application context; null keeps the native default. */
+        fun of(color: ReceptionColor?): AdaptiveColor = color?.adaptive(ReceptionLocalization.context) ?: unset
     }
 }

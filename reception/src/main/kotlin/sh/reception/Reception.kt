@@ -6,7 +6,6 @@ import androidx.annotation.DrawableRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
@@ -98,16 +97,19 @@ public object Reception {
         get() = ReceptionAppearance.remoteEnabled
         set(value) = MainThread.run { ReceptionAppearance.remoteEnabled = value }
 
-    /** The chat's colors, texts, icons and switches. Read by the chat while it draws; main thread only. */
+    /**
+     * The chat's colors, texts, icons and switches. Read by the chat while it draws; main thread only. Colors are
+     * [ReceptionColor]s: one color, a light and dark pair, or a color resource with a night variant.
+     */
     public class Appearance {
         /**
          * Defaults to null: `MaterialTheme.colorScheme.primary` of the enclosing theme when the chat is embedded; the
          * SDK's own sheet uses the device's dynamic accent on Android 12+ and the iOS system blue below.
          */
-        public var accentColor: Color? by mutableStateOf(null)
+        public var accentColor: ReceptionColor? by mutableStateOf(null)
 
         /** Defaults to null, using white text and symbols on accent-colored surfaces. */
-        public var onAccentColor: Color? by mutableStateOf(null)
+        public var onAccentColor: ReceptionColor? by mutableStateOf(null)
 
         /** Defaults to the localized "Support" title. */
         public var title: String
@@ -128,13 +130,13 @@ public object Reception {
         public var showsCloseButton: Boolean by mutableStateOf(false)
 
         /** Defaults to null, using the system background. */
-        public var chatBackground: Color? by mutableStateOf(null)
+        public var chatBackground: ReceptionColor? by mutableStateOf(null)
 
         /** Defaults to null, using the secondary system background. */
-        public var incomingBackground: Color? by mutableStateOf(null)
+        public var incomingBackground: ReceptionColor? by mutableStateOf(null)
 
         /** Defaults to null, using the primary text color. */
-        public var incomingForeground: Color? by mutableStateOf(null)
+        public var incomingForeground: ReceptionColor? by mutableStateOf(null)
 
         /** Defaults to null, following the system's dark theme setting. */
         public var preferredColorScheme: ColorScheme? by mutableStateOf(null)
@@ -161,7 +163,7 @@ public object Reception {
         public var welcomeIcon: WelcomeIcon? by mutableStateOf(null)
 
         /** Defaults to null, using the tertiary text color. Applies to symbols, not images. */
-        public var welcomeIconColor: Color? by mutableStateOf(null)
+        public var welcomeIconColor: ReceptionColor? by mutableStateOf(null)
 
         /** Before font scaling. Defaults to null, using the built-in 44 dp. */
         public var welcomeIconSize: Dp? by mutableStateOf(null)

@@ -11,6 +11,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import sh.reception.Reception
+import sh.reception.ReceptionColor
 
 /** The report uses exactly the field names of the backend's `appAppearanceSchema` (`src/lib/app-appearance.ts`). */
 class HostAppearanceReportTest {
@@ -24,11 +25,11 @@ class HostAppearanceReportTest {
     )
 
     private fun everything() = Reception.Appearance().apply {
-        accentColor = Color(0xFF635BFF)
-        onAccentColor = Color.White
-        chatBackground = Color.Black
-        incomingBackground = Color(0xFF2C2C2E)
-        incomingForeground = Color(0xFFEEEEEE)
+        accentColor = ReceptionColor(Color(0xFF635BFF))
+        onAccentColor = ReceptionColor(Color.White)
+        chatBackground = ReceptionColor(Color.Black)
+        incomingBackground = ReceptionColor(Color(0xFF2C2C2E))
+        incomingForeground = ReceptionColor(Color(0xFFEEEEEE))
         title = "Help"
         welcomeTitle = "Hi"
         welcomeText = "We read everything."
@@ -40,7 +41,7 @@ class HostAppearanceReportTest {
         fontFamily = FontFamily.Serif
         fadesOlderMessages = false
         welcomeIcon = Reception.WelcomeIcon.symbol("heart.fill")
-        welcomeIconColor = Color.Red
+        welcomeIconColor = ReceptionColor(Color.Red)
         welcomeIconSize = 60.4.dp
         welcomeIconCornerRadius = 8.dp
         welcomeIconOffset = DpOffset(4.dp, (-6).dp)
@@ -72,9 +73,19 @@ class HostAppearanceReportTest {
     fun theDefaultAppearanceReportsOnlyTheSettingWithoutAnAccent() {
         // The default accent is the theme's, which the host did not set; XML theme attributes are never read.
         assertEquals("""{"usesRemoteAppearance":true}""", HostAppearanceReport.payload(Reception.Appearance(), true).toString())
-        val accent = Reception.Appearance().apply { accentColor = Color(0xFF6750A4) }
+        val accent = Reception.Appearance().apply { accentColor = ReceptionColor(Color(0xFF6750A4)) }
         assertEquals("""{"usesRemoteAppearance":false,"colors":{"accent":{"light":"#6750A4","dark":"#6750A4"}}}""",
             HostAppearanceReport.payload(accent, false).toString())
+    }
+
+    @Test
+    fun aLightAndDarkPairIsReportedAsBothVariantsAndDrawnPerMode() {
+        val appearance = Reception.Appearance().apply { accentColor = ReceptionColor(Color(0xFF0A7AFF), Color(0xFF64D2FF)) }
+        assertEquals("""{"accent":{"light":"#0A7AFF","dark":"#64D2FF"}}""",
+            HostAppearanceReport.payload(appearance, true).getValue("colors").toString())
+        val resolved = AdaptiveColor.of(appearance.accentColor)
+        assertEquals(Color(0xFF0A7AFF), resolved.resolve(dark = false))
+        assertEquals(Color(0xFF64D2FF), resolved.resolve(dark = true))
     }
 
     @Test

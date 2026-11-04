@@ -3,7 +3,9 @@ package sh.reception.receptionAndroidExample
 import android.app.Application
 import android.os.StrictMode
 import android.util.Log
+import androidx.compose.ui.graphics.Color
 import sh.reception.Reception
+import sh.reception.ReceptionColor
 import sh.reception.ReceptionInternalApi
 
 class ExampleApplication : Application() {
@@ -18,6 +20,9 @@ class ExampleApplication : Application() {
         }
         Reception.logLevel = Reception.LogLevel.DEBUG
         Reception.onEvent = { event -> Log.i(TAG, "Event $event") }
+        // Adaptive colors: a light and dark pair, and a color resource with a night variant.
+        Reception.appearance.accentColor = ReceptionColor(light = Color(0xFF5B4FE0), dark = Color(0xFFB0A8FF))
+        Reception.appearance.welcomeIconColor = ReceptionColor.resource(R.color.example_welcome_icon)
         val appId = BuildConfig.RECEPTION_APP_ID
         if (appId.isEmpty()) {
             Log.w(TAG, "No App ID in .local/app-id.txt, Reception is not configured")

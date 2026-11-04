@@ -15,6 +15,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import sh.reception.Reception
+import sh.reception.ReceptionColor
 import sh.reception.ReceptionAppearance
 import sh.reception.ReceptionLocalization
 
@@ -138,7 +139,7 @@ class RemoteAppearanceTest {
     @Test
     fun colorVariantsInheritSeparatelyAndAFontDesignReplacesTheFamily() {
         val local = Reception.Appearance().apply {
-            accentColor = Color.Green
+            accentColor = ReceptionColor(Color.Green)
             fontFamily = FontFamily.Cursive
         }
         val resolved = resolve("""{"colors":{"accent":{"light":"#112233","dark":"red"}},"fontDesign":"serif"}""", local)
@@ -150,6 +151,6 @@ class RemoteAppearanceTest {
         assertNull(resolve("""{"colors":{"background":{"light":"#FFF"}}}""").background.light)
         assertNull(resolve("""{"colorScheme":"system"}""", Reception.Appearance().apply { preferredColorScheme = Reception.ColorScheme.DARK }).preferredColorScheme)
         // The app's appearance itself never changes.
-        assertEquals(Color.Green, local.accentColor)
+        assertEquals(Color.Green, local.accentColor?.adaptive(null)?.light)
     }
 }

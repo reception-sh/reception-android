@@ -8,6 +8,8 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import sh.reception.Reception
+import sh.reception.ReceptionColor
+import sh.reception.ReceptionLocalization
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -21,11 +23,11 @@ internal object HostAppearanceReport {
     fun payload(appearance: Reception.Appearance, usesRemoteAppearance: Boolean): JsonObject = buildJsonObject {
         put("usesRemoteAppearance", usesRemoteAppearance)
         val colors = buildJsonObject {
-            appearance.accentColor?.let { put("accent", pair(it)) }
-            appearance.onAccentColor?.let { put("onAccent", pair(it)) }
-            appearance.chatBackground?.let { put("background", pair(it)) }
-            appearance.incomingBackground?.let { put("incoming", pair(it)) }
-            appearance.incomingForeground?.let { put("incomingText", pair(it)) }
+            pair(appearance.accentColor)?.let { put("accent", it) }
+            pair(appearance.onAccentColor)?.let { put("onAccent", it) }
+            pair(appearance.chatBackground)?.let { put("background", it) }
+            pair(appearance.incomingBackground)?.let { put("incoming", it) }
+            pair(appearance.incomingForeground)?.let { put("incomingText", it) }
         }
         if (colors.isNotEmpty()) put("colors", colors)
         val text = buildJsonObject {
@@ -64,7 +66,7 @@ internal object HostAppearanceReport {
             is AppearanceIcon.Local, is AppearanceIcon.Remote -> put("image", true)
             AppearanceIcon.Hidden, null -> Unit
         }
-        appearance.welcomeIconColor?.let { put("color", pair(it)) }
+        pair(appearance.welcomeIconColor)?.let { put("color", it) }
         appearance.welcomeIconSize?.let { put("size", whole(it)) }
         if (appearance.welcomeIconCornerRadius.value != 0f) put("cornerRadius", whole(appearance.welcomeIconCornerRadius))
         val offset = appearance.welcomeIconOffset
@@ -78,7 +80,15 @@ internal object HostAppearanceReport {
 
     private fun whole(value: Dp): Int = if (value.value.isFinite()) value.value.roundToInt() else 0
 
-    /** Light and dark variants as opaque `#RRGGBB`, the only form the dashboard accepts. */
+    /**
+     * Light and dark variants as opaque `#RRGGBB`, the only form the dashboard accepts; a single color sends the same
+     * value twice. Nothing while a color resource cannot be read yet.
+     */
+    private fun pair(color: ReceptionColor?): JsonObject? {
+        val adaptive = color?.adaptive(ReceptionLocalization.context) ?: return null
+        return pair(adaptive.light ?: return null, adaptive.dark ?: return null)
+    }
+
     fun pair(light: Color, dark: Color = light): JsonObject = buildJsonObject {
         put("light", hex(light))
         put("dark", hex(dark))

@@ -33,6 +33,7 @@ reception/                         library module (the SDK), published artifact
     Reception.kt                   facade (object): configure, presentation, push, logout, deleteData, state
     ReceptionIdentity.kt           identify, identity tokens, metadata
     ReceptionAppearance.kt         Appearance, ReceptionEvent, CloseIcon, WelcomeIcon
+    ReceptionColor.kt              adaptive appearance colors (one color, light/dark pair, color resource)
     ReceptionError.kt, ReceptionPaywall.kt, ReceptionScreen.kt, ReceptionPush.kt
     Localization.kt, Log.kt, Version.kt
     Theme.kt                       internal tokens (colors, spacing, radius, animations)
@@ -313,16 +314,24 @@ sealed class ReceptionEvent { ChatOpened, MessageSent, ImageSent, ReviewOpened, 
                               DataDeleted, data class IdentityRejected(error: ReceptionError) }
 Reception.appearance: Reception.Appearance        // a mutable class with the iOS properties
 Reception.usesRemoteAppearance: Boolean           // default true
+class ReceptionColor(color: Color) / ReceptionColor(light: Color, dark: Color) / ReceptionColor.resource(@ColorRes id: Int)
 ```
 
-`Appearance` has exactly the iOS properties with Compose types: `accentColor: Color?` (null = `MaterialTheme.colorScheme.primary` of the enclosing theme when the
+`ReceptionColor` is the iOS dynamic color: one color for both modes, a light/dark pair, or a color resource whose
+night-qualified variant (`values-night`) is the dark one. The chat picks the variant of the dark mode it resolved
+(system, `preferredColorScheme`, or the enclosing theme of an embedded view). A resource is read once, both variants
+through `createConfigurationContext` with `UI_MODE_NIGHT_NO`/`UI_MODE_NIGHT_YES` on the application context, and
+cached; before `configure` it has no context and counts as unset. The host appearance report sends `{ light, dark }`
+like a remote adaptive pair (a single color sends the same value twice, as before).
+
+`Appearance` has exactly the iOS properties with Compose types; every color is a `ReceptionColor?`: `accentColor` (null = `MaterialTheme.colorScheme.primary` of the enclosing theme when the
 host embeds `ReceptionChatView` in its own `MaterialTheme`; the SDK's own sheet wraps the chat in a Material theme with
 dynamic color on Android 12+, so the default is the device's system accent, and the iOS system blue (#007AFF light,
 #0A84FF dark) below 12. The XML theme attributes `colorPrimary`/`colorAccent` are never read: Compose-only apps leave
 them at platform defaults. The host appearance report sends the accent only when the host set one. An embedded
 `ReceptionChatView` whose enclosing `MaterialTheme.colorScheme` is Material 3's baseline `lightColorScheme()` counts as
 having no host theme: it follows the system dark mode and uses the sheet's default accent, so hosts wrap it in their
-theme or set `accentColor`), `onAccentColor: Color?`, `title`, `welcomeTitle`, `welcomeText`, `showsCloseButton`,
+theme or set `accentColor`), `onAccentColor`, `title`, `welcomeTitle`, `welcomeText`, `showsCloseButton`,
 `chatBackground`, `incomingBackground`, `incomingForeground`, `preferredColorScheme: ColorScheme?` (`LIGHT`, `DARK`),
 `closeIcon: CloseIcon` (`XMARK`, `CHEVRON_DOWN`, `ARROW_DOWN`), `closeImage: Painter?`, `fontDesign: FontDesign?`
 (`DEFAULT`, `ROUNDED`, `SERIF`, `MONOSPACED`; Android has no rounded system face, so `ROUNDED` draws the default
