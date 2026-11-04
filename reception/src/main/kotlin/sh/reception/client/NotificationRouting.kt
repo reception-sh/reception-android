@@ -27,6 +27,11 @@ internal class NotificationRouting {
         pending = Tap(key, conversationId)
     }
 
+    /** Forgets the pending tap without opening anything. */
+    fun discardPendingTap() {
+        pending = null
+    }
+
     /** Takes the pending tap and records its key; returns the conversation to open, or null if there was none. */
     fun drainPendingTap(): String? {
         val tap = pending ?: return null

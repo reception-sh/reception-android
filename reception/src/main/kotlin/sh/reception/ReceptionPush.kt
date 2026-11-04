@@ -30,6 +30,9 @@ internal object ReceptionPush {
     private var drain: Job? = null
     private var opensWhenResumed = false
 
+    /** False while a Flutter or React Native app handles notifications itself: taps only bring the app forward. */
+    private var routesTaps = true
+
     /** `Reception.handlePushMessage`, from any thread: recognizes the payload here, handles it on the main thread. */
     fun receive(context: Context, data: Map<String, String>): Boolean {
         if (PushNotifications.payload(data) == null) return false
@@ -110,10 +113,20 @@ internal object ReceptionPush {
         }
     }
 
+    /** `Reception.setNotificationRoutingEnabled`: off discards the pending tap and any chat a tap was about to open. */
+    fun setRoutingEnabled(enabled: Boolean) {
+        routesTaps = enabled
+        if (enabled) return
+        drain?.cancel()
+        drain = null
+        routing.discardPendingTap()
+        opensWhenResumed = false
+    }
+
     /** A configure: a tap that launched the app before it opens the chat once, shortly after. */
     fun configured() {
         drain?.cancel()
-        if (!routing.hasPendingTap) return
+        if (!routesTaps || !routing.hasPendingTap) return
         drain = scope.launch {
             delay(DRAIN_DELAY_MILLIS)
             val conversationId = routing.drainPendingTap() ?: return@launch
@@ -123,6 +136,7 @@ internal object ReceptionPush {
 
     /** A tap on one of the SDK's notifications, from [sh.reception.ui.ReceptionNotificationActivity]. */
     fun notificationTapped(key: String, conversationId: String) {
+        if (!routesTaps) return Log.debug { "Notification tap not routed, the app handles notifications" }
         if (ReceptionState.session == null) {
             routing.queueTap(key, conversationId)
             return Log.debug { "Notification tap kept until configure" }

@@ -241,6 +241,12 @@ the internal `Reception.noteCurrentActivity(activity)` (`@ReceptionInternalApi`,
 docs) with the activity they are attached to. It seeds the current-activity tracking (a weak reference) so
 `openChat()` and the pending tap work before the next resume.
 
+The plugins' `configure(handlesNotifications: false)` calls the internal
+`Reception.setNotificationRoutingEnabled(false)` (`@ReceptionInternalApi`, plugin-only, main thread): it discards the
+pending tap and cancels the post-configure drain, and `ReceptionNotificationActivity` then only brings the app forward
+(restores its task or starts the launcher) without opening the chat. `true` (the default) routes taps again. The app's
+own `handlePushNotification(data, openChat)` calls are unaffected.
+
 `onNewToken` stages the token even before notifications are allowed, as iOS stages the APNs token whenever it
 arrives; the service only sends once the device reports a token, and posting checks the permission.
 

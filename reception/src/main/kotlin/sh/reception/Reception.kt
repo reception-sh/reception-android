@@ -346,6 +346,15 @@ public object Reception {
     public fun noteCurrentActivity(activity: Activity): Unit = MainThread.run { ApplicationLifecycle.noteCurrentActivity(activity) }
 
     /**
+     * Whether taps on the SDK's notifications open the chat (default true). A Flutter or React Native plugin turns it
+     * off for `configure(handlesNotifications: false)`: the pending tap is discarded and taps only bring the app
+     * forward. Only for Reception's own plugins.
+     */
+    @ReceptionInternalApi
+    @JvmStatic
+    public fun setNotificationRoutingEnabled(enabled: Boolean): Unit = MainThread.run { ReceptionPush.setRoutingEnabled(enabled) }
+
+    /**
      * Labels the support device with your user's details. The service shows them as unverified.
      * Call [logout] when users switch; this method never resets the chat.
      */

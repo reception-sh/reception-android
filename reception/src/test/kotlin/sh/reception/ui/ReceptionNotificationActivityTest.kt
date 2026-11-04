@@ -20,6 +20,8 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowAppTask
 import sh.reception.Reception
 import sh.reception.ReceptionInternalApi
+import sh.reception.ReceptionState
+import sh.reception.client.ReceptionAPI
 import sh.reception.client.ApplicationLifecycle
 import sh.reception.client.PushNotifications
 import sh.reception.viewmodel.ChatHarness
@@ -41,8 +43,12 @@ class ReceptionNotificationActivityTest {
         harness.start()
     }
 
+    @OptIn(ReceptionInternalApi::class)
     @After
-    fun tearDown() = harness.stop()
+    fun tearDown() {
+        Reception.setNotificationRoutingEnabled(true)
+        harness.stop()
+    }
 
     /**
      * Taps notification [key]; [taskRoot] when no task of the app existed. Returns the launch the trampoline started.
@@ -118,5 +124,34 @@ class ReceptionNotificationActivityTest {
         Reception.noteCurrentActivity(host)
         Reception.openChat()
         assertEquals(ReceptionChatActivity::class.java.name, shadowOf(host).nextStartedActivity?.component?.className)
+    }
+
+    @OptIn(ReceptionInternalApi::class)
+    @Test
+    fun turningRoutingOffDiscardsTheTapThatWaitsForConfigure() {
+        ReceptionState.resetForTests()
+        val host = Robolectric.buildActivity(Activity::class.java).setup().get()
+        tap("p1", taskRoot = true)
+        // The plugin's configure(handlesNotifications: false), then a later opt-in: the tap stays discarded.
+        Reception.setNotificationRoutingEnabled(false)
+        Reception.setNotificationRoutingEnabled(true)
+        ReceptionAPI.serviceUrl = harness.server.url("/")
+        ApplicationLifecycle.noteCurrentActivity(host)
+        ReceptionState.configure(application, ChatHarness.APP_ID)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
+        assertNull(shadowOf(host).nextStartedActivity)
+    }
+
+    @OptIn(ReceptionInternalApi::class)
+    @Test
+    fun aTapWhileRoutingIsOffOnlyBringsTheAppForwardAndTurningItOnRoutesTheNext() {
+        Reception.setNotificationRoutingEnabled(false)
+        assertEquals("Launcher", tap("d1", taskRoot = true)?.component?.className)
+        val host = Robolectric.buildActivity(Activity::class.java).setup().get()
+        tap("d2")
+        assertNull(resume(host))
+        Reception.setNotificationRoutingEnabled(true)
+        tap("d3")
+        assertEquals(ReceptionChatActivity::class.java.name, resume(host)?.component?.className)
     }
 }
