@@ -28,6 +28,7 @@ internal class DeviceSession(
     val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     val api: ReceptionAPI = api.bound(this, store.chatRevision)
     val cooldowns: ServerCooldowns = ServerCooldowns(store, now, scope)
+    val attachmentImages: AttachmentImages = AttachmentImages()
 
     /** Short-lived bearer token, never persisted; a missing token is refreshed on first use. */
     var accessToken: String? = null
@@ -138,6 +139,7 @@ internal class DeviceSession(
     fun deactivate() {
         invalidated = true
         credentialsUnsaved = false
+        attachmentImages.invalidate()
         cooldowns.invalidate()
         scope.cancel()
         registration = null
