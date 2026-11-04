@@ -1,5 +1,6 @@
 package sh.reception.client
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.core.content.edit
 
@@ -17,6 +18,8 @@ internal object PresentationRecord {
     data class Entry(val token: String, val namespace: String)
 
     /** Commits [entry]; false when it did not reach the disk. */
+    // The KTX `edit` drops the commit's result, which decides whether the sheet can be restored.
+    @SuppressLint("UseKtx")
     fun save(context: Context, entry: Entry): Boolean =
         preferences(context).edit().putString(TOKEN, entry.token).putString(NAMESPACE, entry.namespace).commit()
 
