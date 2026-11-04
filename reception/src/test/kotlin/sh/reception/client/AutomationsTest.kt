@@ -24,7 +24,7 @@ class AutomationsTest {
                 return now >= settlesAt
             }
 
-        override fun present(): Boolean {
+        override suspend fun present(stillWanted: () -> Boolean): Boolean {
             presented += 1
             return presents
         }

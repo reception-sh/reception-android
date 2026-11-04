@@ -64,28 +64,30 @@ internal object ChatPresenter {
 
     /**
      * Answers whether the sheet was requested (it starts once its record is on disk) or brought to the front.
-     * [stillWanted] is asked right before the sheet starts; false cancels the presentation.
+     * [completed] runs once, on the main thread, with whether the sheet was started or brought to the front; it is
+     * false when the request was skipped or cancelled before the sheet started. [stillWanted] is asked right before the
+     * sheet starts; false cancels the presentation.
      */
-    fun present(stillWanted: () -> Boolean = { true }): Boolean {
+    fun present(stillWanted: () -> Boolean = { true }, completed: (Boolean) -> Unit = {}): Boolean {
         if (ReceptionState.isChatOpen.value || (isPresented && sheet?.get() == null)) {
             Log.debug { "Chat presentation skipped, chat already open" }
-            return false
+            return false.also(completed)
         }
         val host = ApplicationLifecycle.currentActivity
         if (host == null) {
             Log.debug { "Chat presentation skipped, no resumed activity" }
-            return false
+            return false.also(completed)
         }
         // The sheet exists but another of the app's activities covers it: bring that sheet back instead of a second one.
-        sheet?.get()?.let { return CoveredSheet.bringToFront(host, it) }
+        sheet?.get()?.let { return CoveredSheet.bringToFront(host, it).also(completed) }
         ReceptionAppearance.configuration.activate()
         val token = UUID.randomUUID().toString()
         presentation = token
         changes += 1
         requestedAt = SystemClock.uptimeMillis()
         val entry = ReceptionState.namespace?.let { PresentationRecord.Entry(token, it) }
-            ?: return startIfWanted(host, token, stillWanted)
-        SheetRecord.save(host, entry) { startIfWanted(host, token, stillWanted) }
+            ?: return startIfWanted(host, token, stillWanted).also(completed)
+        SheetRecord.save(host, entry) { completed(startIfWanted(host, token, stillWanted)) }
         return true
     }
 
