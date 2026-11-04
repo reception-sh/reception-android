@@ -45,9 +45,18 @@ internal object ReceptionUnread {
         listeners.removeAll { it === listener }
     }
 
-    /** A listener that an earlier one removed during this delivery is not called. */
+    /** Advanced by every publication, so a delivery that a listener superseded (by a logout, say) stops. */
+    private var publication = 0
+
+    /**
+     * A listener that an earlier one removed during this delivery is not called. A listener whose call publishes a
+     * newer count ends this delivery: the nested one already reached everybody, and the older count must not follow it.
+     */
     private fun notifyListeners(count: Int) {
+        publication += 1
+        val current = publication
         for (listener in listeners.toList()) {
+            if (publication != current) return
             if (listeners.any { it === listener }) listener(count)
         }
     }

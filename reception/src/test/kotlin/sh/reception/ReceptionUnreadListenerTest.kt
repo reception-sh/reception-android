@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import sh.reception.viewmodel.ChatHarness
 
 /** `addUnreadCountListener`: the current count at once, then only changes, until removed. */
 @RunWith(RobolectricTestRunner::class)
@@ -41,5 +42,28 @@ class ReceptionUnreadListenerTest {
         ReceptionUnread.set(1, syncsNotifications = false)
         Reception.removeUnreadCountListener(first)
         assertEquals(listOf("first 0", "second 0", "first 1"), seen)
+    }
+
+    @Test
+    fun aLogoutByAListenerDuringADeliveryIsTheLastCountEveryoneSees() {
+        val harness = ChatHarness()
+        harness.start()
+        try {
+            val seen = mutableListOf<String>()
+            val first: (Int) -> Unit = { count ->
+                seen += "first $count"
+                if (count == 1) Reception.logout()
+            }
+            val second: (Int) -> Unit = { count -> seen += "second $count" }
+            Reception.addUnreadCountListener(first)
+            Reception.addUnreadCountListener(second)
+            ReceptionUnread.set(1, syncsNotifications = false)
+            Reception.removeUnreadCountListener(first)
+            Reception.removeUnreadCountListener(second)
+            assertEquals(listOf("first 0", "second 0", "first 1", "first 0", "second 0"), seen)
+            assertEquals(0, Reception.unreadCount.value)
+        } finally {
+            harness.stop()
+        }
     }
 }
