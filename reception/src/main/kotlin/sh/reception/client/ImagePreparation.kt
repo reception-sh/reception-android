@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.RectF
+import androidx.core.graphics.createBitmap
 import androidx.exifinterface.media.ExifInterface
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -92,7 +93,7 @@ internal object ImagePreparation {
         matrix.mapRect(bounds)
         matrix.postTranslate(-bounds.left, -bounds.top)
         matrix.postScale(width / bounds.width(), height / bounds.height())
-        val result = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val result = createBitmap(width, height)
         Canvas(result).apply {
             drawColor(Color.WHITE)
             drawBitmap(source, matrix, Paint(Paint.FILTER_BITMAP_FLAG))

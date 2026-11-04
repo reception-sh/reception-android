@@ -1,11 +1,12 @@
 package sh.reception.client
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
-import android.net.Uri
 import android.os.Build
+import androidx.core.net.toUri
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.util.Locale
 
@@ -57,8 +58,10 @@ internal class LinkPolicy(private val packageName: String, private val handlers:
             url.substringAfter("://", "").substringBefore('/').substringBefore('?').substringBefore('#')
                 .substringAfterLast('@').lowercase(Locale.ROOT).takeIf { it.isNotEmpty() }
 
+        // Only the host's own package matters, and an app always sees itself, so no <queries> entry is needed.
+        @SuppressLint("QueryPermissionsNeeded")
         private fun activities(packageManager: PackageManager, url: String): List<ResolveInfo> {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            val intent = Intent(Intent.ACTION_VIEW, url.toUri())
             return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 packageManager.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_DEFAULT_ONLY.toLong()))
             } else {

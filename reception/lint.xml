@@ -22,6 +22,8 @@
     <issue id="PrivateResource" severity="fatal" />
     <issue id="ComposableNaming" severity="fatal" />
     <issue id="ModifierParameter" severity="fatal" />
+    <!-- The Material Symbols icons keep Google's official path data; they draw at icon sizes only. -->
+    <issue id="VectorPath" severity="ignore" />
     <!-- Dependency versions are fixed in SPEC.md for host compatibility; newer releases are not wanted. -->
     <issue id="GradleDependency" severity="ignore" />
     <issue id="NewerVersionAvailable" severity="ignore" />
