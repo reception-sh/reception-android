@@ -13,19 +13,22 @@ import java.util.Locale
 /**
  * Which link card URLs the chat opens, and which of them lead back into the host app. Android has no
  * `CFBundleURLTypes`: a URL is the host's own when one of its activities handles it ([handlers] lists the packages of
- * the activities that would open it). Answers are cached per scheme and host. Main thread only.
+ * the activities that would open it). Intent filters match by path and compare schemes case-sensitively, so answers
+ * are cached per complete URL, the most recent [cacheSize]. Main thread only.
  */
 internal class LinkPolicy(private val packageName: String, private val handlers: (String) -> List<String>) {
-    private val hostLinks = mutableMapOf<String, Boolean>()
+    private val hostLinks = object : LinkedHashMap<String, Boolean>(cacheSize, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Boolean>?): Boolean = size > cacheSize
+    }
 
     /** True when the host app itself opens [url], through a custom scheme or an app link. */
     fun isHostScheme(url: String): Boolean {
-        val scheme = scheme(url) ?: return false
-        val key = "$scheme://${host(url).orEmpty()}"
-        return hostLinks.getOrPut(key) { packageName in handlers(url) }
+        if (scheme(url) == null) return false
+        return hostLinks.getOrPut(url) { packageName in handlers(url) }
     }
 
     companion object {
+        private const val cacheSize = 64
         private val systemSchemes = setOf("https", "http", "mailto", "tel", "sms")
         private val blockedSchemes = setOf("javascript", "data", "file", "blob", "about", "vbscript")
         private val schemeName = Regex("^[a-z][a-z0-9+.-]*$")
@@ -33,9 +36,12 @@ internal class LinkPolicy(private val packageName: String, private val handlers:
         private var shared: LinkPolicy? = null
 
         /** The host app's policy, created once. */
-        fun shared(context: Context): LinkPolicy = shared ?: LinkPolicy(context.packageName) { url ->
+        fun shared(context: Context): LinkPolicy = shared ?: of(context).also { shared = it }
+
+        /** A policy that asks [context]'s package manager. */
+        fun of(context: Context): LinkPolicy = LinkPolicy(context.packageName) { url ->
             activities(context.packageManager, url).map { it.activityInfo.packageName }
-        }.also { shared = it }
+        }
 
         /** The service applies the same rule when a link is saved; this check only guards against unexpected data. */
         fun isAllowed(url: String): Boolean {
@@ -53,10 +59,6 @@ internal class LinkPolicy(private val packageName: String, private val handlers:
         }
 
         private fun scheme(url: String): String? = schemePrefix.find(url)?.groupValues?.get(1)?.lowercase(Locale.ROOT)
-
-        private fun host(url: String): String? =
-            url.substringAfter("://", "").substringBefore('/').substringBefore('?').substringBefore('#')
-                .substringAfterLast('@').lowercase(Locale.ROOT).takeIf { it.isNotEmpty() }
 
         // Only the host's own package matters, and an app always sees itself, so no <queries> entry is needed.
         @SuppressLint("QueryPermissionsNeeded")

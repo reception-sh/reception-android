@@ -29,18 +29,28 @@ class LinkPolicyTest {
     }
 
     @Test
-    fun hostLinksAreTheHostsOwnHandlersCachedPerSchemeAndHost() {
+    fun answersAreCachedPerCompleteUrl() {
         val queried = mutableListOf<String>()
         val policy = LinkPolicy("com.host") { url ->
             queried.add(url)
-            if (url.startsWith("myapp:") || url.startsWith("https://host.example")) listOf("com.android.chrome", "com.host") else listOf("com.android.chrome")
+            if (url.startsWith("https://host.example/app/")) listOf("com.android.chrome", "com.host") else listOf("com.android.chrome")
         }
-        assertTrue(policy.isHostScheme("myapp://settings"))
-        assertTrue(policy.isHostScheme("MYAPP://settings/privacy"))
-        assertTrue(policy.isHostScheme("https://host.example/a"))
-        assertFalse(policy.isHostScheme("https://other.example/a"))
-        assertFalse(policy.isHostScheme("https://other.example/b"))
+        assertTrue(policy.isHostScheme("https://host.example/app/a"))
+        assertTrue(policy.isHostScheme("https://host.example/app/a"))
+        assertFalse(policy.isHostScheme("https://host.example/web/a"))
+        assertFalse(policy.isHostScheme("https://HOST.example/app/a"))
         assertFalse(policy.isHostScheme("not a url"))
-        assertEquals(listOf("myapp://settings", "https://host.example/a", "https://other.example/a"), queried)
+        assertEquals(listOf("https://host.example/app/a", "https://host.example/web/a", "https://HOST.example/app/a"), queried)
+    }
+
+    @Test
+    fun theCacheKeepsTheMostRecentEntries() {
+        var queries = 0
+        val policy = LinkPolicy("com.host") { queries++; emptyList() }
+        for (index in 0..64) policy.isHostScheme("myapp://item/$index")
+        policy.isHostScheme("myapp://item/64")
+        assertEquals(65, queries)
+        policy.isHostScheme("myapp://item/0")
+        assertEquals(66, queries)
     }
 }
