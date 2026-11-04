@@ -235,7 +235,7 @@ SDK (Flutter and React Native configure from Dart/JS, which does not run for a b
 notification could not be posted. It recognizes the payload synchronously, so it may be called from FCM's worker
 thread, and does the rest on the main thread. It is idempotent per FCM message: the last 64 FCM message IDs are kept
 (SharedPreferences `sh.reception.push`, one global list outside any App ID or session namespace, because FCM message
-IDs are globally unique and a repeat can arrive on either side of configure; checked on the storage thread), and a repeat returns true without a second notification or
+IDs are globally unique and a repeat can arrive on either side of configure; checked and committed with `commit()` on the storage thread before the notification is posted, so a crash right after posting cannot let a redelivery notify again; a failed commit is logged and the message is still handled once), and a repeat returns true without a second notification or
 unread refresh. Firebase removes the reserved `google.*` keys from `RemoteMessage.data` and exposes the ID as
 `RemoteMessage.messageId`, so hosts with their own service pass `remoteMessage.messageId` (the SDK's service does). The
 two-argument form reads the ID from `google.message_id` in the map, for callers that hold the raw FCM extras (the

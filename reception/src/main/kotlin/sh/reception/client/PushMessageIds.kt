@@ -1,10 +1,11 @@
 package sh.reception.client
 
+import android.annotation.SuppressLint
 import android.content.Context
-import androidx.core.content.edit
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
+import sh.reception.Log
 
 /**
  * The latest FCM message IDs the SDK handled, so a message delivered twice (FCM redelivers after a crash or a slow
@@ -20,7 +21,13 @@ internal object PushMessageIds {
     private const val KEY = "messageIds"
     private val serializer = ListSerializer(String.serializer())
 
-    /** Records [id]; false when it was recorded already. Unreadable storage counts as new. */
+    /**
+     * Records [id] on disk before answering, so the notification it allows is never posted while a crash could still
+     * lose the record; false when it was recorded already. Unreadable storage counts as new; a failed write is logged
+     * and the message is still handled, once in this process.
+     */
+    // The KTX `edit` drops the commit's result, which decides the log.
+    @SuppressLint("UseKtx")
     fun record(context: Context, id: String): Boolean {
         val preferences = context.applicationContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
         val ids = try {
@@ -33,7 +40,10 @@ internal object PushMessageIds {
             emptyList()
         }
         if (id in ids) return false
-        preferences.edit { putString(KEY, ReceptionAPI.json.encodeToString(serializer, (ids + id).takeLast(CAPACITY))) }
+        val encoded = ReceptionAPI.json.encodeToString(serializer, (ids + id).takeLast(CAPACITY))
+        if (!preferences.edit().putString(KEY, encoded).commit()) {
+            Log.error { "Push message ID not saved, a redelivery after a restart may notify again" }
+        }
         return true
     }
 }
