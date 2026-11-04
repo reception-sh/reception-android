@@ -1,8 +1,5 @@
 package sh.reception.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.Text
@@ -30,7 +27,6 @@ import sh.reception.viewmodel.CooldownText
 import sh.reception.viewmodel.RetryAvailability
 
 /** "Sent" or the pending "Sending…" under the latest outgoing message, or "Not delivered" with its actions. */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun DeliveryStatus(
     message: Message,
@@ -41,7 +37,7 @@ internal fun DeliveryStatus(
 ) {
     val style = Theme.textStyle(Theme.deliveryStatusSize)
     if (message.status == MessageStatus.FAILED) {
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(Theme.small)) {
+        FittingRow(rowSpacing = Theme.small, columnSpacing = Theme.deliveryStatusSpacing) {
             Text(ReceptionLocalization.string(Strings.notDelivered), style = style, color = Theme.error)
             if (retryAvailability is RetryAvailability.Automatic) {
                 Countdown(retryAvailability.until, style)
