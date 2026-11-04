@@ -8,8 +8,8 @@ import android.view.WindowManager.LayoutParams
  * `DialogWrapper.updateParameters`, which runs after every recomposition of the `Dialog` call, writes the window's
  * whole soft-input mode there: `adjustResize` without `decorFitsSystemWindows`, else the adjust mode the dialog's theme
  * gave the window. Before each frame, while a chat is embedded, a mode that is exactly one of those two values goes back
- * to [installed] (the state bits Compose cleared stay cleared). Any other mode is the host's own choice and stays.
- * Main thread only.
+ * to [installed], the chat's adjust mode, also when the window already had it and the SDK wrote nothing (the state bits
+ * Compose cleared stay cleared). Any other mode is the host's own choice and stays. Main thread only.
  */
 internal class ComposeDialogModeGuard(private val window: KeyboardWindow, private val installed: Int) :
     ViewTreeObserver.OnPreDrawListener {

@@ -23,9 +23,9 @@ import org.robolectric.shadows.ShadowLooper
 @Suppress("DEPRECATION")
 @RunWith(RobolectricTestRunner::class)
 class ComposeDialogModeGuardTest {
-    private class Screen(decorFitsSystemWindows: Boolean) {
+    private class Screen(decorFitsSystemWindows: Boolean, chat: Boolean = true) {
         var dismissOnBackPress by mutableStateOf(true)
-        var chat by mutableStateOf(true)
+        var chat by mutableStateOf(chat)
         var window: Window? = null
 
         init {
@@ -34,7 +34,7 @@ class ComposeDialogModeGuardTest {
                 val properties = DialogProperties(dismissOnBackPress = dismissOnBackPress, decorFitsSystemWindows = decorFitsSystemWindows)
                 Dialog(onDismissRequest = {}, properties = properties) {
                     window = (LocalView.current.parent as DialogWindowProvider).window
-                    if (chat) EmbeddedKeyboardAdjustment()
+                    if (this.chat) EmbeddedKeyboardAdjustment()
                 }
             }
             ShadowLooper.idleMainLooper()
@@ -83,5 +83,22 @@ class ComposeDialogModeGuardTest {
         checkNotNull(screen.window).setSoftInputMode(hostMode)
         ShadowLooper.idleMainLooper()
         assertEquals(hostMode, screen.mode)
+    }
+
+    @Test
+    @Config(sdk = [30])
+    fun aWindowThatAlreadyAdjustsNothingKeepsItThroughAParameterChange() {
+        val screen = Screen(decorFitsSystemWindows = false, chat = false)
+        // The window already has the chat's mode when the chat appears, so the SDK writes nothing.
+        checkNotNull(screen.window).setSoftInputMode(LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
+        screen.chat = true
+        ShadowLooper.idleMainLooper()
+        screen.changeParameters()
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_NOTHING, screen.mode and LayoutParams.SOFT_INPUT_MASK_ADJUST)
+        // Without a chat, Compose's own mode stays, and the mode the window had is not written back over it.
+        screen.chat = false
+        ShadowLooper.idleMainLooper()
+        screen.changeParameters()
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_RESIZE, screen.mode)
     }
 }

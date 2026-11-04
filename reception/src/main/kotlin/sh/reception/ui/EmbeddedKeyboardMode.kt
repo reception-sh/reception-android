@@ -75,10 +75,12 @@ internal object EmbeddedKeyboardMode {
         }
         val original = window.softInputMode
         val adjust = original and LayoutParams.SOFT_INPUT_MASK_ADJUST
-        val installed = target(window, adjust)?.takeIf { it != adjust }
+        val desired = target(window, adjust)
+        val installed = desired?.takeIf { it != adjust }
         installed?.let { window.softInputMode = (original and LayoutParams.SOFT_INPUT_MASK_ADJUST.inv()) or it }
-        // Compose rewrites a Dialog's mode on its own recompositions below Android 12.
-        val guard = installed?.takeIf { window.isComposeDialog && Build.VERSION.SDK_INT < Build.VERSION_CODES.S }
+        // Compose rewrites a Dialog's mode on its own recompositions below Android 12, also when the window already had
+        // the chat's mode and nothing was written.
+        val guard = desired?.takeIf { window.isComposeDialog && Build.VERSION.SDK_INT < Build.VERSION_CODES.S }
             ?.let { ComposeDialogModeGuard(window, it) }
         holds[window.root] = Hold(original, installed, 1, guard)
     }
