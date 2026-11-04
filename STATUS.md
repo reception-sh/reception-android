@@ -2,6 +2,16 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-04: Fixes 2 done (see verification/fixes-2.md): the Phase B2 audit plus the decided splits. LinkPolicy caches
+  per complete URL (last 64; `LinkPolicy.of(context)` for tests). TeamProfiles takes `storage`/`decoding` dispatchers,
+  restores asynchronously and chains cache writes after the load. `ThemeMode.kt`: `LocalReceptionDarkMode`,
+  `resolveDarkMode`, `receptionDarkMode(embedded)`, `LocalReceptionIncreasedContrast`, `fadesOutgoing`;
+  `ContrastMonitor` (Android 14+, reference-counted `start`/`stop`). Splits: `DeviceStore` + `DeviceStoreChat`
+  (extension properties) + `DeviceStoreCredentials` + `ScopedPreferences`; `DeviceSession` + `SessionLifecycle`
+  (registerIfNeeded, becameActive, requestSucceeded, recordFailure); `ReceptionState` + `ReceptionUnread` (count,
+  set, cancelRefresh, refresh); `Reception.kt` delegates to `ReceptionSettings` and `ReceptionAccount`. It is still
+  ~290 lines because of the nested public `Appearance` type. No main source file is over ~200 lines except
+  `Reception.kt` and `SessionAuthorization.kt` (201).
 - 2026-11-04: Phase C must also, in the SDK's own sheet: apply `MaterialTheme` with `dynamicLight/DarkColorScheme` on
   Android 12+ and the iOS blue (#007AFF/#0A84FF) below; provide `LocalReceptionDarkMode` (`receptionDarkMode(embedded =
   false)` in the sheet, `true` in an embedded `ReceptionChatView`) and `LocalReceptionIncreasedContrast`
