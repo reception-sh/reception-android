@@ -12,8 +12,8 @@ import java.util.Locale
 
 /**
  * The host app's language (SPEC.md, Language): its per-app locale when set; otherwise, when the app declares its
- * languages in `android:localeConfig` (Android 13+), the first system locale it supports, so an English-only app stays
- * English on a German phone; otherwise the first system locale.
+ * languages in `android:localeConfig` (Android 13+), the first system locale it supports, or its first declared locale
+ * when none is, so an English-only app stays English on a German phone; otherwise the first system locale.
  */
 internal object AppLocale {
     private const val APP_COMPAT_DELEGATE = "androidx.appcompat.app.AppCompatDelegate"
@@ -45,10 +45,15 @@ internal object AppLocale {
         Storage.launch { declaredLocales(context) }
     }
 
-    private fun systemLanguageTag(context: Context): String? {
-        val system = LocaleList.getDefault()
-        declaredMatch(declaredLocales(context), system)?.let { return it.toLanguageTag() }
-        return system[0]?.toLanguageTag()
+    private fun systemLanguageTag(context: Context): String? = resolve(declaredLocales(context), LocaleList.getDefault())
+
+    /**
+     * The first system locale the app declares; when it declares languages but none matches, its first declared one,
+     * so an English-only app stays English on a German-only phone. Without a declaration, the first system locale.
+     */
+    fun resolve(declared: List<Locale>, system: LocaleList): String? {
+        if (declared.isEmpty()) return system[0]?.toLanguageTag()
+        return (declaredMatch(declared, system) ?: declared.first()).toLanguageTag()
     }
 
     private fun declaredLocales(context: Context): List<Locale> = declared ?: readDeclared(context).also { declared = it }
@@ -66,12 +71,10 @@ internal object AppLocale {
         return (0 until locales.size()).map { locales[it] }
     }
 
-    private fun declaredMatch(supported: List<Locale>, system: LocaleList): Locale? {
-        if (supported.isEmpty()) return null
-        return (0 until system.size()).map { system[it] }.firstOrNull { locale ->
+    private fun declaredMatch(supported: List<Locale>, system: LocaleList): Locale? =
+        (0 until system.size()).map { system[it] }.firstOrNull { locale ->
             supported.any { matches(declared = it, system = locale) }
         }
-    }
 
     /** The language must match; the script and region only when the declared locale names them. */
     private fun matches(declared: Locale, system: Locale): Boolean {
