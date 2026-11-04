@@ -4,8 +4,12 @@ import android.app.Activity
 import android.view.WindowManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -24,10 +28,11 @@ import sh.reception.Reception
 import sh.reception.ReceptionChatView
 
 /**
- * Debug builds only: host setups the SDK must cope with. `adb shell am start … --ez adjustNothing true` gives the
- * activity `adjustNothing` (the embedded chat's keyboard before Android 11), "Chat in a dialog" embeds the chat in a
- * Compose `Dialog` with its own window, and the icon switch sets `Reception.notificationSmallIcon`, which a process
- * that FCM starts later must still use.
+ * Debug builds only (release builds have no-op hooks): host setups the SDK must cope with. `adb shell am start …
+ * --ez adjustNothing true` gives the activity `adjustNothing` (the embedded chat's keyboard before Android 11), "Chat
+ * in a dialog" embeds the chat in a Compose `Dialog` with its own window, "Chat in a bottom sheet" in a Material 3
+ * `ModalBottomSheet`, and the icon switch sets `Reception.notificationSmallIcon`, which a process that FCM starts later
+ * must still use.
  */
 object ExampleDebugTools {
     const val EXTRA_ADJUST_NOTHING = "adjustNothing"
@@ -39,6 +44,7 @@ object ExampleDebugTools {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DebugTools() {
     var dialog by rememberSaveable { mutableStateOf(false) }
@@ -49,6 +55,14 @@ fun DebugTools() {
             Surface(Modifier.fillMaxSize(), shape = MaterialTheme.shapes.large) {
                 ReceptionChatView()
             }
+        }
+    }
+    var sheet by rememberSaveable { mutableStateOf(false) }
+    OutlinedButton(onClick = { sheet = true }) { Text(stringResource(R.string.chat_in_bottom_sheet)) }
+    if (sheet) {
+        // Fully expanded, so the composer is on screen.
+        ModalBottomSheet(onDismissRequest = { sheet = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+            ReceptionChatView(Modifier.fillMaxHeight(0.8f))
         }
     }
     var icon by rememberSaveable { mutableStateOf(Reception.notificationSmallIcon != null) }

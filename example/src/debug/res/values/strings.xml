@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The debug tools' labels (ExampleDebugTools); release builds have neither. -->
+<resources>
+    <string name="chat_in_dialog">Chat in a dialog</string>
+    <string name="chat_in_bottom_sheet">Chat in a bottom sheet</string>
+    <string name="app_notification_icon">App notification icon</string>
+</resources>
