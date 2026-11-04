@@ -92,8 +92,8 @@ private suspend fun DeviceSession.settled() {
     while (true) {
         registration?.awaitShared()
         persistPendingCredentials()
-        // Both steps may suspend, and another registration may have started meanwhile.
-        if (registration == null) return
+        // Both steps may suspend: another registration may have started, or newer credentials arrived during the save.
+        if (registration == null && !(credentialsUnsaved && credentials != null)) return
     }
 }
 

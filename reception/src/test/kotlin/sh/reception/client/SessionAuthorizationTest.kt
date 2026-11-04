@@ -299,6 +299,51 @@ class SessionAuthorizationTest {
     }
 
     @Test
+    fun aTokenWaitsForCredentialsThatChangedDuringItsSave() = runTest(dispatcher) {
+        val saves = AtomicInteger(0)
+        val firstSave = CountDownLatch(1)
+        val secondSave = CountDownLatch(1)
+        val gated = DeviceStore.CredentialStorage(
+            read = storage.read,
+            save = { value, account ->
+                when (saves.incrementAndGet()) {
+                    1 -> firstSave.await(5, TimeUnit.SECONDS)
+                    2 -> secondSave.await(5, TimeUnit.SECONDS)
+                }
+                storage.save(value, account)
+            },
+            delete = storage.delete,
+        )
+        val store = DeviceStore(context, "app_test${System.nanoTime()}", credentialStorage = gated).apply { open() }
+        val session = DeviceSession(ReceptionAPI(APP_ID, server.url("/")), store, refreshSleep = {})
+        session.prepared()
+        session.credentials = SessionCredentials("secret")
+        session.credentialsUnsaved = true
+        session.accessToken = "t"
+        val caller = async { session.token() }
+        while (saves.get() < 1) {
+            withContext(Dispatchers.IO) { Thread.sleep(10) }
+            runCurrent()
+        }
+        // A device update replaces the verified user while the caller's save is on the storage thread.
+        val update = async { session.storeVerifiedUserId("user") }
+        runCurrent()
+        firstSave.countDown()
+        while (saves.get() < 2) {
+            withContext(Dispatchers.IO) { Thread.sleep(10) }
+            runCurrent()
+        }
+        withContext(Dispatchers.IO) { Thread.sleep(50) }
+        runCurrent()
+        assertFalse("token handed out before the newer credentials were saved", caller.isCompleted)
+        secondSave.countDown()
+        assertEquals("t", caller.await())
+        update.await()
+        assertFalse(session.credentialsUnsaved)
+        assertEquals(SessionCredentials("secret", "user"), Storage.run { store.loadCredentials() })
+    }
+
+    @Test
     fun anUnauthorizedRequestIsRetriedOnceWithARenewedToken() = runTest(dispatcher) {
         respond = { request ->
             when {
