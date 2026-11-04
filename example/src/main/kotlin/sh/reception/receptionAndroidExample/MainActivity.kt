@@ -1,5 +1,6 @@
 package sh.reception.receptionAndroidExample
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -34,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import sh.reception.Reception
@@ -71,6 +73,10 @@ private fun HomeScreen(embed: () -> Unit) {
                 Button(onClick = { Reception.openChat() }) { Text(stringResource(R.string.support)) }
             }
             OutlinedButton(onClick = embed) { Text(stringResource(R.string.embedded_chat)) }
+            val context = LocalContext.current
+            OutlinedButton(onClick = { context.startActivity(Intent(context, SecondActivity::class.java)) }) {
+                Text(stringResource(R.string.second_screen))
+            }
             OutlinedButton(onClick = { Reception.identify(userId = "android-example-user", name = "Android Example") }) {
                 Text(stringResource(R.string.identify))
             }
