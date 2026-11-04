@@ -16,6 +16,8 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
+import sh.reception.Reception
+import sh.reception.ReceptionInternalApi
 import sh.reception.client.ApplicationLifecycle
 import sh.reception.client.PushNotifications
 import sh.reception.viewmodel.ChatHarness
@@ -84,5 +86,19 @@ class ReceptionNotificationActivityTest {
         assertNull(resume(host))
         tap("n3")
         assertEquals(ReceptionChatActivity::class.java.name, resume(host)?.component?.className)
+    }
+
+    @OptIn(ReceptionInternalApi::class)
+    @Test
+    fun aPluginsActivityPresentsTheChatBeforeItsNextResume() {
+        // Created and started before configure registered the lifecycle callbacks, as under Flutter.
+        val host = Robolectric.buildActivity(Activity::class.java).create().start().get()
+        Reception.openChat()
+        assertNull(shadowOf(host).nextStartedActivity)
+        // Another test's activity may still be the current one and have taken that request.
+        ChatPresenter.dismiss()
+        Reception.noteCurrentActivity(host)
+        Reception.openChat()
+        assertEquals(ReceptionChatActivity::class.java.name, shadowOf(host).nextStartedActivity?.component?.className)
     }
 }

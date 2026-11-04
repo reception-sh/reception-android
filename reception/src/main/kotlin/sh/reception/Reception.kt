@@ -1,5 +1,6 @@
 package sh.reception
 
+import android.app.Activity
 import android.content.Context
 import androidx.annotation.DrawableRes
 import androidx.compose.runtime.getValue
@@ -14,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
+import sh.reception.client.ApplicationLifecycle
 import sh.reception.configuration.AppearanceIcon
 import sh.reception.strings.Strings
 import sh.reception.ui.ChatPresenter
@@ -309,6 +311,14 @@ public object Reception {
     public fun configureForTesting(context: Context, appId: String, serviceUrl: String): Unit = MainThread.run {
         ReceptionSettings.configureForTesting(context.applicationContext, appId, serviceUrl)
     }
+
+    /**
+     * The activity a Flutter or React Native plugin is attached to, when it configures after that activity resumed.
+     * Only for Reception's own plugins.
+     */
+    @ReceptionInternalApi
+    @JvmStatic
+    public fun noteCurrentActivity(activity: Activity): Unit = MainThread.run { ApplicationLifecycle.noteCurrentActivity(activity) }
 
     /**
      * Labels the support device with your user's details. The service shows them as unverified.

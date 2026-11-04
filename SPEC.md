@@ -223,6 +223,11 @@ never read. `handlePushNotification` is the iOS routing call: it recognizes `rec
 opens the chat when asked (over the resumed activity, or the next one), refreshes unread, returns true; it never posts
 a notification. Hosts that own their tap handling call it themselves.
 
+Hosts that configure after their activity resumed (the Flutter and React Native plugins configure from Dart/JS) call
+the internal `Reception.noteCurrentActivity(activity)` (`@ReceptionInternalApi`, plugin-only, not in the public
+docs) with the activity they are attached to. It seeds the current-activity tracking (a weak reference) so
+`openChat()` and the pending tap work before the next resume.
+
 `onNewToken` stages the token even before notifications are allowed, as iOS stages the APNs token whenever it
 arrives; the service only sends once the device reports a token, and posting checks the permission.
 
