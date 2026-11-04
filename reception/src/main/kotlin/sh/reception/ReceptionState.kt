@@ -21,7 +21,9 @@ import sh.reception.client.SecureStore
 import sh.reception.client.Storage
 import sh.reception.client.UnreadMonitor
 import sh.reception.client.isRegistered
+import sh.reception.client.recordFailure
 import sh.reception.client.refreshUnread
+import sh.reception.client.registerIfNeeded
 
 /** The facade's internal state and the session lifecycle behind it. Main thread only. */
 internal object ReceptionState {

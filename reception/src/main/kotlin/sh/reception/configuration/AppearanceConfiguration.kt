@@ -21,6 +21,7 @@ import sh.reception.client.ReceptionAPIError
 import sh.reception.client.RetryState
 import sh.reception.client.Storage
 import sh.reception.client.appearance
+import sh.reception.client.recordFailure
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
