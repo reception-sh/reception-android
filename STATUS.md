@@ -22,7 +22,7 @@ Progress log of the Android SDK build. Newest entry first. On a restart, read th
   sheet in `MaterialTheme` with `dynamicLight/DarkColorScheme` on 31+ and #007AFF/#0A84FF below; provide
   `LocalAppearance` at the chat root; call ChatCache/TeamProfileCache only through `Storage`; read `session.pending`,
   not `store.pending`; wait for `session.prepared()` (or `afterPrepared`) before touching `session.store` values.
-  Open: `DeviceStore.kt` is ~270 lines and `DeviceSession.kt` ~230 (over the ~200 guideline); `isRegistered` is false
+  Open: `DeviceStore.kt` is 290 lines and `DeviceSession.kt` ~230 (over the ~200 guideline); `isRegistered` is false
   while secure storage is unreadable (iOS re-reads the Keychain there; Android re-reads only in suspend paths).
 - 2026-11-04: Phase B2 done (see verification/phase-b2.md). `Reception.identify(token)` is now `identifyWithToken`.
   Public appearance: `Reception.Appearance` (Compose-state-backed properties, so changes reach an open chat; title
