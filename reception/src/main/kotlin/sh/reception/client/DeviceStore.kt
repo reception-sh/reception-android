@@ -8,6 +8,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
+import okhttp3.HttpUrl
 import java.util.UUID
 
 /**
@@ -20,7 +21,7 @@ import java.util.UUID
  */
 internal class DeviceStore private constructor(
     val context: Context,
-    /** The App ID's namespace, without the generation. */
+    /** The App ID's namespace ([namespace]), without the generation. */
     private val namespace: String,
     private val credentialStorage: CredentialStorage,
     /** Set when a reset chat keeps the session's namespace. */
@@ -255,6 +256,19 @@ internal class DeviceStore private constructor(
 
         private fun preferences(context: Context): SharedPreferences =
             context.applicationContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+
+        /**
+         * The namespace of [appId] at [serviceUrl] (SDK_SPEC.md, Server cooldowns: per service address, App ID and
+         * local session). The hosted service keeps the bare App ID, so production keeps its stored sessions.
+         */
+        fun namespace(appId: String, serviceUrl: HttpUrl): String {
+            val address = normalized(serviceUrl)
+            return if (address == normalized(ReceptionAPI.defaultServiceUrl)) appId else "$address|$appId"
+        }
+
+        /** Scheme, host, port and path, without query, fragment or a trailing slash. */
+        fun normalized(serviceUrl: HttpUrl): String =
+            serviceUrl.newBuilder().query(null).fragment(null).build().toString().trimEnd('/')
 
         /** Storage thread. */
         fun generation(context: Context, scope: String, rotate: Boolean = false): String {

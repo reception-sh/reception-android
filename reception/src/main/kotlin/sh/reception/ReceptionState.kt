@@ -28,8 +28,8 @@ internal object ReceptionState {
     var session: DeviceSession? = null
         private set
 
-    /** The configured App ID. */
-    private var appId: String? = null
+    /** The configured App ID's storage namespace, which includes the service address of a test service. */
+    private var namespace: String? = null
     var chat: ChatHooks? = null
     var updatesAppBadge: Boolean = true
     var onEvent: ((ReceptionEvent) -> Unit)? = null
@@ -61,7 +61,8 @@ internal object ReceptionState {
             }
             return
         }
-        if (this.appId == appId) {
+        val namespace = DeviceStore.namespace(appId, ReceptionAPI.serviceUrl)
+        if (this.namespace == namespace) {
             Log.debug { "Configure ignored, same App ID already active" }
             return
         }
@@ -72,13 +73,13 @@ internal object ReceptionState {
         session?.deactivate()
         chat?.stop()
         chat = null
-        this.appId = appId
+        this.namespace = namespace
         ReceptionIdentity.forget()
         val api = ReceptionAPI(appId)
-        ReceptionAppearance.configuration.configure(context, api, appId)
+        ReceptionAppearance.configuration.configure(context, api, namespace)
         AppLocale.prepare(context)
         // The store opens on the storage thread; registration and every request wait for it.
-        session = DeviceSession(api, DeviceStore(context, appId), after = storageWork, checksRestoredChat = true)
+        session = DeviceSession(api, DeviceStore(context, namespace), after = storageWork, checksRestoredChat = true)
         // No badge sync before the first server sync; the server value is the source of truth.
         unreadCount.value = 0
         revision += 1
@@ -100,7 +101,7 @@ internal object ReceptionState {
         session?.deactivate()
         session = null
         chat = null
-        appId = null
+        namespace = null
         storageWork = null
         logoutRevocations?.suspend()
         logoutRevocations = null
@@ -126,14 +127,14 @@ internal object ReceptionState {
         unreadMonitor.setActive(false)
         cancelUnreadRefresh()
         val session = session ?: return
-        val appId = appId ?: return
+        val namespace = namespace ?: return
         val context = session.store.context
         val deleted = session.invalidate(storageWork, after)
         storageWork = deleted
         chat?.stop()
         chat = null
         // The deletion rotates the generation, so the new session opens a fresh namespace after it.
-        this.session = DeviceSession(session.api, DeviceStore(context, appId), halt = session.halt, after = deleted)
+        this.session = DeviceSession(session.api, DeviceStore(context, namespace), halt = session.halt, after = deleted)
         setUnread(0)
         revision += 1
         if (dismissChat) advancePresentationRevision()

@@ -1,5 +1,6 @@
 package sh.reception.client
 
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -56,6 +57,28 @@ class DeviceStoreTest {
         // A cleared store refuses late draft writes from the discarded chat.
         old.draftText = "late"
         assertEquals("", old.draftText)
+    }
+
+    @Test
+    fun twoServiceAddressesWithTheSameAppIdKeepSeparateSessions() {
+        val appId = "app_addressAddressAddress1"
+        val hosted = DeviceStore.namespace(appId, ReceptionAPI.defaultServiceUrl)
+        val local = DeviceStore.namespace(appId, "http://10.0.2.2:3123/".toHttpUrl())
+        // The production path keeps its namespace, so stored sessions survive this change.
+        assertEquals(appId, hosted)
+        assertEquals(appId, DeviceStore.namespace(appId, "https://reception.sh".toHttpUrl()))
+        assertEquals(local, DeviceStore.namespace(appId, "http://10.0.2.2:3123".toHttpUrl()))
+
+        DeviceStore(context, hosted, storage).apply { open() }.save(SessionCredentials("hosted"))
+        val localStore = DeviceStore(context, local, storage).apply { open() }
+        assertNull(localStore.loadCredentials())
+        localStore.save(SessionCredentials("local"))
+        localStore.cooldowns = listOf(ServerCooldowns.Cooldown(RetryScope.MESSAGES, Long.MAX_VALUE, automatic = false))
+
+        val reopened = DeviceStore(context, hosted, storage).apply { open() }
+        assertEquals(SessionCredentials("hosted"), reopened.loadCredentials())
+        assertEquals(emptyList<ServerCooldowns.Cooldown>(), reopened.cooldowns)
+        assertEquals(SessionCredentials("local"), DeviceStore(context, local, storage).apply { open() }.loadCredentials())
     }
 
     @Test
