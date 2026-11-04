@@ -2,6 +2,17 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-04: Fixes 3 done except the live run (see verification/fixes-3.md): the Phase C1 audit (F-1..F-9) and
+  D-1..D-3, one commit each. `token()`/`renewedToken()` recheck the token and shared task after the credential read;
+  `LogoutRevocations.enqueue` returns `Deferred<Boolean>` (on disk or not) after the initial load and merged write;
+  `DeviceStore.open()` always restores `ChatCache.latestMessageAt` (getter memory-only); launch registration rechecks
+  `ApplicationLifecycle.isActive` after `prepared()` and right before registering; `AppLocale.languageTag` never parses
+  LocaleConfig (provisional answer uncached until `prepare` publishes); TeamProfiles' cached-photo eligibility follows
+  the team's photo ID and `showsPhotos`, its load runs outside the caller's job and writes need a successful load;
+  `hostBackground()` applies the baseline-scheme rule (all 36 roles vs `lightColorScheme()`) to mode and accent;
+  `ComposerModel.isPicking` keeps the chat visible, active and streaming under the photo picker (rotation still
+  reloads once); read generation lives in `ReceptionUnread`; `ChatPolling.kt`; credential helpers in
+  `SessionCredentials.kt`. Open: the StrictMode live run (the emulator was held by another device session).
 - 2026-11-04: Phase C1 done (see verification/phase-c1.md). `viewmodel/` ports the iOS ViewModel (one file per iOS
   file; `ChatMerge`, `ChatAutomaticRetry`, `MessagePhotos` split out). `ChatModel` holds Compose state, runs its tasks on
   `Dispatchers.Main` (enqueued like iOS `Task {}`), restores history and draft on the storage thread after
@@ -29,7 +40,7 @@ Progress log of the Android SDK build. Newest entry first. On a restart, read th
   prompt (`ChatPushPrompt`, `PushPromptDecision`, notification permission through the hosting activity),
   `refreshPaywalls()` when the chat appears, AppBadge in `ReceptionUnread.set`, notification taps opening the chat.
   Notes: the stream's quiet refresh is a 60 s timer in the reader because okhttp-sse does not surface `: ping`
-  comments; the photo picker stops the chat activity, so returning reloads like a foreground; rotation reloads once;
+  comments; rotation reloads once;
   a language change applies to layout direction on the next open (`ReceptionLocalization.layoutDirection` is not Compose
   state). Live verification needs Gboard on the emulator (the device CLI's test IME has no insets).
 - 2026-11-04: Fixes 2 done (see verification/fixes-2.md): the Phase B2 audit plus the decided splits. LinkPolicy caches
