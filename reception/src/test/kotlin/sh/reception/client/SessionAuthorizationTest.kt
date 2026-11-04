@@ -358,7 +358,8 @@ class SessionAuthorizationTest {
         assertEquals(DeviceIdentity(name = "Ada"), current.pending)
         current.prepared()
         assertEquals(DeviceIdentity(name = "Ada"), current.store.pending)
-        assertEquals(listOf("POST /v1/devices/me/token"), summary())
+        // Configure's subscription check reads the automations without a token; it is not part of the session.
+        assertEquals(listOf("POST /v1/devices/me/token"), summary().filter { it != "GET /v1/automations" })
     }
 
     @Test
