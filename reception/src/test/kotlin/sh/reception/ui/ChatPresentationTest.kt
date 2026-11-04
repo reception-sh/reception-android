@@ -58,11 +58,19 @@ class ChatPresentationTest {
 
     @Test
     fun aSheetClosedInTheSameCallbackAsItsOpeningIsNotStarted() {
-        val intent = launch {
-            ChatPresenter.open()
-            ChatPresenter.close()
-        }
-        assertNull(intent)
+        harness.start()
+        val host = Robolectric.buildActivity(Activity::class.java).setup().get()
+        ApplicationLifecycle.onActivityResumed(host)
+        // Held across both calls: unheld, a fast save can finish inside open() (withContext returns at once when its
+        // block is done first), and the sheet would start before the close.
+        val release = CountDownLatch(1)
+        val storageHeld = Storage.launch { release.await(5, TimeUnit.SECONDS) }
+        ChatPresenter.open()
+        ChatPresenter.close()
+        release.countDown()
+        runBlocking { storageHeld.join() }
+        harness.settle()
+        assertNull(shadowOf(host).nextStartedActivity)
         assertFalse(ChatPresenter.isPresented)
     }
 
