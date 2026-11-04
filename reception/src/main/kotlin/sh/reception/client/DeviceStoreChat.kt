@@ -36,9 +36,13 @@ internal var DeviceStore.lastMessageAt: Long?
     get() = values.long("lastMessageAt")
     set(value) = values.putLong("lastMessageAt", value)
 
+/** Whether the service can reach this device by push; read from Compose state, so its readers redraw on a change. */
 internal var DeviceStore.pushActive: Boolean?
-    get() = values.optionalBoolean("pushActive")
-    set(value) = values.putOptionalBoolean("pushActive", value)
+    get() = pushActiveState.value
+    set(value) {
+        pushActiveState.value = value
+        values.putOptionalBoolean("pushActive", value)
+    }
 
 internal var DeviceStore.unreadPolling: List<UnreadStage>?
     get() = values.decoded("unreadPolling", ListSerializer(UnreadStage.serializer()))

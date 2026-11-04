@@ -2,6 +2,8 @@ package sh.reception.client
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.edit
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
@@ -75,6 +77,7 @@ internal class DeviceStore private constructor(
             openCaches()
             reset = true
         }
+        pushActiveState.value = values.optionalBoolean("pushActive")
         // Unconditionally: the unread schedule reads it on the main thread later, where the disk is off limits.
         chatCache.restoreLatestMessageAt()
         // Old device registrations alone do not prove that the user used support.
@@ -95,6 +98,7 @@ internal class DeviceStore private constructor(
     fun resetChat(revision: Int) {
         acceptsDrafts = false
         values.remove(chatKeys)
+        pushActiveState.value = null
         chatRevision = revision
     }
 
@@ -102,6 +106,12 @@ internal class DeviceStore private constructor(
         chatCache.clear()
         teamProfileCache.clear()
     }
+
+    /**
+     * `pushActive` as Compose state, so the chat's status line follows every server answer; the preferences keep it
+     * across launches (DeviceStoreChat.kt). Loaded at [open].
+     */
+    val pushActiveState: MutableState<Boolean?> = mutableStateOf(null)
 
     /** "No thanks" on the notification card, for this device and App ID; logout and chat resets keep it. */
     var pushPromptDeclined: Boolean
@@ -148,6 +158,7 @@ internal class DeviceStore private constructor(
         credentialStorage.delete(values.key("session"))
         clearChatFiles()
         values.remove(chatKeys + listOf("chatRevision", "pending", "cooldowns", "lastLimitCheck", "subscriptionStates"))
+        pushActiveState.value = null
         generation(context, namespace, rotate = true)
     }
 
