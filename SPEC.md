@@ -174,8 +174,8 @@ Android has no APNs environment; the device update sends `pushToken` (the FCM to
 `registerForPushIfAuthorized`) supplies it again.
 
 The service sends **data-only, high-priority** FCM messages (see Backend) so the SDK decides presentation, exactly
-like the iOS `willPresent` policy. The payload is `{ reception: "<conversationId>", title, body, badge?, sound?,
-collapse: conversationId }` as data fields (`reception` is `brand.pushPayloadKey`). The host's
+like the iOS `willPresent` policy. The payload is `{ reception: "<conversationId>", title, body, badge?, sound? }` as data fields
+(`reception` is `brand.pushPayloadKey`), with `android.collapse_key` set to the conversation id. The host's
 `FirebaseMessagingService.onMessageReceived` calls `Reception.handlePushMessage(remoteMessage.data)`: for a
 Reception payload it sets `hasConversation`, refreshes unread and, unless the chat is open, posts a notification
 (channel `reception_replies`, name localized "Support replies", importance high, sound when `sound` is set, the
@@ -316,7 +316,9 @@ Build.MODEL` (emulator reports `Google sdk_gphone64_arm64`, which the service re
 
 ## Backend contract additions (implemented in `../reception`)
 
-- `platform` accepts `"android"` beside `"ios"`. Android devices use `pushEnvironment: "PRODUCTION"` and FCM tokens
+- `platform` accepts `"android"` beside `"ios"`. `GET /v1/appearance` takes `?platform=android` (absent means iOS) so
+  the `pushPrompt` it returns reflects that platform's push credentials; the ETag varies with it. Saved links to the App
+  Store are offered only to iOS devices and Google Play links only to Android devices. Android devices use `pushEnvironment: "PRODUCTION"` and FCM tokens
   (`^[A-Za-z0-9_:-]{1,4096}$`); iOS keeps the hex rule. The dashboard shows the platform.
 - Project gets `fcmServiceAccountEncrypted` (the service-account JSON the customer downloads from the Firebase
   console, encrypted like the APNs key), `fcmProjectId` and `fcmClientEmail` (read from the JSON for display) and

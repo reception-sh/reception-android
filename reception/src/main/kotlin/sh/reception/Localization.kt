@@ -1,16 +1,16 @@
 package sh.reception
 
 import android.content.Context
-import android.content.res.Configuration
-import android.content.res.Resources
-import androidx.annotation.PluralsRes
-import androidx.annotation.StringRes
+import android.icu.text.PluralRules
 import androidx.compose.ui.unit.LayoutDirection
+import sh.reception.strings.Strings
+import java.util.IllegalFormatException
 import java.util.Locale
 
 /**
- * The chat's language. The SDK resolves it itself and reads its strings through its own [Resources], so the host's
- * locale configuration never changes the matching rules.
+ * The chat's language and its built-in strings. The SDK resolves the language itself and reads its strings from the
+ * generated tables in `sh.reception.strings`, so neither the host's locale configuration nor App Bundle language splits
+ * change what the chat shows.
  */
 internal object ReceptionLocalization {
     val supportedLanguages: List<String> = listOf(
@@ -29,41 +29,62 @@ internal object ReceptionLocalization {
     // The backend uses the modern codes; Java and some Android versions still return the retired ones.
     private val legacyLanguages = mapOf("iw" to "he", "in" to "id", "ji" to "yi", "mo" to "ro")
 
-    private class LocalizedResources(val language: String, val resources: Resources)
+    /** The application context, set by `configure`; before it only the system locale is known. */
+    var context: Context? = null
 
-    private var cache: LocalizedResources? = null
+    /** `Reception.languageOverride`. */
+    var languageOverride: String? = null
 
     /** The app's language as a canonical BCP 47 tag, before matching against the bundled languages. */
-    fun appLanguage(context: Context, languageOverride: String?): String =
-        canonical(languageOverride ?: AppLocale.languageTag(context) ?: "en")
+    val appLanguage: String
+        get() = canonical(languageOverride ?: AppLocale.languageTag(context) ?: "en")
 
-    fun language(context: Context, languageOverride: String?): String =
-        resolveLanguage(appLanguage(context, languageOverride))
+    val language: String
+        get() = resolveLanguage(appLanguage)
+
+    val locale: Locale
+        get() = locale(language)
+
+    val layoutDirection: LayoutDirection
+        get() = layoutDirection(language)
 
     fun layoutDirection(language: String): LayoutDirection =
         if (language in setOf("ar", "he", "ur")) LayoutDirection.Rtl else LayoutDirection.Ltr
 
-    /** The [Locale] whose resources hold [language]'s strings and formats. */
+    /** The [Locale] that formats [language]'s numbers and selects its plural forms. */
     fun locale(language: String): Locale = when (language) {
         "zh-HK" -> Locale.forLanguageTag("zh-Hant-HK")
         else -> Locale.forLanguageTag(language)
     }
 
-    fun string(context: Context, language: String, @StringRes id: Int, vararg arguments: Any): String {
-        val resources = resources(context, language)
-        return if (arguments.isEmpty()) resources.getString(id) else resources.getString(id, *arguments)
+    /** The built-in string [key] in the chat's language, English when that language lacks it. */
+    fun string(key: String, vararg arguments: Any): String = string(language, key, *arguments)
+
+    fun string(language: String, key: String, vararg arguments: Any): String {
+        val text = Strings.languages[language]?.strings?.get(key) ?: Strings.languages["en"]?.strings?.get(key) ?: key
+        return format(locale(language), text, arguments)
     }
 
-    fun plural(context: Context, language: String, @PluralsRes id: Int, count: Int): String =
-        resources(context, language).getQuantityString(id, count, count)
+    /** The plural form of [key] for [count], selected by the CLDR rules of the chat's language. */
+    fun plural(key: String, count: Int): String = plural(language, key, count)
 
-    private fun resources(context: Context, language: String): Resources {
-        cache?.takeIf { it.language == language }?.let { return it.resources }
-        val configuration = Configuration(context.resources.configuration)
-        configuration.setLocale(locale(language))
-        val resources = context.applicationContext.createConfigurationContext(configuration).resources
-        cache = LocalizedResources(language, resources)
-        return resources
+    fun plural(language: String, key: String, count: Int): String {
+        val locale = locale(language)
+        val forms = Strings.languages[language]?.plurals?.get(key) ?: Strings.languages["en"]?.plurals?.get(key)
+            ?: return count.toString()
+        val category = PluralRules.forLocale(locale).select(count.toDouble())
+        val text = forms[category] ?: forms["other"] ?: return count.toString()
+        return format(locale, text, arrayOf(count))
+    }
+
+    // The tables are generated from reviewed catalogs; a broken placeholder shows its text rather than crashing.
+    private fun format(locale: Locale, text: String, arguments: Array<out Any>): String {
+        if (arguments.isEmpty()) return text
+        return try {
+            String.format(locale, text, *arguments)
+        } catch (_: IllegalFormatException) {
+            text
+        }
     }
 
     fun canonical(identifier: String): String {
