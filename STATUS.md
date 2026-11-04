@@ -2,6 +2,27 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-04: Phase C2 done (see verification/phase-c2.md). C1 audit C1-1..C1-5, one commit and failing-first test
+  each: `ChatActivation.kt` (activation job + generation, cancelled on deactivation), presentation numbers in the
+  launch intent (`ChatPresenter.EXTRA_PRESENTATION`; a cancelled or superseded sheet finishes in `onCreate`),
+  `ComposerModel.isEdited` (typed text beats the stored draft and is stored), no authoritative team update before a
+  conversation response, `ComposerModel.add` (picked URIs queued and prepared in the model scope). Public API added:
+  `paywalls`, `paywallAvailability`, `availablePaywalls`, `refreshPaywalls`, `onPaywall`, `screens`,
+  `opensWebLinksInApp`, `ReceptionPaywall` (`Source`, `Product`), `ReceptionScreen` (`ReceptionPaywalls.kt` holds the
+  state and the availability generations; checks at configure, foreground, chat appearance, logout, deletion). Links:
+  `viewmodel/ChatLinks.kt` + `LinkHandling` (`LinkRoute` screen → host → web → system, receipts with outcomes),
+  `ChatPresenter.dismiss(then)` continues from the sheet's `onDestroy`, `ui/LinkOpener` (claiming app, Custom Tab in
+  the accent, Play Store app for listings). Views: cards, `ImageLightbox` (full screen, 1–5× pinch, 3× double tap,
+  drag to close), `RemoteAttachmentImage`, `TypingIndicator`, `JumpToLatestButton`, `TeamAvatar`, reply haptic. The
+  black strip above the light sheet was the missing `windowDrawsSystemBarBackgrounds`. Example: two paywalls, two
+  screens, dialog on `onPaywall` (closes the chat first), German override switch, chat appearance button.
+  Side-by-side: with the iOS `Examples/Basic` app (the Dart VM hangs on this Mac, so the Flutter example could not
+  run); no iOS dark or keyboard shot. Files over the guideline: `Reception.kt` 354 (paywall API), `ChatModel.kt` ~200.
+  Open: the card icons' optical size vs SF Symbols, a lightbox double tap not verified live, one unexplained missing
+  stream request in a unit run, the Android guide must say that `onPaywall` hosts close the chat before presenting.
+  Next, Phase D: push and notifications (FCM handling, channel, badge, taps opening the chat), the notification card
+  (`ChatPushPrompt`, `PushPromptDecision`, POST_NOTIFICATIONS through the hosting activity), automations (`track`, the
+  reveal in `ChatLoading.load`), paid access (Play Billing), the setup check, AppBadge in `ReceptionUnread.set`.
 - 2026-11-04: Fixes 3 done except the live run (see verification/fixes-3.md): the Phase C1 audit (F-1..F-9) and
   D-1..D-3, one commit each. `token()`/`renewedToken()` recheck the token and shared task after the credential read;
   `LogoutRevocations.enqueue` returns `Deferred<Boolean>` (on disk or not) after the initial load and merged write;
