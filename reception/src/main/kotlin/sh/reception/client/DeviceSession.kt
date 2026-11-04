@@ -175,7 +175,8 @@ internal class DeviceSession(
     fun registerIfNeeded() {
         if (invalidated || halt != null || isRegistered || launchRegistration != null) return
         lateinit var task: Job
-        task = scope.launch(RequestContext(launch = true), start = CoroutineStart.LAZY) {
+        // A later main-looper turn, not inline: a token or identity staged right after `configure` goes with it.
+        task = scope.launch(RequestContext(launch = true) + Dispatchers.Main, start = CoroutineStart.LAZY) {
             try {
                 prepared()
                 // A stored session needs no registration; preparing it refreshes unread instead.
