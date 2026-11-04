@@ -57,7 +57,8 @@ internal fun ChatContent(showsSheetControls: Boolean, onClose: () -> Unit = {}) 
         RemoteAppearanceRefresh()
         Box(Modifier.fillMaxSize().background(Theme.background)) {
             val top = if (showsSheetControls) Theme.sheetTopInset else Theme.zero
-            ChatHistory(model, topInset = top + Theme.titleBarHeight)
+            val requestNotifications = rememberNotificationPermission(model)
+            ChatHistory(model, topInset = top + Theme.titleBarHeight, requestNotifications)
             Box(Modifier.fillMaxWidth().padding(top = top).height(Theme.titleBarHeight)) {
                 ChatTitle(Modifier.align(Alignment.Center).semantics { heading() })
                 if (showsSheetControls && Theme.appearance.showsCloseButton) {
@@ -146,11 +147,14 @@ private fun RemoteAppearanceRefresh() {
     }
 }
 
-internal fun Context.isChangingConfigurations(): Boolean {
+internal fun Context.isChangingConfigurations(): Boolean = findActivity()?.isChangingConfigurations == true
+
+/** The activity behind a Compose context, which may be wrapped. */
+internal fun Context.findActivity(): Activity? {
     var current: Context? = this
     while (current is ContextWrapper) {
-        if (current is Activity) return current.isChangingConfigurations
+        if (current is Activity) return current
         current = current.baseContext
     }
-    return false
+    return null
 }

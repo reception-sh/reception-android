@@ -55,6 +55,10 @@ import sh.reception.appearance
 import sh.reception.foreground
 import sh.reception.viewmodel.ChatModel
 import sh.reception.viewmodel.ChatScrollState
+import sh.reception.viewmodel.PushPromptSlot
+import sh.reception.viewmodel.continuePushPrompt
+import sh.reception.viewmodel.declinePushPrompt
+import sh.reception.viewmodel.pushPromptSlot
 import sh.reception.viewmodel.composerCooldown
 import sh.reception.viewmodel.messageLayouts
 
@@ -68,7 +72,7 @@ private val noTeam = MutableStateFlow(emptyMap<String, Nothing>())
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun ChatHistory(model: ChatModel, topInset: Dp) {
+internal fun ChatHistory(model: ChatModel, topInset: Dp, requestNotifications: (() -> Unit)?) {
     val listState = rememberLazyListState()
     val scrollState = remember(model) { ChatScrollState() }
     var scrollRevision by remember { mutableIntStateOf(0) }
@@ -84,7 +88,10 @@ internal fun ChatHistory(model: ChatModel, topInset: Dp) {
     LaunchedEffect(messages.map { it.id }) {
         if (scrollState.messagesChanged(messages.map { ChatScrollState.Entry(it.id, it.sender) })) scrollRevision += 1
     }
-    LaunchedEffect(model.isTyping) { if (scrollState.followsNewest) scrollRevision += 1 }
+    // Without a way to ask, the card never shows; the status line still does.
+    val slot = model.pushPromptSlot.takeUnless { it is PushPromptSlot.Card && requestNotifications == null }
+        ?: PushPromptSlot.None
+    LaunchedEffect(model.isTyping, slot) { if (scrollState.followsNewest) scrollRevision += 1 }
     LaunchedEffect(scrollRevision) {
         if (scrollRevision == 0 || messages.isEmpty()) return@LaunchedEffect
         // Once now, and once more after the new rows have settled their height.
@@ -111,6 +118,13 @@ internal fun ChatHistory(model: ChatModel, topInset: Dp) {
                 if (model.isTyping) {
                     item(key = TYPING_KEY) { TypingIndicator(Modifier.padding(top = Theme.groupSpacing).animateItem()) }
                 }
+                if (slot != PushPromptSlot.None) {
+                    item(key = PUSH_PROMPT_KEY) {
+                        PushPromptSlotView(slot, decline = model::declinePushPrompt,
+                            accept = { requestNotifications?.let(model::continuePushPrompt) },
+                            modifier = Modifier.padding(top = Theme.groupSpacing).animateItem())
+                    }
+                }
                 itemsIndexed(messages.asReversed(), key = { _, message -> message.id }) { reversedIndex, message ->
                     val index = messages.lastIndex - reversedIndex
                     MessageRow(
@@ -136,6 +150,7 @@ internal fun ChatHistory(model: ChatModel, topInset: Dp) {
 }
 
 private const val TYPING_KEY = "support-typing"
+private const val PUSH_PROMPT_KEY = "support-push-prompt"
 
 /** The connection banner, the cooldown notice and the composer, above the keyboard or the navigation bar. */
 @Composable

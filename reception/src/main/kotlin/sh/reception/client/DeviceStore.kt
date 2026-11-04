@@ -108,6 +108,11 @@ internal class DeviceStore private constructor(
         get() = values.unscopedBoolean("$namespace.pushPromptDeclined")
         set(value) = values.putUnscopedBoolean("$namespace.pushPromptDeclined", value)
 
+    /** The system's notification permission dialog was answered from the card, for this device and App ID. */
+    var notificationPermissionAnswered: Boolean
+        get() = values.unscopedBoolean("$namespace.notificationPermissionAnswered")
+        set(value) = values.putUnscopedBoolean("$namespace.notificationPermissionAnswered", value)
+
     /** Server waits of this session; a new session namespace starts without them. */
     var cooldowns: List<ServerCooldowns.Cooldown>
         get() = values.decoded("cooldowns", ListSerializer(ServerCooldowns.Cooldown.serializer())) ?: emptyList()

@@ -15,6 +15,7 @@ import sh.reception.ReceptionAppearance
 import sh.reception.ReceptionState
 import sh.reception.client.DeviceSession
 import sh.reception.client.NetworkMonitor
+import sh.reception.client.NotificationAuthorization
 import sh.reception.client.Storage
 import sh.reception.client.TeamProfiles
 import sh.reception.client.cursor
@@ -86,6 +87,12 @@ internal class ChatModel(val session: DeviceSession?) {
     var readCursor: ReadCursor? = null
     var reloadTask: Job? = null
     var pollDeferred: Boolean = false
+
+    /** Null until read when the chat appears; read again on every foreground while it is visible. */
+    var notificationAuthorization: NotificationAuthorization? by mutableStateOf(null)
+
+    /** The notification card was answered in this chat; it stays hidden until the next model. */
+    var pushPromptAnswered: Boolean by mutableStateOf(false)
 
     /** Cooldowns are not Compose state; every change bumps this, so what depends on them redraws. */
     var cooldownRevision: Int by mutableIntStateOf(0)
