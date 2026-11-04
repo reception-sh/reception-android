@@ -237,7 +237,13 @@ IDs are globally unique and a repeat can arrive on either side of configure; che
 unread refresh. Firebase removes the reserved `google.*` keys from `RemoteMessage.data` and exposes the ID as
 `RemoteMessage.messageId`, so hosts with their own service pass `remoteMessage.messageId` (the SDK's service does). The
 two-argument form reads the ID from `google.message_id` in the map, for callers that hold the raw FCM extras (the
-Flutter and React Native plugins' broadcast receivers). A message without an ID is always handled. The library manifest declares the service `exported="false"` without an
+Flutter and React Native plugins' broadcast receivers). A message without an ID is always handled.
+`notificationSmallIcon` is stored by its package-qualified resource entry name (`getResourceName`; null clears it) in
+the same `sh.reception.push` preferences, once the SDK has a context (configure or the first push message), and a
+notification posted in a process where the app has not set it yet (FCM started the process, before or without
+configure) uses the stored icon, looked up with `getIdentifier` because resource IDs change between app builds; a name
+that no longer resolves falls back to the built-in glyph. The Flutter and React Native plugins therefore need no
+persistence of their own: setting the icon once from Dart/JS covers later processes that FCM starts. The library manifest declares the service `exported="false"` without an
 intent filter, so it receives nothing until the host adds the filter:
 
 ```xml

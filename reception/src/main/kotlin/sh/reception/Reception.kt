@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import sh.reception.client.ApplicationLifecycle
+import sh.reception.client.NotificationSmallIcon
 import sh.reception.configuration.AppearanceIcon
 import sh.reception.strings.Strings
 import sh.reception.ui.ChatPresenter
@@ -418,12 +419,15 @@ public object Reception {
     @JvmStatic
     public fun registerForPushIfAuthorized(): Unit = MainThread.run { ReceptionPush.registerIfAuthorized() }
 
-    /** The small icon of the SDK's notifications, a white-on-transparent drawable. Null (default) draws a bell. */
+    /**
+     * The small icon of the SDK's notifications, a white-on-transparent drawable. Null (default) draws a bell. The SDK
+     * remembers it, so a notification for a message that starts your app's process uses it before your code runs.
+     */
     @JvmStatic
     @get:DrawableRes
     public var notificationSmallIcon: Int?
-        get() = ReceptionPush.smallIcon
-        set(value) = MainThread.run { ReceptionPush.smallIcon = value }
+        get() = NotificationSmallIcon.current
+        set(value) = MainThread.run { NotificationSmallIcon.set(value) }
 
     /**
      * Reports that something happened in your app, for example `"paywall_declined"`. When an automation in your

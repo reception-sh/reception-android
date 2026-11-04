@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import sh.reception.client.ApplicationLifecycle
 import sh.reception.client.FirebaseBridge
 import sh.reception.client.NotificationRouting
+import sh.reception.client.NotificationSmallIcon
 import sh.reception.client.PushMessageIds
 import sh.reception.client.PushNotifications
 import sh.reception.client.Storage
@@ -24,7 +25,6 @@ internal object ReceptionPush {
     /** The app's settings set right after configure apply before a tap that launched the app opens the chat. */
     private const val DRAIN_DELAY_MILLIS = 500L
 
-    var smallIcon: Int? = null
     private val routing = NotificationRouting()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var registration: Job? = null
@@ -82,7 +82,8 @@ internal object ReceptionPush {
             val badges = ReceptionState.updatesAppBadge
             val number = PushNotifications.number(payload, badges)
             val accent = ReceptionAppearance.resolved.accent.light?.toArgb()
-            PushNotifications.post(context, payload, key, badges, number, accent, smallIcon ?: R.drawable.reception_symbol_notifications)
+            val icon = NotificationSmallIcon.resolved(context)
+            PushNotifications.post(context, payload, key, badges, number, accent, icon)
         }
     }
 

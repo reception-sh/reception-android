@@ -15,7 +15,8 @@ import kotlinx.serialization.builtins.serializer
 internal object PushMessageIds {
     const val DATA_KEY: String = "google.message_id"
     const val CAPACITY: Int = 64
-    private const val PREFERENCES = "sh.reception.push"
+    /** Also holds `NotificationSmallIcon`, which shares its lifetime outside any session. */
+    const val PREFERENCES: String = "sh.reception.push"
     private const val KEY = "messageIds"
     private val serializer = ListSerializer(String.serializer())
 

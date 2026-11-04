@@ -14,6 +14,7 @@ import sh.reception.client.ApplicationLifecycle
 import sh.reception.client.DeviceSession
 import sh.reception.client.DeviceStore
 import sh.reception.client.LogoutRevocations
+import sh.reception.client.NotificationSmallIcon
 import sh.reception.client.ReceptionAPI
 import sh.reception.client.SecureStore
 import sh.reception.client.SetupCheck
@@ -85,6 +86,7 @@ internal object ReceptionState {
         // A first configure has nothing presented to cancel, and keeps a sheet restored after the process died.
         val reconfigured = this.namespace != null
         ReceptionLocalization.context = context
+        NotificationSmallIcon.attach(context)
         (context as? Application)?.let(ApplicationLifecycle::start)
         unreadMonitor.setActive(false)
         ReceptionUnread.cancelRefresh()
@@ -135,6 +137,7 @@ internal object ReceptionState {
         ReceptionAPI.serviceUrl = ReceptionAPI.defaultServiceUrl
         ChatPresenter.resetForTests()
         SetupCheck.resetForTests()
+        NotificationSmallIcon.resetForTests()
     }
 
     /** The current session's stored values are loaded: what configure could not do without them happens now. */
