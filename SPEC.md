@@ -132,7 +132,7 @@ anywhere closes the sheet. This matches the iOS sheet rule exactly.
 `closeChat()` finishes the SDK's activity; a host-embedded `ReceptionChatView` is the host's to remove. Logout,
 reconfiguration and successful `deleteData()` finish the SDK's activity.
 
-`ReceptionChatView()` (composable) is the chat screen without the sheet, for host navigation. Because its signature exposes `Modifier`, the Compose UI, foundation and Material 3 artifacts are `api` dependencies of the library. The View wrapper
+`ReceptionChatView()` (composable) is the chat screen without the sheet, for host navigation. Because its signature exposes `Modifier`, the Compose UI, foundation and Material 3 artifacts are `api` dependencies of the library, and so is kotlinx-coroutines-android, because `unreadCount` and `isChatOpen` are `StateFlow`s. The View wrapper
 embeds the composable in a `ComposeView`; it needs a host that sets a `ViewTreeLifecycleOwner` (every activity and
 Flutter/React Native platform view does). Neither calls `openChat()`. Every chat on screen shows the one chat model:
 it stays visible (`isChatOpen`) while any of them is started and keeps loading and listening while any is resumed, so
