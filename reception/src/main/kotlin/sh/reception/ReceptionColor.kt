@@ -50,6 +50,11 @@ public class ReceptionColor private constructor(
     }
 
     public companion object {
+        /** For Java hosts, which cannot pass a Compose `Color`: ARGB ints such as `0xFF5B4FE0`; [dark] defaults to [light]. */
+        @JvmStatic
+        @JvmOverloads
+        public fun argb(light: Int, dark: Int = light): ReceptionColor = ReceptionColor(Color(light), Color(dark))
+
         /** A color resource such as `R.color.brand`; a `values-night` variant is used in dark mode. */
         @JvmStatic
         public fun resource(@ColorRes id: Int): ReceptionColor = ReceptionColor(null, null, id)

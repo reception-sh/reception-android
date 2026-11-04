@@ -330,6 +330,7 @@ sealed class ReceptionEvent { ChatOpened, MessageSent, ImageSent, ReviewOpened, 
 Reception.appearance: Reception.Appearance        // a mutable class with the iOS properties
 Reception.usesRemoteAppearance: Boolean           // default true
 class ReceptionColor(color: Color) / ReceptionColor(light: Color, dark: Color) / ReceptionColor.resource(@ColorRes id: Int)
+ReceptionColor.argb(light: Int, dark: Int = light)  // @JvmStatic @JvmOverloads, for Java hosts
 ```
 
 `ReceptionColor` is the iOS dynamic color: one color for both modes, a light/dark pair, or a color resource whose
@@ -337,7 +338,8 @@ night-qualified variant (`values-night`) is the dark one. The chat picks the var
 (system, `preferredColorScheme`, or the enclosing theme of an embedded view). A resource is read once, both variants
 through `createConfigurationContext` with `UI_MODE_NIGHT_NO`/`UI_MODE_NIGHT_YES` on the application context, and
 cached; before `configure` it has no context and counts as unset. The host appearance report sends `{ light, dark }`
-like a remote adaptive pair (a single color sends the same value twice, as before).
+like a remote adaptive pair (a single color sends the same value twice, as before). Java cannot call the `Color`
+constructors (Compose `Color` is a value class), so `ReceptionColor.argb(0xFF5B4FE0, 0xFFB0A8FF)` takes ARGB ints.
 
 `Appearance` has exactly the iOS properties with Compose types; every color is a `ReceptionColor?`: `accentColor` (null = `MaterialTheme.colorScheme.primary` of the enclosing theme when the
 host embeds `ReceptionChatView` in its own `MaterialTheme`; the SDK's own sheet wraps the chat in a Material theme with
