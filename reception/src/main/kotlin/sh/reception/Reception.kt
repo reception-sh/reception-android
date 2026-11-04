@@ -59,7 +59,7 @@ public object Reception {
     /** Unread replies from the team. Show a badge only above zero. */
     @JvmStatic
     public val unreadCount: StateFlow<Int>
-        get() = ReceptionState.unreadCount
+        get() = ReceptionUnread.count
 
     /** Whether the chat is visible, not whether it was requested. */
     @JvmStatic

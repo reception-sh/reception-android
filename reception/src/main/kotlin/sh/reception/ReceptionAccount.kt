@@ -23,7 +23,7 @@ internal object ReceptionAccount {
         // FCM has no sandbox; the service accepts only PRODUCTION for Android devices.
         session.stage { it.copy(pushToken = token, pushEnvironment = "PRODUCTION") }
         Log.debug { "Push token staged, ${token.length} chars, production" }
-        if (session.isRegistered) ReceptionState.refreshUnread(updateDevice = true)
+        if (session.isRegistered) ReceptionUnread.refresh(updateDevice = true)
     }
 
     /** Dismisses chat, resets locally immediately, and retries revoking the old session while the app is active. */

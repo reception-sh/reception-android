@@ -6,6 +6,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import sh.reception.Log
 import sh.reception.ReceptionState
+import sh.reception.ReceptionUnread
 import kotlin.coroutines.cancellation.CancellationException
 
 // A session across launches and foregrounds: launch registration, foreground retries, and the halts that service
@@ -59,7 +60,7 @@ internal fun DeviceSession.registerIfNeeded() {
             // A stored session needs no registration; preparing it refreshes unread instead.
             if (isRegistered) return@launch
             token()
-            if (isCurrent) ReceptionState.refreshUnread(updateDevice = true)
+            if (isCurrent) ReceptionUnread.refresh(updateDevice = true)
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (_: Throwable) {

@@ -8,6 +8,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import sh.reception.ReceptionState
+import sh.reception.ReceptionUnread
 
 /**
  * Refreshes unread at launch and every foreground, and polls on the service's schedule while the chat is hidden, the
@@ -36,7 +37,7 @@ internal class UnreadMonitor {
         task = null
         val session = ReceptionState.session
         if (!active) {
-            ReceptionState.cancelUnreadRefresh()
+            ReceptionUnread.cancelRefresh()
             session?.suspendPreferenceRetry()
             return
         }
@@ -44,7 +45,7 @@ internal class UnreadMonitor {
         notificationsAuthorized = session?.let { NotificationManagerCompat.from(it.store.context).areNotificationsEnabled() } == true
         if (session?.isRegistered != true) return
         val blockedProbe = foreground && session.halt == DeviceSession.HaltReason.BLOCKED
-        ReceptionState.refreshUnread(updateDevice = !blockedProbe, probe = blockedProbe)
+        ReceptionUnread.refresh(updateDevice = !blockedProbe, probe = blockedProbe)
     }
 
     /** The launch refresh of a stored session, which configure had to leave until its values were loaded. */
@@ -71,7 +72,7 @@ internal class UnreadMonitor {
                 current?.store?.hasConversation != true || ReceptionState.isChatOpen.value
             ) return@launch
             task = null
-            ReceptionState.refreshUnread()
+            ReceptionUnread.refresh()
         }
     }
 }

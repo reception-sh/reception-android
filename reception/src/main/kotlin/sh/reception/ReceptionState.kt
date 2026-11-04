@@ -3,14 +3,8 @@ package sh.reception
 import android.app.Application
 import android.content.Context
 import androidx.annotation.VisibleForTesting
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import sh.reception.client.ApplicationLifecycle
 import sh.reception.client.DeviceSession
 import sh.reception.client.DeviceStore
@@ -20,9 +14,7 @@ import sh.reception.client.ReceptionAPIError
 import sh.reception.client.SecureStore
 import sh.reception.client.Storage
 import sh.reception.client.UnreadMonitor
-import sh.reception.client.isRegistered
 import sh.reception.client.recordFailure
-import sh.reception.client.refreshUnread
 import sh.reception.client.registerIfNeeded
 
 /** The facade's internal state and the session lifecycle behind it. Main thread only. */
@@ -41,13 +33,10 @@ internal object ReceptionState {
         private set
     var presentationRevision: Int = 0
         private set
-    val unreadCount: MutableStateFlow<Int> = MutableStateFlow(0)
     val isChatOpen: MutableStateFlow<Boolean> = MutableStateFlow(false)
     val unreadMonitor: UnreadMonitor = UnreadMonitor()
     var logoutRevocations: LogoutRevocations? = null
         private set
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private var refreshTask: Job? = null
 
     /** The latest deletion on the storage thread; a session opened later waits for it. */
     private var storageWork: Job? = null
@@ -71,7 +60,7 @@ internal object ReceptionState {
         ReceptionLocalization.context = context
         (context as? Application)?.let(ApplicationLifecycle::start)
         unreadMonitor.setActive(false)
-        cancelUnreadRefresh()
+        ReceptionUnread.cancelRefresh()
         session?.deactivate()
         chat?.stop()
         chat = null
@@ -83,7 +72,7 @@ internal object ReceptionState {
         // The store opens on the storage thread; registration and every request wait for it.
         session = DeviceSession(api, DeviceStore(context, namespace), after = storageWork, checksRestoredChat = true)
         // No badge sync before the first server sync; the server value is the source of truth.
-        unreadCount.value = 0
+        ReceptionUnread.set(0)
         revision += 1
         advancePresentationRevision()
         val revocations = logoutRevocations ?: LogoutRevocations(SecureStore.shared(context)).also { logoutRevocations = it }
@@ -99,7 +88,7 @@ internal object ReceptionState {
     @VisibleForTesting(otherwise = VisibleForTesting.NONE)
     fun resetForTests() {
         unreadMonitor.setActive(false)
-        cancelUnreadRefresh()
+        ReceptionUnread.cancelRefresh()
         session?.deactivate()
         session = null
         chat = null
@@ -108,7 +97,7 @@ internal object ReceptionState {
         logoutRevocations?.suspend()
         logoutRevocations = null
         ReceptionIdentity.forget()
-        unreadCount.value = 0
+        ReceptionUnread.set(0)
         ReceptionAPI.serviceUrl = ReceptionAPI.defaultServiceUrl
     }
 
@@ -127,7 +116,7 @@ internal object ReceptionState {
     /** Ends the session in memory at once; its stored values are deleted on the storage thread after [after]. */
     fun resetLocal(dismissChat: Boolean = true, after: Job? = null) {
         unreadMonitor.setActive(false)
-        cancelUnreadRefresh()
+        ReceptionUnread.cancelRefresh()
         val session = session ?: return
         val namespace = namespace ?: return
         val context = session.store.context
@@ -137,7 +126,7 @@ internal object ReceptionState {
         chat = null
         // The deletion rotates the generation, so the new session opens a fresh namespace after it.
         this.session = DeviceSession(session.api, DeviceStore(context, namespace), halt = session.halt, after = deleted)
-        setUnread(0)
+        ReceptionUnread.set(0)
         revision += 1
         if (dismissChat) advancePresentationRevision()
     }
@@ -151,7 +140,7 @@ internal object ReceptionState {
             return
         }
         unreadMonitor.setActive(false)
-        cancelUnreadRefresh()
+        ReceptionUnread.cancelRefresh()
         session.deactivate()
         chat?.stop()
         session.store.resetChat(revision)
@@ -160,7 +149,7 @@ internal object ReceptionState {
         storageWork = cleared
         chat = null
         this.session = DeviceSession(session.api, store.renewed(), after = cleared)
-        setUnread(0)
+        ReceptionUnread.set(0)
         this.revision += 1
     }
 
@@ -189,36 +178,7 @@ internal object ReceptionState {
         chat?.startStream()
     }
 
-    fun setUnread(count: Int) {
-        unreadCount.value = maxOf(0, count)
-    }
-
-    fun cancelUnreadRefresh() {
-        refreshTask?.cancel()
-        refreshTask = null
-    }
-
     private fun advancePresentationRevision() {
         presentationRevision += 1
-    }
-
-    fun refreshUnread(updateDevice: Boolean = false, probe: Boolean = false) {
-        if (updateDevice) cancelUnreadRefresh()
-        val session = session
-        if (session?.isRegistered != true || (session.halt != null && !probe) || refreshTask != null) return
-        lateinit var task: Job
-        task = scope.launch(start = CoroutineStart.LAZY) {
-            try {
-                do {
-                    val current = this@ReceptionState.session ?: return@launch
-                    current.refreshUnread(updateDevice, probe)
-                    if (!isActive || current.halt != null || probe || current.retries["unread"]?.delay == null) return@launch
-                } while (ApplicationLifecycle.isActive)
-            } finally {
-                if (refreshTask === task) refreshTask = null
-            }
-        }
-        refreshTask = task
-        task.start()
     }
 }

@@ -6,8 +6,9 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import sh.reception.Log
-import sh.reception.model.Timestamp
 import sh.reception.ReceptionState
+import sh.reception.ReceptionUnread
+import sh.reception.model.Timestamp
 import kotlin.coroutines.cancellation.CancellationException
 
 @Serializable
@@ -45,7 +46,7 @@ internal suspend fun DeviceSession.refreshUnread(updateDevice: Boolean = false, 
         store.unreadPolling = response.unreadPolling
         // A read invalidates older badge responses, even after the chat closes.
         if (generation == ReceptionState.readGeneration && ReceptionState.chat?.isVisible != true) {
-            ReceptionState.setUnread(response.unreadCount)
+            ReceptionUnread.set(response.unreadCount)
         }
         Log.debug { "Unread refresh, ${response.unreadCount} unread" }
         // The team wrote first: a chat that is already open starts loading and listening now.
