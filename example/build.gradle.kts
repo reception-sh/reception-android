@@ -6,8 +6,11 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+// `-PreceptionExampleBare=true` builds the app without Firebase and Billing, like a host that uses neither.
+val bare = providers.gradleProperty("receptionExampleBare").map { it.toBoolean() }.getOrElse(false)
+
 // The Firebase configuration of the test app is not committed; without it the app builds without push.
-if (file("google-services.json").exists()) {
+if (!bare && file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
 }
 
@@ -64,6 +67,8 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
     implementation(libs.androidx.activity.compose)
-    implementation(libs.firebase.messaging)
-    implementation(libs.billing)
+    if (!bare) {
+        implementation(libs.firebase.messaging)
+        implementation(libs.billing)
+    }
 }
