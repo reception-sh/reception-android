@@ -24,6 +24,7 @@
 # Firebase Messaging and Play Billing are optional: the SDK checks for them at run time.
 -dontwarn com.google.firebase.messaging.**
 -dontwarn com.google.firebase.FirebaseApp
+-dontwarn com.google.android.gms.tasks.**
 -dontwarn com.android.billingclient.api.**
 
 # The per-app locale is read from AppCompat by name when the host ships it (below Android 13).

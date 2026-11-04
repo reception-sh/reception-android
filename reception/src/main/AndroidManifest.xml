@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- The connection banner follows the default network; a normal permission, granted at install. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Requested only from the chat's notification card. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <queries>
@@ -23,6 +24,10 @@
             android:theme="@style/Reception.Chat"
             android:windowSoftInputMode="adjustResize"
             tools:targetApi="33" />
+        <!-- For apps without a messaging service of their own; the app adds the MESSAGING_EVENT intent filter. -->
+        <service
+            android:name="sh.reception.ReceptionMessagingService"
+            android:exported="false" />
     </application>
 
 </manifest>
