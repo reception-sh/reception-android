@@ -139,7 +139,7 @@ removing one of two embedded views leaves the other running; the app going to th
 `unreadCount` and `isChatOpen` are `StateFlow`s: Compose hosts `collectAsState()`, View hosts collect on
 `lifecycleScope`, Java hosts call `Reception.addUnreadCountListener(listener)` / `removeUnreadCountListener`, which
 deliver on the main thread: the current value when added, then every change (adding the same listener twice does
-nothing). Show a badge only above zero.
+nothing; a listener that another one removes during a delivery is not called). Show a badge only above zero.
 
 ### Identity and metadata
 

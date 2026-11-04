@@ -29,7 +29,7 @@ internal object ReceptionUnread {
     fun set(count: Int, syncsNotifications: Boolean = true) {
         val previous = this.count.value
         this.count.value = maxOf(0, count)
-        if (this.count.value != previous) listeners.toList().forEach { it(this.count.value) }
+        if (this.count.value != previous) notifyListeners(this.count.value)
         if (syncsNotifications) ReceptionPush.unreadChanged(this.count.value)
     }
 
@@ -42,6 +42,13 @@ internal object ReceptionUnread {
 
     fun removeListener(listener: (Int) -> Unit) {
         listeners.removeAll { it === listener }
+    }
+
+    /** A listener that an earlier one removed during this delivery is not called. */
+    private fun notifyListeners(count: Int) {
+        for (listener in listeners.toList()) {
+            if (listeners.any { it === listener }) listener(count)
+        }
     }
 
     fun cancelRefresh() {

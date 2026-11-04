@@ -26,4 +26,20 @@ class ReceptionUnreadListenerTest {
         ReceptionUnread.set(5, syncsNotifications = false)
         assertEquals(listOf(2, 3, 0), seen)
     }
+
+    @Test
+    fun aListenerRemovedByAnEarlierOneDuringADeliveryIsNotCalled() {
+        val seen = mutableListOf<String>()
+        lateinit var second: (Int) -> Unit
+        val first: (Int) -> Unit = { count ->
+            seen += "first $count"
+            if (count == 1) Reception.removeUnreadCountListener(second)
+        }
+        second = { count -> seen += "second $count" }
+        Reception.addUnreadCountListener(first)
+        Reception.addUnreadCountListener(second)
+        ReceptionUnread.set(1, syncsNotifications = false)
+        Reception.removeUnreadCountListener(first)
+        assertEquals(listOf("first 0", "second 0", "first 1"), seen)
+    }
 }
