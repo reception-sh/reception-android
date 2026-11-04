@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 import sh.reception.configuration.AdaptiveColor
+import sh.reception.configuration.ResolvedAppearance
 
 // The iOS system colors (elevated sheet variants in dark mode) and the appearance colors, in the chat's color scheme.
 
@@ -78,6 +79,10 @@ internal val Theme.lightboxBackground: Color
 internal val Theme.lightboxForeground: Color
     get() = Color.White
 
+/** The lightbox close button's circle: the dark dismiss fill, since the lightbox is always dark. */
+internal val Theme.lightboxControl: Color
+    get() = Color(0x52787880)
+
 internal val Theme.jumpToLatestShadow: Color
     get() = Color.Black.copy(alpha = 0.06f)
 
@@ -105,3 +110,14 @@ internal val Theme.systemBlueLight: Color
 
 internal val Theme.systemBlueDark: Color
     get() = Color(0xFF0A84FF)
+
+/** A card button's fill: the card style's color, else the accent; muted while the card is unavailable. */
+@Composable
+@ReadOnlyComposable
+internal fun Theme.cardButton(style: ResolvedAppearance.CardStyle, isAvailable: Boolean): Color =
+    if (isAvailable) style.button?.resolve() ?: accent else muted
+
+/** A card button's text and icons: the card style's color, else the on-accent color. */
+@Composable
+@ReadOnlyComposable
+internal fun Theme.cardButtonText(style: ResolvedAppearance.CardStyle): Color = style.buttonText?.resolve() ?: outgoingForeground

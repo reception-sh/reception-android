@@ -1,5 +1,8 @@
 package sh.reception.viewmodel
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import sh.reception.ReceptionLocalization
 import sh.reception.Theme
 import java.text.NumberFormat
@@ -19,8 +22,11 @@ internal class ChatScrollState {
     var showsNewest: Boolean = true
         private set
 
-    /** Team replies that arrived below while the reader was further up, by message ID so a reload never counts twice. */
-    private val unseenIds = mutableSetOf<String>()
+    /**
+     * Team replies that arrived below while the reader was further up, by message ID so a reload never counts twice.
+     * Compose state, so the jump control appears and counts as they arrive.
+     */
+    private var unseenIds: Set<String> by mutableStateOf(emptySet())
     private var knownIds: Set<String> = emptySet()
     private var visibleNewestId: String? = null
 
@@ -40,7 +46,7 @@ internal class ChatScrollState {
     fun messagesChanged(messages: List<Entry>): Boolean {
         val previous = knownIds
         knownIds = messages.map { it.id }.toSet()
-        unseenIds.retainAll(knownIds)
+        unseenIds = unseenIds intersect knownIds
         // A first load, or a history that shares nothing with the previous one, starts at the end.
         val lastKnown = messages.indexOfLast { it.id in previous }
         if (lastKnown < 0) {
@@ -54,7 +60,7 @@ internal class ChatScrollState {
             return true
         }
         if (arrivals.isEmpty() || showsNewest) return arrivals.isNotEmpty()
-        unseenIds += arrivals.map { it.id }
+        unseenIds = unseenIds + arrivals.map { it.id }
         return false
     }
 
@@ -66,7 +72,7 @@ internal class ChatScrollState {
         if (isVisible) {
             visibleNewestId = id
             showsNewest = true
-            unseenIds.clear()
+            unseenIds = emptySet()
         } else if (visibleNewestId == id) {
             visibleNewestId = null
             showsNewest = false
@@ -76,7 +82,7 @@ internal class ChatScrollState {
     /** The reader tapped the control or sent a message; both end at the newest message. */
     fun jumpedToNewest() {
         showsNewest = true
-        unseenIds.clear()
+        unseenIds = emptySet()
     }
 
     companion object {

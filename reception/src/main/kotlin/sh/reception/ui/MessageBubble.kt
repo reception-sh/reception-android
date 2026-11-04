@@ -17,8 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -28,7 +26,6 @@ import androidx.compose.ui.unit.Dp
 import sh.reception.R
 import sh.reception.ReceptionLocalization
 import sh.reception.Theme
-import sh.reception.accent
 import sh.reception.bodyFont
 import sh.reception.error
 import sh.reception.incomingForeground
@@ -40,22 +37,16 @@ import sh.reception.secondary
 import sh.reception.strings.Strings
 import sh.reception.viewmodel.MessageLayout
 import sh.reception.viewmodel.RetryAvailability
+import sh.reception.viewmodel.linkCardUrl
 
 /**
- * A message's bubbles (text, then photos), its failure icon and its status line. Outgoing bubbles sit at the end in
- * the accent color, incoming ones at the start; a failed message that may be retried now retries on tap.
+ * A message's card or bubbles (text, then photos), its failure icon and its status line. Outgoing bubbles sit at the
+ * end in the accent color, incoming ones at the start; a failed message that may be retried now retries on tap.
  */
 @Composable
-internal fun MessageBubble(
-    message: Message,
-    width: Dp,
-    layout: MessageLayout,
-    retryAvailability: RetryAvailability,
-    retry: () -> Unit,
-    cancelRetry: () -> Unit,
-) {
+internal fun MessageBubble(message: Message, width: Dp, layout: MessageLayout, actions: MessageActions) {
     val outgoing = message.sender == "USER"
-    val canRetry = retryAvailability == RetryAvailability.Now
+    val canRetry = actions.retryAvailability == RetryAvailability.Now
     val failed = message.status == MessageStatus.FAILED
     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (outgoing) Arrangement.End else Arrangement.Start) {
         Column(
@@ -64,10 +55,15 @@ internal fun MessageBubble(
             verticalArrangement = Arrangement.spacedBy(Theme.deliveryStatusSpacing),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Theme.small)) {
-                if (failed) FailureIcon(if (canRetry) retry else null)
-                Bubbles(message, width, layout.olderOutgoingCount, failed && canRetry, retry)
+                if (failed) FailureIcon(if (canRetry) actions.retry else null)
+                when {
+                    message.kind == "REVIEW" && message.reviewUrl != null -> ReviewCard(message, actions.openReview)
+                    message.linkCardUrl != null -> LinkCard(message, actions.linkOpensInApp, actions.openLink)
+                    message.kind == "PAYWALL" -> PaywallCard(message, actions.canOpenPaywall, actions.openPaywall)
+                    else -> Bubbles(message, width, layout.olderOutgoingCount, failed && canRetry, actions)
+                }
             }
-            DeliveryStatus(message, layout.showsDeliveryStatus, retryAvailability, retry, cancelRetry)
+            DeliveryStatus(message, layout.showsDeliveryStatus, actions.retryAvailability, actions.retry, actions.cancelRetry)
         }
     }
 }
@@ -84,7 +80,7 @@ private fun FailureIcon(retry: (() -> Unit)?) {
 }
 
 @Composable
-private fun Bubbles(message: Message, width: Dp, olderBy: Int, retriesOnTap: Boolean, retry: () -> Unit) {
+private fun Bubbles(message: Message, width: Dp, olderBy: Int, retriesOnTap: Boolean, actions: MessageActions) {
     val outgoing = message.sender == "USER"
     val pending = outgoing && message.status == MessageStatus.SENDING && message.showsPending
     Column(
@@ -92,12 +88,14 @@ private fun Bubbles(message: Message, width: Dp, olderBy: Int, retriesOnTap: Boo
         horizontalAlignment = if (outgoing) Alignment.End else Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(Theme.groupedSpacing),
     ) {
-        if (message.text.isNotEmpty()) TextBubble(message, olderBy, retriesOnTap, retry)
+        if (message.text.isNotEmpty()) TextBubble(message, olderBy, retriesOnTap, actions)
         val imageWidth = width * Theme.IMAGE_WIDTH_FRACTION
-        val tap = if (retriesOnTap) retry else null
+        val tap = if (retriesOnTap) actions.retry else null
+        val failed = message.status == MessageStatus.FAILED
         for (attachment in message.attachments) {
-            // The lightbox opens confirmed photos with the next phase; a failed one retries.
-            MessageImage(attachment = attachment, maximumWidth = imageWidth, onClick = if (message.status == MessageStatus.FAILED) tap else null)
+            // A confirmed photo opens the lightbox; a failed message's photo retries instead.
+            MessageImage(attachment = attachment, maximumWidth = imageWidth,
+                openPhoto = if (failed) tap else ({ actions.openPhoto(attachment) }))
         }
         if (message.attachments.isEmpty()) {
             for (data in message.images) MessageImage(data = data, maximumWidth = imageWidth, onClick = tap)
@@ -106,16 +104,14 @@ private fun Bubbles(message: Message, width: Dp, olderBy: Int, retriesOnTap: Boo
 }
 
 @Composable
-private fun TextBubble(message: Message, olderBy: Int, retriesOnTap: Boolean, retry: () -> Unit) {
+private fun TextBubble(message: Message, olderBy: Int, retriesOnTap: Boolean, actions: MessageActions) {
     val outgoing = message.sender == "USER"
     val color = if (outgoing) Theme.outgoingForeground else Theme.incomingForeground
     val fill = if (outgoing) Theme.outgoingBackground(olderBy) else Theme.secondary
-    val context = LocalContext.current
-    val toolbar = Theme.accent.toArgb()
-    val text = LinkedText.annotated(message.text, color) { TextLinks.open(context, it, toolbar) }
+    val text = LinkedText.annotated(message.text, color, actions.openTextLink)
     val bubble = Modifier.background(fill, BubbleShape).padding(horizontal = Theme.bubbleHorizontal, vertical = Theme.bubbleVertical)
     if (retriesOnTap) {
-        Text(text, style = Theme.bodyFont, color = color, modifier = Modifier.clip(BubbleShape).clickable(onClick = retry).then(bubble))
+        Text(text, style = Theme.bodyFont, color = color, modifier = Modifier.clip(BubbleShape).clickable(onClick = actions.retry).then(bubble))
     } else {
         // Long press selects, with Copy in the selection toolbar, like the iOS context menu.
         SelectionContainer { Text(text, style = Theme.bodyFont, color = color, modifier = bubble) }

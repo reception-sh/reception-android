@@ -40,7 +40,7 @@ internal class ReceptionChatActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        ChatPresenter.detached(this)
+        ChatPresenter.destroyed(this)
         super.onDestroy()
     }
 }

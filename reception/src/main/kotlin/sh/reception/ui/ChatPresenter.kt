@@ -27,6 +27,9 @@ internal object ChatPresenter {
      */
     private var presentation = 0
 
+    /** Runs once the sheet a link closed is gone, so the host can navigate or present freely. */
+    private var afterDismissal: (() -> Unit)? = null
+
     /** `Reception.openChat()`. */
     fun open() {
         if (ReceptionState.session == null) return Log.error { "openChat called before configure, ignored" }
@@ -79,6 +82,15 @@ internal object ChatPresenter {
         return true
     }
 
+    /** The sheet's activity ended; what waited for the dismissal runs now, with the host activity resumed. */
+    fun destroyed(activity: ReceptionChatActivity) {
+        detached(activity)
+        if (activity.isChangingConfigurations) return
+        val next = afterDismissal ?: return
+        afterDismissal = null
+        next()
+    }
+
     /** The sheet closed by drag, scrim tap or Back, or its activity ended. */
     fun detached(activity: ReceptionChatActivity) {
         if (sheet?.get() !== activity) return
@@ -86,13 +98,22 @@ internal object ChatPresenter {
         if (!activity.isChangingConfigurations) Log.debug { "Chat dismissed" }
     }
 
-    /** Also cancels a requested sheet that has not been created yet. Answers false when the SDK has not presented the chat. */
-    fun dismiss(): Boolean {
+    /**
+     * Also cancels a requested sheet that has not been created yet. [then] runs once the sheet is gone, or at once when
+     * the SDK has no sheet on screen. Answers false when the SDK has not presented the chat.
+     */
+    fun dismiss(then: (() -> Unit)? = null): Boolean {
         val requested = requestedAt != null
         requestedAt = null
         presentation += 1
-        val activity = sheet?.get() ?: return requested.also { if (it) Log.debug { "Chat presentation cancelled" } }
+        val activity = sheet?.get()
+        if (activity == null) {
+            if (requested) Log.debug { "Chat presentation cancelled" }
+            then?.invoke()
+            return requested
+        }
         sheet = null
+        afterDismissal = then
         activity.dismiss()
         Log.debug { "Chat dismissed" }
         return true

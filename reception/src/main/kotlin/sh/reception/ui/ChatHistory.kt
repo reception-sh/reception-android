@@ -1,5 +1,12 @@
 package sh.reception.ui
 
+import android.view.HapticFeedbackConstants
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalView
+import kotlinx.coroutines.launch
+import sh.reception.model.Attachment
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -48,18 +55,16 @@ import sh.reception.appearance
 import sh.reception.foreground
 import sh.reception.viewmodel.ChatModel
 import sh.reception.viewmodel.ChatScrollState
-import sh.reception.viewmodel.cancelAutomaticRetry
 import sh.reception.viewmodel.composerCooldown
 import sh.reception.viewmodel.messageLayouts
-import sh.reception.viewmodel.retry
-import sh.reception.viewmodel.retryAvailability
 
 private val noTeam = MutableStateFlow(emptyMap<String, Nothing>())
 
 /**
  * The messages, newest at the bottom, above the connection banner, cooldown notice and composer. The list is laid
  * out from the bottom, so the newest message stays in place while the keyboard moves; new messages scroll into view
- * only while the reader is at the newest one, and the reader's own always do.
+ * only while the reader is at the newest one, and the reader's own always do. A reader further up gets the
+ * jump-to-latest control for replies that arrived below.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -67,6 +72,9 @@ internal fun ChatHistory(model: ChatModel, topInset: Dp) {
     val listState = rememberLazyListState()
     val scrollState = remember(model) { ChatScrollState() }
     var scrollRevision by remember { mutableIntStateOf(0) }
+    var lightbox by remember { mutableStateOf<Attachment?>(null) }
+    val scope = rememberCoroutineScope()
+    val view = LocalView.current
     val messages = model.messages
     val appearance = Theme.appearance
     val members by (model.teamProfiles?.members ?: noTeam).collectAsState()
@@ -76,6 +84,7 @@ internal fun ChatHistory(model: ChatModel, topInset: Dp) {
     LaunchedEffect(messages.map { it.id }) {
         if (scrollState.messagesChanged(messages.map { ChatScrollState.Entry(it.id, it.sender) })) scrollRevision += 1
     }
+    LaunchedEffect(model.isTyping) { if (scrollState.followsNewest) scrollRevision += 1 }
     LaunchedEffect(scrollRevision) {
         if (scrollRevision == 0 || messages.isEmpty()) return@LaunchedEffect
         // Once now, and once more after the new rows have settled their height.
@@ -88,6 +97,7 @@ internal fun ChatHistory(model: ChatModel, topInset: Dp) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.any { it.key == id } }
             .collect { scrollState.newest(id, it) }
     }
+    ReplyFeedback(model)
     Column(Modifier.fillMaxSize()) {
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
             val rowWidth = maxWidth - Theme.spacing * 2
@@ -98,25 +108,34 @@ internal fun ChatHistory(model: ChatModel, topInset: Dp) {
                     bottom = Theme.composerMessageGap),
                 modifier = Modifier.fillMaxSize().fadingTop(topInset).nestedScroll(keyboardDismissal()),
             ) {
+                if (model.isTyping) {
+                    item(key = TYPING_KEY) { TypingIndicator(Modifier.padding(top = Theme.groupSpacing).animateItem()) }
+                }
                 itemsIndexed(messages.asReversed(), key = { _, message -> message.id }) { reversedIndex, message ->
                     val index = messages.lastIndex - reversedIndex
                     MessageRow(
                         message = message,
                         layout = layouts.getOrNull(index) ?: return@itemsIndexed,
                         width = rowWidth,
-                        retryAvailability = model.retryAvailability(message),
-                        retry = { model.retry(message.id) },
-                        cancelRetry = { model.cancelAutomaticRetry(message.id) },
+                        actions = model.actions(message) { lightbox = it },
                         modifier = Modifier.animateItem(),
                     )
                 }
             }
             if (messages.isEmpty() && (model.isRestored || model.session == null)) EmptyState()
+            JumpToLatest(scrollState.showsJumpControl, scrollState.unseenCount, Modifier.align(Alignment.BottomCenter)) {
+                scrollState.jumpedToNewest()
+                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                scope.launch { listState.animateScrollToItem(0) }
+            }
         }
         // Starting to write shows the newest message, like Messages.
         BottomBar(model, onFocus = { scrollRevision += 1 })
     }
+    lightbox?.let { ImageLightbox(it) { lightbox = null } }
 }
+
+private const val TYPING_KEY = "support-typing"
 
 /** The connection banner, the cooldown notice and the composer, above the keyboard or the navigation bar. */
 @Composable

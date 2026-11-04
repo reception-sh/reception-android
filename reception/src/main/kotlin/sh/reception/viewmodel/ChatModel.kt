@@ -46,6 +46,9 @@ internal class ChatModel(val session: DeviceSession?) {
     var verificationRequired: Boolean by mutableStateOf(false)
     var sendingPermissionRevision: Int = 0
     val composer: ComposerModel = ComposerModel(scope)
+
+    /** Opening links from cards and text (`ChatLinks.kt`); tests replace it. */
+    var links: LinkHandling = LinkHandling()
     var connection: ConnectionState by mutableStateOf(ConnectionState.HIDDEN)
     var networkMonitor: NetworkMonitor? = null
     var connectionDismissal: Job? = null

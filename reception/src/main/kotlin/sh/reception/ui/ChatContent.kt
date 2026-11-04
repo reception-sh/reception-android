@@ -13,11 +13,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.semantics.heading
@@ -32,6 +34,7 @@ import sh.reception.ReceptionPaywalls
 import sh.reception.ReceptionState
 import sh.reception.ReceptionUnread
 import sh.reception.Theme
+import sh.reception.accent
 import sh.reception.appearance
 import sh.reception.background
 import sh.reception.viewmodel.ChatModel
@@ -47,6 +50,9 @@ internal fun ChatContent(showsSheetControls: Boolean, onClose: () -> Unit = {}) 
     key(ReceptionState.revision) {
         val model = remember { ReceptionState.chatModel() }
         ChatLifecycle(model)
+        // Custom Tabs opened from this chat take its accent.
+        val accent = Theme.accent.toArgb()
+        SideEffect { model.links.toolbarColor = accent }
         RemoteAppearanceRefresh()
         Box(Modifier.fillMaxSize().background(Theme.background)) {
             val top = if (showsSheetControls) Theme.sheetTopInset else Theme.zero

@@ -144,6 +144,12 @@ internal object Theme {
     const val MINIMUM_ZOOM = 1f
     const val MAXIMUM_ZOOM = 5f
     const val DOUBLE_TAP_ZOOM = 3f
+
+    /** A drag at 1× this far closes the lightbox; Android only, iOS closes it with the button alone. */
+    val lightboxDismissDistance = 120.dp
+
+    /** How much of the black backdrop fades while the photo is dragged away. */
+    const val LIGHTBOX_DRAG_FADE = 0.6f
     val small = 8.dp
     val spacing = 16.dp
     val radius = 22.dp

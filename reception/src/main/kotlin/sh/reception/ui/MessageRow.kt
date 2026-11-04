@@ -22,7 +22,6 @@ import sh.reception.model.Message
 import sh.reception.muted
 import sh.reception.timestampFont
 import sh.reception.viewmodel.MessageLayout
-import sh.reception.viewmodel.RetryAvailability
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -32,9 +31,7 @@ internal fun MessageRow(
     message: Message,
     layout: MessageLayout,
     width: Dp,
-    retryAvailability: RetryAvailability,
-    retry: () -> Unit,
-    cancelRetry: () -> Unit,
+    actions: MessageActions,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxWidth().padding(top = layout.spacing), verticalArrangement = Arrangement.spacedBy(Theme.small)) {
@@ -52,11 +49,11 @@ internal fun MessageRow(
             }
             if (layout.reservesPhotoColumn) {
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Theme.small)) {
-                    Spacer(Modifier.width(avatar))
-                    MessageBubble(message, width - avatar - Theme.small, layout, retryAvailability, retry, cancelRetry)
+                    if (layout.showsAuthorPhoto) TeamAvatar(author, layout.authorPhoto) else Spacer(Modifier.width(avatar))
+                    MessageBubble(message, width - avatar - Theme.small, layout, actions)
                 }
             } else {
-                MessageBubble(message, width, layout, retryAvailability, retry, cancelRetry)
+                MessageBubble(message, width, layout, actions)
             }
         }
     }
