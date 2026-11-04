@@ -25,7 +25,8 @@ internal fun EmbeddedKeyboardAdjustment() {
  * (`adjustPan`, or `adjustUnspecified`, the default of an activity without `windowSoftInputMode`, as in Android Studio's
  * Compose template) moves it a second time, a keyboard height too far, and pushes the host's top bar off screen. While a
  * chat is embedded in such a window, the window resizes instead, counted per window (the activity's, a dialog's); when
- * the last embedded chat in it leaves, the host's mode comes back. Main thread only.
+ * the last embedded chat in it leaves, the host's adjust mode comes back, unless the host changed the mode since. Main
+ * thread only.
  */
 internal object EmbeddedKeyboardMode {
     /** [installed] is the adjust mode the SDK set, null when it left the window alone. */
@@ -49,8 +50,12 @@ internal object EmbeddedKeyboardMode {
         hold.count -= 1
         if (hold.count > 0) return
         holds.remove(window.root)
-        if (hold.installed == null) return
-        window.softInputMode = (hold.original and LayoutParams.SOFT_INPUT_MASK_ADJUST.inv()) or restoredAdjust(window, hold.original)
+        val installed = hold.installed ?: return
+        val current = window.softInputMode
+        // The host set its own adjust mode while the chat was shown: that one stays.
+        if (current and LayoutParams.SOFT_INPUT_MASK_ADJUST != installed) return
+        // Only the adjust mode goes back; state and other flags the host set meanwhile stay.
+        window.softInputMode = (current and LayoutParams.SOFT_INPUT_MASK_ADJUST.inv()) or restoredAdjust(window, hold.original)
     }
 
     // Deprecated since API 30 for apps that handle insets themselves; here it only stops the pan, and every window of an

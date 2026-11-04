@@ -146,7 +146,8 @@ keyboard (`adjustPan`, or `adjustUnspecified`, the default of an activity withou
 Studio's Compose template) would move it a second time, so while a chat is embedded such a window is set to
 `adjustResize` and gets its own mode back when the last embedded chat in it leaves (`ui/EmbeddedKeyboardMode`, counted
 per window: the window is the one that shows the composition, so a chat in a Compose `Dialog` or a platform dialog
-adjusts that dialog's window and never the activity's, `ui/KeyboardWindow`; an
+adjusts that dialog's window and never the activity's, `ui/KeyboardWindow`; only the adjust bits go back, and only while
+the window still carries the SDK's `adjustResize`, so a mode or state flags the host set meanwhile stay; an
 unspecified mode comes back as what Android resolves it to, resize with a shown scroll container, else pan, because
 Android keeps the last adjust mode when it is asked for "unspecified" again). Neither calls `openChat()`. Every chat on screen shows the one chat model:
 it stays visible (`isChatOpen`) while any of them is started and keeps loading and listening while any is resumed, so

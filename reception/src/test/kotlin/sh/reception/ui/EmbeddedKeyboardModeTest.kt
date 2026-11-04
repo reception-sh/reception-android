@@ -69,4 +69,22 @@ class EmbeddedKeyboardModeTest {
         EmbeddedKeyboardMode.release(window.keyboard)
         assertEquals(LayoutParams.SOFT_INPUT_ADJUST_NOTHING, window.adjust)
     }
+
+    @Test
+    fun anAdjustModeTheHostSetWhileTheChatWasShownStays() {
+        val window = window(LayoutParams.SOFT_INPUT_ADJUST_PAN)
+        EmbeddedKeyboardMode.acquire(window.keyboard)
+        window.setSoftInputMode(LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
+        EmbeddedKeyboardMode.release(window.keyboard)
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_NOTHING, window.attributes.softInputMode)
+    }
+
+    @Test
+    fun stateFlagsTheHostSetWhileTheChatWasShownStay() {
+        val window = window(LayoutParams.SOFT_INPUT_ADJUST_PAN or LayoutParams.SOFT_INPUT_STATE_HIDDEN)
+        EmbeddedKeyboardMode.acquire(window.keyboard)
+        window.setSoftInputMode(LayoutParams.SOFT_INPUT_ADJUST_RESIZE or LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+        EmbeddedKeyboardMode.release(window.keyboard)
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_PAN or LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE, window.attributes.softInputMode)
+    }
 }
