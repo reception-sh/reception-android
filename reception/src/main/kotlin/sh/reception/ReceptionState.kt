@@ -4,7 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.annotation.VisibleForTesting
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,8 +48,12 @@ internal object ReceptionState {
         private set
     var updatesAppBadge: Boolean = true
     var onEvent: ((ReceptionEvent) -> Unit)? = null
-    /** Compose state, so an open chat rebuilds with the new session's model after a reset. */
-    var revision: Int by mutableIntStateOf(0)
+    /**
+     * Compose state: the current session's [DeviceStore.chatIdentity] once its store is loaded, null before. An open
+     * chat rebuilds with the new session's model when it changes; being persisted, it is the same in a process that
+     * Android restarts for a result, so the chat's saved state (its result launchers) finds its place again.
+     */
+    var chatKey: String? by mutableStateOf(null)
         private set
     var presentationRevision: Int = 0
         private set
@@ -95,7 +99,7 @@ internal object ReceptionState {
         session = DeviceSession(api, DeviceStore(context, namespace), after = storageWork, checksRestoredChat = true)
         // No badge sync before the first server sync; the server value is the source of truth.
         ReceptionUnread.set(0, syncsNotifications = false)
-        revision += 1
+        chatKey = null
         advancePresentationRevision(dismissesChat = reconfigured)
         val revocations = logoutRevocations ?: LogoutRevocations(SecureStore.shared(context)).also { logoutRevocations = it }
         revocations.resumed(api)
@@ -120,6 +124,7 @@ internal object ReceptionState {
         session = null
         chat?.stop()
         chat = null
+        chatKey = null
         namespace = null
         storageWork = null
         logoutRevocations?.suspend()
@@ -162,7 +167,7 @@ internal object ReceptionState {
         // The deletion rotates the generation, so the new session opens a fresh namespace after it.
         this.session = DeviceSession(session.api, DeviceStore(context, namespace), halt = session.halt, after = deleted)
         ReceptionUnread.set(0)
-        revision += 1
+        chatKey = null
         if (dismissChat) advancePresentationRevision()
     }
 
@@ -185,7 +190,7 @@ internal object ReceptionState {
         chat = null
         this.session = DeviceSession(session.api, store.renewed(), after = cleared)
         ReceptionUnread.set(0)
-        this.revision += 1
+        chatKey = null
     }
 
     /** A `409 chat_reset` from the current session clears the chat and keeps the session. */
@@ -201,6 +206,7 @@ internal object ReceptionState {
 
     /** The current session's stored values are loaded: what configure could not do without them happens now. */
     fun sessionPrepared() {
+        chatKey = session?.store?.chatIdentity
         unreadMonitor.sessionPrepared()
     }
 

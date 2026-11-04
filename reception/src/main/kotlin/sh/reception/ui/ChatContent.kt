@@ -38,11 +38,15 @@ import sh.reception.viewmodel.ChatModel
 
 /**
  * The chat screen: title bar, history and composer. [showsSheetControls] adds the sheet's top inset and, when the
- * appearance asks for it, the close button. A reset rebuilds it with the new session's model.
+ * appearance asks for it, the close button. A reset rebuilds it with the new session's model. It is keyed by the
+ * session's persisted chat identity, never an in-memory counter, so the saved keys of its result launchers (photo
+ * picker, notification permission) match again after Android restarted the process for their result.
  */
 @Composable
 internal fun ChatContent(showsSheetControls: Boolean, onClose: () -> Unit = {}) {
-    key(ReceptionState.revision) {
+    // Until the session's store is loaded (a few milliseconds after configure or a reset) only the background shows.
+    val chatKey = ReceptionState.chatKey ?: return Box(Modifier.fillMaxSize().background(Theme.background))
+    key(chatKey) {
         val model = remember { ReceptionState.chatModel() }
         ChatLifecycleEffect(model)
         // Custom Tabs opened from this chat take its accent.

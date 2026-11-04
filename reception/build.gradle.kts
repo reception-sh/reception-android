@@ -54,6 +54,8 @@ android {
 
     testOptions {
         targetSdk = 36
+        // The chat's composables draw the SDK's drawables in Robolectric tests.
+        unitTests.isIncludeAndroidResources = true
     }
 }
 

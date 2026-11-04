@@ -127,6 +127,10 @@ ID configured in the new process; any dismissal, logout, deletion or reconfigura
 `configure` in a process cancels nothing. A restored sheet created before the SDK is configured (Flutter and React
 Native configure from Dart/JS after Android recreated it) waits up to 3 s for `configure`, drawing nothing, and finishes
 when none comes; the same checks then apply, so a logout, reconfiguration or newer presentation still finishes it.
+The chat's content (sheet or embedded) is keyed by the session's persisted chat identity (storage namespace with its
+generation, plus the chat revision), not an in-memory counter, so its saved state, including the keys of the photo
+picker and permission launchers, finds its place again in a process Android restarted for their result; it draws only
+its background until the session's store is loaded.
 
 While the keyboard is open, the sheet closes only by a drag that starts on its header (drag handle and title bar,
 `Theme.sheetHandleHeight`); a drag over the messages dismisses the keyboard instead. With the keyboard closed, a drag

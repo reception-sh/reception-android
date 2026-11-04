@@ -91,6 +91,13 @@ internal class DeviceStore private constructor(
         teamProfileCache = TeamProfileCache(context, scope)
     }
 
+    /**
+     * What identifies this session's chat on disk and so across a process restart: the namespace with its generation
+     * (new after a logout or deletion) and the chat revision (new after a team reset). Main thread, once [open].
+     */
+    val chatIdentity: String
+        get() = "$scope#$chatRevision"
+
     /** The same namespace and generation for a session that continues after a chat reset. */
     fun renewed(): DeviceStore = DeviceStore(context, namespace, credentialStorage, scope)
 
