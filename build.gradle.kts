@@ -6,4 +6,5 @@ plugins {
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.maven.publish) apply false
     alias(libs.plugins.google.services) apply false
+    alias(libs.plugins.binary.compatibility.validator) apply false
 }

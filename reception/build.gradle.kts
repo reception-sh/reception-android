@@ -8,7 +8,15 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.maven.publish)
+    alias(libs.plugins.binary.compatibility.validator)
 }
+
+// The version lives in one place, `SDKVersion.current` (what `Reception.version` and the User-Agent report); the
+// published coordinates read it from there.
+val sdkVersion: String = Regex("""const val current: String = "([^"]+)"""")
+    .find(file("src/main/kotlin/sh/reception/Version.kt").readText())
+    ?.groupValues?.get(1)
+    ?: error("SDKVersion.current not found in Version.kt")
 
 android {
     namespace = "sh.reception"
@@ -83,8 +91,21 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
 }
 
+// `reception/api/reception.api` lists every public symbol; `apiCheck` (part of `check`, and of tool/release_check.sh)
+// fails on any change to it until `apiDump` records the change on purpose.
+apiValidation {
+    // Holders the Compose compiler generates for composable lambdas; public in bytecode, never API.
+    ignoredClasses.addAll(
+        listOf(
+            "sh.reception.ComposableSingletons\$ReceptionChatViewKt",
+            "sh.reception.ui.ComposableSingletons\$ChatHistoryKt",
+            "sh.reception.ui.ComposableSingletons\$PushPromptSlotKt",
+        ),
+    )
+}
+
 mavenPublishing {
-    coordinates("sh.reception", "reception", "1.0.0")
+    coordinates("sh.reception", "reception", sdkVersion)
     configure(AndroidSingleVariantLibrary(variant = "release", sourcesJar = true, publishJavadocJar = true))
     publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
     // Local builds and publishToMavenLocal never need a key; release machines provide one.

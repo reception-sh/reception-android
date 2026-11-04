@@ -17,6 +17,7 @@ junit = "4.13.2"
 robolectric = "4.14.1"
 mavenPublish = "0.30.0"
 googleServices = "4.4.2"
+binaryCompatibilityValidator = "0.16.3"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -49,3 +50,4 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "mavenPublish" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+binary-compatibility-validator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version.ref = "binaryCompatibilityValidator" }

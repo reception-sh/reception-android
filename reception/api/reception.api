@@ -1,0 +1,376 @@
+public final class sh/reception/Reception {
+	public static final field $stable I
+	public static final field INSTANCE Lsh/reception/Reception;
+	public static final fun addUnreadCountListener (Lkotlin/jvm/functions/Function1;)V
+	public static final fun closeChat ()V
+	public static final fun configure (Landroid/content/Context;Ljava/lang/String;)V
+	public static final fun configureForTesting (Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)V
+	public static final fun deleteData (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static final fun deleteData (Lkotlin/jvm/functions/Function1;)V
+	public static final fun getAppearance ()Lsh/reception/Reception$Appearance;
+	public static final fun getAvailablePaywalls ()Ljava/util/List;
+	public static final fun getLanguageOverride ()Ljava/lang/String;
+	public static final fun getLogHandler ()Lkotlin/jvm/functions/Function2;
+	public static final fun getLogLevel ()Lsh/reception/Reception$LogLevel;
+	public static final fun getNotificationSmallIcon ()Ljava/lang/Integer;
+	public static final fun getOnEvent ()Lkotlin/jvm/functions/Function1;
+	public static final fun getOnPaywall ()Lkotlin/jvm/functions/Function1;
+	public static final fun getOpensWebLinksInApp ()Z
+	public static final fun getPaywallAvailability ()Lkotlin/jvm/functions/Function2;
+	public static final fun getPaywalls ()Ljava/util/List;
+	public static final fun getScreens ()Ljava/util/List;
+	public static final fun getUnreadCount ()Lkotlinx/coroutines/flow/StateFlow;
+	public static final fun getUpdatesAppBadge ()Z
+	public static final fun getUsesRemoteAppearance ()Z
+	public static final fun getVersion ()Ljava/lang/String;
+	public static final fun handlePushMessage (Landroid/content/Context;Ljava/util/Map;)Z
+	public static final fun handlePushNotification (Ljava/util/Map;)Z
+	public static final fun handlePushNotification (Ljava/util/Map;Z)Z
+	public static synthetic fun handlePushNotification$default (Ljava/util/Map;ZILjava/lang/Object;)Z
+	public static final fun identify (Ljava/lang/String;)V
+	public static final fun identify (Ljava/lang/String;Ljava/lang/String;)V
+	public static final fun identify (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public static synthetic fun identify$default (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)V
+	public static final fun identifyWithToken (Ljava/lang/String;)V
+	public static final fun isChatOpen ()Lkotlinx/coroutines/flow/StateFlow;
+	public static final fun isConfigured ()Z
+	public static final fun logout ()V
+	public static final fun noteCurrentActivity (Landroid/app/Activity;)V
+	public static final fun openChat ()V
+	public static final fun refreshPaywalls ()V
+	public static final fun refreshPaywalls (Z)V
+	public static synthetic fun refreshPaywalls$default (ZILjava/lang/Object;)V
+	public static final fun registerForPushIfAuthorized ()V
+	public static final fun removeUnreadCountListener (Lkotlin/jvm/functions/Function1;)V
+	public static final fun setAppearance (Lsh/reception/Reception$Appearance;)V
+	public static final fun setLanguageOverride (Ljava/lang/String;)V
+	public static final fun setLogHandler (Lkotlin/jvm/functions/Function2;)V
+	public static final fun setLogLevel (Lsh/reception/Reception$LogLevel;)V
+	public static final fun setMetadata (Ljava/util/Map;)V
+	public static final fun setNotificationRoutingEnabled (Z)V
+	public static final fun setNotificationSmallIcon (Ljava/lang/Integer;)V
+	public static final fun setOnEvent (Lkotlin/jvm/functions/Function1;)V
+	public static final fun setOnPaywall (Lkotlin/jvm/functions/Function1;)V
+	public static final fun setOpensWebLinksInApp (Z)V
+	public static final fun setPaywallAvailability (Lkotlin/jvm/functions/Function2;)V
+	public static final fun setPaywalls (Ljava/util/List;)V
+	public static final fun setPushToken (Ljava/lang/String;)V
+	public static final fun setScreens (Ljava/util/List;)V
+	public static final fun setUpdatesAppBadge (Z)V
+	public static final fun setUsesRemoteAppearance (Z)V
+	public static final fun track (Ljava/lang/String;)V
+	public static final fun track (Ljava/lang/String;Z)V
+	public static synthetic fun track$default (Ljava/lang/String;ZILjava/lang/Object;)V
+}
+
+public final class sh/reception/Reception$Appearance {
+	public static final field $stable I
+	public fun <init> ()V
+	public final fun getAccentColor ()Lsh/reception/ReceptionColor;
+	public final fun getChatBackground ()Lsh/reception/ReceptionColor;
+	public final fun getCloseIcon ()Lsh/reception/Reception$CloseIcon;
+	public final fun getCloseImage ()Landroidx/compose/ui/graphics/painter/Painter;
+	public final fun getCloseImageResource ()Ljava/lang/Integer;
+	public final fun getFadesOlderMessages ()Z
+	public final fun getFontDesign ()Lsh/reception/Reception$FontDesign;
+	public final fun getFontFamily ()Landroidx/compose/ui/text/font/FontFamily;
+	public final fun getHidesPushStatus ()Z
+	public final fun getHidesTitle ()Z
+	public final fun getHidesWelcomeText ()Z
+	public final fun getHidesWelcomeTitle ()Z
+	public final fun getIncomingBackground ()Lsh/reception/ReceptionColor;
+	public final fun getIncomingForeground ()Lsh/reception/ReceptionColor;
+	public final fun getOnAccentColor ()Lsh/reception/ReceptionColor;
+	public final fun getPreferredColorScheme ()Lsh/reception/Reception$ColorScheme;
+	public final fun getShowsCloseButton ()Z
+	public final fun getTitle ()Ljava/lang/String;
+	public final fun getWelcomeIcon ()Lsh/reception/Reception$WelcomeIcon;
+	public final fun getWelcomeIconColor ()Lsh/reception/ReceptionColor;
+	public final fun getWelcomeIconCornerRadius-D9Ej5fM ()F
+	public final fun getWelcomeIconOffset-RKDOV3M ()J
+	public final fun getWelcomeIconSize-lTKBWiU ()Landroidx/compose/ui/unit/Dp;
+	public final fun getWelcomeText ()Ljava/lang/String;
+	public final fun getWelcomeTitle ()Ljava/lang/String;
+	public final fun setAccentColor (Lsh/reception/ReceptionColor;)V
+	public final fun setChatBackground (Lsh/reception/ReceptionColor;)V
+	public final fun setCloseIcon (Lsh/reception/Reception$CloseIcon;)V
+	public final fun setCloseImage (Landroidx/compose/ui/graphics/painter/Painter;)V
+	public final fun setCloseImageResource (Ljava/lang/Integer;)V
+	public final fun setFadesOlderMessages (Z)V
+	public final fun setFontDesign (Lsh/reception/Reception$FontDesign;)V
+	public final fun setFontFamily (Landroidx/compose/ui/text/font/FontFamily;)V
+	public final fun setHidesPushStatus (Z)V
+	public final fun setHidesTitle (Z)V
+	public final fun setHidesWelcomeText (Z)V
+	public final fun setHidesWelcomeTitle (Z)V
+	public final fun setIncomingBackground (Lsh/reception/ReceptionColor;)V
+	public final fun setIncomingForeground (Lsh/reception/ReceptionColor;)V
+	public final fun setOnAccentColor (Lsh/reception/ReceptionColor;)V
+	public final fun setPreferredColorScheme (Lsh/reception/Reception$ColorScheme;)V
+	public final fun setShowsCloseButton (Z)V
+	public final fun setTitle (Ljava/lang/String;)V
+	public final fun setWelcomeIcon (Lsh/reception/Reception$WelcomeIcon;)V
+	public final fun setWelcomeIconColor (Lsh/reception/ReceptionColor;)V
+	public final fun setWelcomeIconCornerRadius-0680j_4 (F)V
+	public final fun setWelcomeIconOffset-jo-Fl9I (J)V
+	public final fun setWelcomeIconSize-YLDhkOg (Landroidx/compose/ui/unit/Dp;)V
+	public final fun setWelcomeText (Ljava/lang/String;)V
+	public final fun setWelcomeTitle (Ljava/lang/String;)V
+}
+
+public final class sh/reception/Reception$CloseIcon : java/lang/Enum {
+	public static final field ARROW_DOWN Lsh/reception/Reception$CloseIcon;
+	public static final field CHEVRON_DOWN Lsh/reception/Reception$CloseIcon;
+	public static final field XMARK Lsh/reception/Reception$CloseIcon;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lsh/reception/Reception$CloseIcon;
+	public static fun values ()[Lsh/reception/Reception$CloseIcon;
+}
+
+public final class sh/reception/Reception$ColorScheme : java/lang/Enum {
+	public static final field DARK Lsh/reception/Reception$ColorScheme;
+	public static final field LIGHT Lsh/reception/Reception$ColorScheme;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lsh/reception/Reception$ColorScheme;
+	public static fun values ()[Lsh/reception/Reception$ColorScheme;
+}
+
+public final class sh/reception/Reception$FontDesign : java/lang/Enum {
+	public static final field DEFAULT Lsh/reception/Reception$FontDesign;
+	public static final field MONOSPACED Lsh/reception/Reception$FontDesign;
+	public static final field ROUNDED Lsh/reception/Reception$FontDesign;
+	public static final field SERIF Lsh/reception/Reception$FontDesign;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lsh/reception/Reception$FontDesign;
+	public static fun values ()[Lsh/reception/Reception$FontDesign;
+}
+
+public final class sh/reception/Reception$LogLevel : java/lang/Enum {
+	public static final field DEBUG Lsh/reception/Reception$LogLevel;
+	public static final field ERROR Lsh/reception/Reception$LogLevel;
+	public static final field INFO Lsh/reception/Reception$LogLevel;
+	public static final field OFF Lsh/reception/Reception$LogLevel;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lsh/reception/Reception$LogLevel;
+	public static fun values ()[Lsh/reception/Reception$LogLevel;
+}
+
+public final class sh/reception/Reception$WelcomeIcon {
+	public static final field $stable I
+	public static final field Companion Lsh/reception/Reception$WelcomeIcon$Companion;
+	public static final fun getHidden ()Lsh/reception/Reception$WelcomeIcon;
+	public static final fun image (Landroidx/compose/ui/graphics/painter/Painter;)Lsh/reception/Reception$WelcomeIcon;
+	public static final fun resource (I)Lsh/reception/Reception$WelcomeIcon;
+	public static final fun symbol (Ljava/lang/String;)Lsh/reception/Reception$WelcomeIcon;
+}
+
+public final class sh/reception/Reception$WelcomeIcon$Companion {
+	public final fun getHidden ()Lsh/reception/Reception$WelcomeIcon;
+	public final fun image (Landroidx/compose/ui/graphics/painter/Painter;)Lsh/reception/Reception$WelcomeIcon;
+	public final fun resource (I)Lsh/reception/Reception$WelcomeIcon;
+	public final fun symbol (Ljava/lang/String;)Lsh/reception/Reception$WelcomeIcon;
+}
+
+public final class sh/reception/ReceptionChatView : androidx/compose/ui/platform/AbstractComposeView {
+	public static final field $stable I
+	public fun <init> (Landroid/content/Context;)V
+	public fun <init> (Landroid/content/Context;Landroid/util/AttributeSet;)V
+	public fun <init> (Landroid/content/Context;Landroid/util/AttributeSet;I)V
+	public synthetic fun <init> (Landroid/content/Context;Landroid/util/AttributeSet;IILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun Content (Landroidx/compose/runtime/Composer;I)V
+}
+
+public final class sh/reception/ReceptionChatViewKt {
+	public static final fun ReceptionChatView (Landroidx/compose/ui/Modifier;Landroidx/compose/runtime/Composer;II)V
+}
+
+public final class sh/reception/ReceptionColor {
+	public static final field $stable I
+	public static final field Companion Lsh/reception/ReceptionColor$Companion;
+	public synthetic fun <init> (JJLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (JLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Landroidx/compose/ui/graphics/Color;Landroidx/compose/ui/graphics/Color;Ljava/lang/Integer;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public static final fun argb (I)Lsh/reception/ReceptionColor;
+	public static final fun argb (II)Lsh/reception/ReceptionColor;
+	public static final fun resource (I)Lsh/reception/ReceptionColor;
+}
+
+public final class sh/reception/ReceptionColor$Companion {
+	public final fun argb (I)Lsh/reception/ReceptionColor;
+	public final fun argb (II)Lsh/reception/ReceptionColor;
+	public static synthetic fun argb$default (Lsh/reception/ReceptionColor$Companion;IIILjava/lang/Object;)Lsh/reception/ReceptionColor;
+	public final fun resource (I)Lsh/reception/ReceptionColor;
+}
+
+public final class sh/reception/ReceptionError : java/lang/Exception {
+	public static final field $stable I
+	public fun <init> (Ljava/lang/String;I)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()I
+	public final fun copy (Ljava/lang/String;I)Lsh/reception/ReceptionError;
+	public static synthetic fun copy$default (Lsh/reception/ReceptionError;Ljava/lang/String;IILjava/lang/Object;)Lsh/reception/ReceptionError;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCode ()Ljava/lang/String;
+	public final fun getStatus ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract class sh/reception/ReceptionEvent {
+	public static final field $stable I
+}
+
+public final class sh/reception/ReceptionEvent$ChatOpened : sh/reception/ReceptionEvent {
+	public static final field $stable I
+	public static final field INSTANCE Lsh/reception/ReceptionEvent$ChatOpened;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class sh/reception/ReceptionEvent$DataDeleted : sh/reception/ReceptionEvent {
+	public static final field $stable I
+	public static final field INSTANCE Lsh/reception/ReceptionEvent$DataDeleted;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class sh/reception/ReceptionEvent$IdentityRejected : sh/reception/ReceptionEvent {
+	public static final field $stable I
+	public fun <init> (Lsh/reception/ReceptionError;)V
+	public final fun component1 ()Lsh/reception/ReceptionError;
+	public final fun copy (Lsh/reception/ReceptionError;)Lsh/reception/ReceptionEvent$IdentityRejected;
+	public static synthetic fun copy$default (Lsh/reception/ReceptionEvent$IdentityRejected;Lsh/reception/ReceptionError;ILjava/lang/Object;)Lsh/reception/ReceptionEvent$IdentityRejected;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getError ()Lsh/reception/ReceptionError;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class sh/reception/ReceptionEvent$ImageSent : sh/reception/ReceptionEvent {
+	public static final field $stable I
+	public static final field INSTANCE Lsh/reception/ReceptionEvent$ImageSent;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class sh/reception/ReceptionEvent$LinkOpened : sh/reception/ReceptionEvent {
+	public static final field $stable I
+	public static final field INSTANCE Lsh/reception/ReceptionEvent$LinkOpened;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class sh/reception/ReceptionEvent$MessageSent : sh/reception/ReceptionEvent {
+	public static final field $stable I
+	public static final field INSTANCE Lsh/reception/ReceptionEvent$MessageSent;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class sh/reception/ReceptionEvent$PaywallOpened : sh/reception/ReceptionEvent {
+	public static final field $stable I
+	public static final field INSTANCE Lsh/reception/ReceptionEvent$PaywallOpened;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class sh/reception/ReceptionEvent$ReviewOpened : sh/reception/ReceptionEvent {
+	public static final field $stable I
+	public static final field INSTANCE Lsh/reception/ReceptionEvent$ReviewOpened;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface annotation class sh/reception/ReceptionInternalApi : java/lang/annotation/Annotation {
+}
+
+public final class sh/reception/ReceptionMessagingService : com/google/firebase/messaging/FirebaseMessagingService {
+	public static final field $stable I
+	public fun <init> ()V
+	public fun onMessageReceived (Lcom/google/firebase/messaging/RemoteMessage;)V
+	public fun onNewToken (Ljava/lang/String;)V
+}
+
+public final class sh/reception/ReceptionPaywall {
+	public static final field $stable I
+	public static final field LIMIT I
+	public static final field PRODUCT_BUDGET I
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lsh/reception/ReceptionPaywall$Source;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lsh/reception/ReceptionPaywall$Source;Ljava/util/List;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lsh/reception/ReceptionPaywall$Source;Ljava/util/List;Z)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lsh/reception/ReceptionPaywall$Source;Ljava/util/List;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Lsh/reception/ReceptionPaywall$Source;
+	public final fun component4 ()Ljava/util/List;
+	public final fun component5 ()Z
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Lsh/reception/ReceptionPaywall$Source;Ljava/util/List;Z)Lsh/reception/ReceptionPaywall;
+	public static synthetic fun copy$default (Lsh/reception/ReceptionPaywall;Ljava/lang/String;Ljava/lang/String;Lsh/reception/ReceptionPaywall$Source;Ljava/util/List;ZILjava/lang/Object;)Lsh/reception/ReceptionPaywall;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId ()Ljava/lang/String;
+	public final fun getPresentable ()Z
+	public final fun getProducts ()Ljava/util/List;
+	public final fun getSource ()Lsh/reception/ReceptionPaywall$Source;
+	public final fun getTitle ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class sh/reception/ReceptionPaywall$Product {
+	public static final field $stable I
+	public fun <init> (Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lsh/reception/ReceptionPaywall$Product;
+	public static synthetic fun copy$default (Lsh/reception/ReceptionPaywall$Product;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lsh/reception/ReceptionPaywall$Product;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId ()Ljava/lang/String;
+	public final fun getPeriod ()Ljava/lang/String;
+	public final fun getPrice ()Ljava/lang/String;
+	public final fun getTrial ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class sh/reception/ReceptionPaywall$Source {
+	public static final field $stable I
+	public static final field Adapty Lsh/reception/ReceptionPaywall$Source;
+	public static final field App Lsh/reception/ReceptionPaywall$Source;
+	public static final field Companion Lsh/reception/ReceptionPaywall$Source$Companion;
+	public static final field RevenueCat Lsh/reception/ReceptionPaywall$Source;
+	public static final field Superwall Lsh/reception/ReceptionPaywall$Source;
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lsh/reception/ReceptionPaywall$Source;
+	public static synthetic fun copy$default (Lsh/reception/ReceptionPaywall$Source;Ljava/lang/String;ILjava/lang/Object;)Lsh/reception/ReceptionPaywall$Source;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getRawValue ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class sh/reception/ReceptionPaywall$Source$Companion {
+}
+
+public final class sh/reception/ReceptionScreen {
+	public static final field $stable I
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/functions/Function1;)V
+	public fun <init> (Ljava/lang/String;Lkotlin/jvm/functions/Function0;)V
+	public final fun getId ()Ljava/lang/String;
+	public final fun getValueName ()Ljava/lang/String;
+}
+
