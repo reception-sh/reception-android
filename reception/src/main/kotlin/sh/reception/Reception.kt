@@ -383,12 +383,23 @@ public object Reception {
     public fun setPushToken(token: String): Unit = MainThread.run { ReceptionAccount.setPushToken(token) }
 
     /**
-     * Call from `FirebaseMessagingService.onMessageReceived` with `message.data`. For a Reception reply it shows the
-     * notification (none while the chat is open) and refreshes [unreadCount], and returns true; other messages return
-     * false and stay yours. Any thread.
+     * Call from `FirebaseMessagingService.onMessageReceived` with `message.data` and `message.messageId`. For a
+     * Reception reply it shows the notification (none while the chat is open) and refreshes [unreadCount], and returns
+     * true; other messages return false and stay yours. A message ID handled before returns true and does nothing
+     * else. Any thread.
      */
     @JvmStatic
-    public fun handlePushMessage(context: Context, data: Map<String, String>): Boolean = ReceptionPush.receive(context, data)
+    public fun handlePushMessage(context: Context, data: Map<String, String>, messageId: String?): Boolean =
+        ReceptionPush.receive(context, data, messageId)
+
+    /**
+     * [handlePushMessage] for a raw FCM data map, such as a broadcast's extras, that still carries the message ID as
+     * `google.message_id`. From a `RemoteMessage`, pass `message.messageId` to the three-argument form: Firebase
+     * removes `google.*` keys from `message.data`.
+     */
+    @JvmStatic
+    public fun handlePushMessage(context: Context, data: Map<String, String>): Boolean =
+        ReceptionPush.receive(context, data)
 
     /**
      * Routes a Reception notification you handled yourself: refreshes [unreadCount] and, with [openChat], opens the

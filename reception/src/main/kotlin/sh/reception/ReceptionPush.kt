@@ -35,13 +35,19 @@ internal object ReceptionPush {
     /** False while a Flutter or React Native app handles notifications itself: taps only bring the app forward. */
     private var routesTaps = true
 
-    /** `Reception.handlePushMessage`, from any thread: recognizes the payload here, handles it on the main thread. */
-    fun receive(context: Context, data: Map<String, String>): Boolean {
+    /** `Reception.handlePushMessage` with a raw FCM data map (a broadcast's extras), which still carries the message ID. */
+    fun receive(context: Context, data: Map<String, String>): Boolean =
+        receive(context, data, data[PushMessageIds.DATA_KEY])
+
+    /**
+     * `Reception.handlePushMessage`, from any thread: recognizes the payload here, handles it on the main thread.
+     * [messageId] is the FCM message ID (`RemoteMessage.messageId`), which Firebase keeps out of the data map.
+     */
+    fun receive(context: Context, data: Map<String, String>, messageId: String?): Boolean {
         if (PushNotifications.payload(data) == null) return false
         val application = context.applicationContext
         val payload = data.toMap()
-        val messageId = payload[PushMessageIds.DATA_KEY]?.takeIf { it.isNotEmpty() }
-            ?: return true.also { MainThread.run { handleMessage(application, payload) } }
+        if (messageId.isNullOrEmpty()) return true.also { MainThread.run { handleMessage(application, payload) } }
         MainThread.run {
             val namespace = ReceptionState.namespace
             // One storage thread in submission order, so a repeat always sees the first delivery's record.

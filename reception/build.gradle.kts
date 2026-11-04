@@ -90,6 +90,8 @@ dependencies {
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.robolectric)
     testImplementation(libs.kotlinx.coroutines.test)
+    // `ReceptionMessagingService` is tested with a real `RemoteMessage`.
+    testImplementation(libs.firebase.messaging)
 }
 
 // `reception/api/reception.api` lists every public symbol; `apiCheck` (part of `check`, and of tool/release_check.sh)

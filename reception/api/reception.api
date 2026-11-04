@@ -24,6 +24,7 @@ public final class sh/reception/Reception {
 	public static final fun getUsesRemoteAppearance ()Z
 	public static final fun getVersion ()Ljava/lang/String;
 	public static final fun handlePushMessage (Landroid/content/Context;Ljava/util/Map;)Z
+	public static final fun handlePushMessage (Landroid/content/Context;Ljava/util/Map;Ljava/lang/String;)Z
 	public static final fun handlePushNotification (Ljava/util/Map;)Z
 	public static final fun handlePushNotification (Ljava/util/Map;Z)Z
 	public static synthetic fun handlePushNotification$default (Ljava/util/Map;ZILjava/lang/Object;)Z

@@ -11,7 +11,7 @@ import com.google.firebase.messaging.RemoteMessage
  */
 public class ReceptionMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
-        Reception.handlePushMessage(this, message.data)
+        Reception.handlePushMessage(this, message.data, message.messageId)
     }
 
     override fun onNewToken(token: String) {

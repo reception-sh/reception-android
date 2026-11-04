@@ -5,7 +5,9 @@ import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Bundle
 import android.os.Looper
+import com.google.firebase.messaging.RemoteMessage
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -13,6 +15,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
@@ -45,9 +48,22 @@ class ReceptionPushMessageTest {
     @After
     fun tearDown() = harness.stop()
 
-    private fun deliver(messageId: String) {
-        val data = mapOf("reception" to "c1", "title" to "Team", "body" to "Hi", "google.message_id" to messageId)
-        assertTrue(Reception.handlePushMessage(application, data))
+    private val data = mapOf("reception" to "c1", "title" to "Team", "body" to "Hi")
+
+    /** Raw FCM extras, as the Flutter and React Native receivers pass them: the ID is still in the map. */
+    private fun deliverExtras(messageId: String) {
+        assertTrue(Reception.handlePushMessage(application, data + ("google.message_id" to messageId)))
+    }
+
+    /** Through the SDK's service: Firebase removes `google.*` keys from `RemoteMessage.data`. */
+    private fun deliverThroughService(messageId: String) {
+        val bundle = Bundle().apply {
+            data.forEach { (key, value) -> putString(key, value) }
+            putString("google.message_id", messageId)
+        }
+        val message = RemoteMessage(bundle)
+        assertEquals(null, message.data["google.message_id"])
+        Robolectric.buildService(ReceptionMessagingService::class.java).create().get().onMessageReceived(message)
     }
 
     /** Lets the storage thread, then the main thread, finish what a delivery started. */
@@ -63,7 +79,12 @@ class ReceptionPushMessageTest {
     private fun unreadRequests() = harness.requests("GET", "/v1/conversation/unread").size
 
     @Test
-    fun aRepeatedMessageIdIsHandledOnce() {
+    fun aRepeatedMessageIdIsHandledOnce() = assertHandledOnce(::deliverExtras)
+
+    @Test
+    fun aRepeatedRemoteMessageThroughTheServiceIsHandledOnce() = assertHandledOnce(::deliverThroughService)
+
+    private fun assertHandledOnce(deliver: (String) -> Unit) {
         // The launch's own unread refresh finishes first, so it cannot absorb the push's refresh.
         harness.mainLoopUntil { unreadRequests() == 1 }
         Thread.sleep(200)

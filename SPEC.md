@@ -188,7 +188,8 @@ Vector icons remain resources (`reception_` prefix).
 
 ```kotlin
 Reception.setPushToken(token: String)                                   // FCM registration token
-Reception.handlePushMessage(context: Context, data: Map<String, String>): Boolean  // from onMessageReceived, any thread
+Reception.handlePushMessage(context: Context, data: Map<String, String>, messageId: String?): Boolean  // from onMessageReceived, any thread
+Reception.handlePushMessage(context: Context, data: Map<String, String>): Boolean  // raw FCM extras with google.message_id
 Reception.handlePushNotification(data: Map<String, String>, openChat: Boolean = true): Boolean
 Reception.registerForPushIfAuthorized()
 Reception.updatesAppBadge: Boolean                                      // default true
@@ -203,7 +204,8 @@ Android has no APNs environment; the device update sends `pushToken` (the FCM to
 The service sends **data-only, high-priority** FCM messages (see Backend) so the SDK decides presentation, exactly
 like the iOS `willPresent` policy. The payload is `{ reception: "<conversationId>", title, body, badge?, sound? }` as data fields
 (`reception` is `brand.pushPayloadKey`), with `android.collapse_key` set to the conversation id. The host's
-`FirebaseMessagingService.onMessageReceived` calls `Reception.handlePushMessage(this, remoteMessage.data)`: for a
+`FirebaseMessagingService.onMessageReceived` calls `Reception.handlePushMessage(this, remoteMessage.data,
+remoteMessage.messageId)`: for a
 Reception payload it sets `hasConversation`, refreshes unread and, unless the chat is open, posts a notification
 (channel `reception_replies`, or `reception_replies_unbadged` with `setShowBadge(false)` while `updatesAppBadge` is
 false, because a channel's badge setting cannot change once created; both named with the localized "Support replies",
@@ -217,10 +219,13 @@ that does only this (and forwards `onNewToken` to `setPushToken`), for hosts wit
 `handlePushMessage` takes a `Context` because FCM can start the process for a message before anything configured the
 SDK (Flutter and React Native configure from Dart/JS, which does not run for a background message); without one the
 notification could not be posted. It recognizes the payload synchronously, so it may be called from FCM's worker
-thread, and does the rest on the main thread. It is idempotent per FCM message: the last 64 `google.message_id`
-values are kept (SharedPreferences `sh.reception.push`, outside the session namespace, under the App ID's storage
-namespace or, before configure, a global key; checked on the storage thread), and a repeat returns true without a
-second notification or unread refresh. A message without that field is always handled. The library manifest declares the service `exported="false"` without an
+thread, and does the rest on the main thread. It is idempotent per FCM message: the last 64 FCM message IDs are kept
+(SharedPreferences `sh.reception.push`, outside the session namespace, under the App ID's storage namespace or, before
+configure, a global key; checked on the storage thread), and a repeat returns true without a second notification or
+unread refresh. Firebase removes the reserved `google.*` keys from `RemoteMessage.data` and exposes the ID as
+`RemoteMessage.messageId`, so hosts with their own service pass `remoteMessage.messageId` (the SDK's service does). The
+two-argument form reads the ID from `google.message_id` in the map, for callers that hold the raw FCM extras (the
+Flutter and React Native plugins' broadcast receivers). A message without an ID is always handled. The library manifest declares the service `exported="false"` without an
 intent filter, so it receives nothing until the host adds the filter:
 
 ```xml

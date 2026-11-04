@@ -68,7 +68,7 @@ If your app has its own `FirebaseMessagingService`, forward Reception's messages
 
 ```kotlin
 override fun onMessageReceived(message: RemoteMessage) {
-    if (Reception.handlePushMessage(this, message.data)) return
+    if (Reception.handlePushMessage(this, message.data, message.messageId)) return
     // Your existing handling.
 }
 
