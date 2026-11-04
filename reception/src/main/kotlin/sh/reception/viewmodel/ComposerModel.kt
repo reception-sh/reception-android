@@ -6,7 +6,10 @@ import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import sh.reception.ReceptionLocalization
 import sh.reception.client.ImagePreparation
@@ -15,8 +18,11 @@ import sh.reception.strings.Strings
 import java.io.IOException
 import java.util.UUID
 
-/** The message being written: its text (persisted as the draft) and up to five prepared photos (memory only). */
-internal class ComposerModel {
+/**
+ * The message being written: its text (persisted as the draft) and up to five prepared photos (memory only). Picked
+ * photos are prepared in the chat's [scope], so a configuration change while they prepare loses none of them.
+ */
+internal class ComposerModel(private val scope: CoroutineScope) {
     /** A picked photo as it will be sent, with a small decoded preview for the composer. */
     class Photo(val data: ByteArray, val preview: Bitmap) {
         val id: String = UUID.randomUUID().toString()
@@ -61,17 +67,31 @@ internal class ComposerModel {
         if (!isEdited) currentText = draft
     }
 
-    /** Reads and prepares picked photos off the main thread; one that cannot be read shows the photo error. */
-    suspend fun load(context: Context, uris: List<Uri>) {
-        if (loading) return
+    /** Picked photos not prepared yet, in order; each stays here until its preparation finished. */
+    private val picked = mutableListOf<Uri>()
+    private var preparation: Job? = null
+
+    /**
+     * Reads and prepares picked photos off the main thread with the application context; one that cannot be read
+     * shows the photo error. A pick while others prepare joins the queue.
+     */
+    fun add(context: Context, uris: List<Uri>) {
+        picked += uris
+        if (preparation != null || picked.isEmpty()) return
+        val application = context.applicationContext
         loading = true
-        try {
-            for (uri in uris.take(remainingPhotos)) {
-                val photo = withContext(Dispatchers.IO) { prepare(context, uri) }
-                if (photo == null) hasPhotoError = true else photos = photos + photo
+        preparation = scope.launch {
+            try {
+                while (picked.isNotEmpty() && remainingPhotos > 0) {
+                    val photo = withContext(Dispatchers.IO) { prepare(application, picked.first()) }
+                    picked.removeAt(0)
+                    if (photo == null) hasPhotoError = true else photos = photos + photo
+                }
+                picked.clear()
+            } finally {
+                loading = false
+                preparation = null
             }
-        } finally {
-            loading = false
         }
     }
 

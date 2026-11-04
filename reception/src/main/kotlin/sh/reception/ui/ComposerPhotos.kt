@@ -21,7 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,7 +31,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import kotlinx.coroutines.launch
 import sh.reception.R
 import sh.reception.ReceptionLocalization
 import sh.reception.Theme
@@ -72,16 +70,15 @@ internal fun ComposerPhotos(model: ComposerModel, sizes: ComposerDimensions) {
 internal fun rememberPhotoPicker(model: ComposerModel): (() -> Unit)? {
     if (LocalActivityResultRegistryOwner.current == null) return null
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val remaining = model.remainingPhotos
     val several = remember(remaining) { PickMultipleVisualMedia(maxOf(2, remaining)) }
     val many = rememberLauncherForActivityResult(several) { uris ->
         model.isPicking = false
-        scope.launch { model.load(context, uris) }
+        model.add(context, uris)
     }
     val one = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
         model.isPicking = false
-        if (uri != null) scope.launch { model.load(context, listOf(uri)) }
+        if (uri != null) model.add(context, listOf(uri))
     }
     val request = PickVisualMediaRequest(PickVisualMedia.ImageOnly)
     return {

@@ -45,7 +45,7 @@ internal class ChatModel(val session: DeviceSession?) {
     /** The app accepts only verified users and this session is not one; kept in memory only. */
     var verificationRequired: Boolean by mutableStateOf(false)
     var sendingPermissionRevision: Int = 0
-    val composer: ComposerModel = ComposerModel()
+    val composer: ComposerModel = ComposerModel(scope)
     var connection: ConnectionState by mutableStateOf(ConnectionState.HIDDEN)
     var networkMonitor: NetworkMonitor? = null
     var connectionDismissal: Job? = null
