@@ -3,7 +3,6 @@ package sh.reception.viewmodel
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -61,8 +60,8 @@ class ChatActivationTest {
         val chat = startedChat()
         chat.activate()
         release.countDown()
-        harness.mainLoopUntil { harness.requests("GET", "/v1/conversation/events").isNotEmpty() }
-        assertTrue(chat.isChatActive)
+        // A session resume may open the stream on its own, so the test waits for the activation itself.
+        harness.mainLoopUntil { chat.isChatActive && harness.requests("GET", "/v1/conversation/events").isNotEmpty() }
         chat.deactivate(keepsPolling = false)
     }
 }
