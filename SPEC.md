@@ -134,7 +134,10 @@ reconfiguration and successful `deleteData()` finish the SDK's activity.
 
 `ReceptionChatView()` (composable) is the chat screen without the sheet, for host navigation. Because its signature exposes `Modifier`, the Compose UI, foundation and Material 3 artifacts are `api` dependencies of the library, and so is kotlinx-coroutines-android, because `unreadCount` and `isChatOpen` are `StateFlow`s. The View wrapper
 embeds the composable in a `ComposeView`; it needs a host that sets a `ViewTreeLifecycleOwner` (every activity and
-Flutter/React Native platform view does). Neither calls `openChat()`. Every chat on screen shows the one chat model:
+Flutter/React Native platform view does). The embedded chat lifts its composer with the IME insets; a host window that pans for the
+keyboard (`adjustPan`, or `adjustUnspecified`, the default of an activity without `windowSoftInputMode`, as in Android
+Studio's Compose template) would move it a second time, so while a chat is embedded such a window is set to
+`adjustResize` and gets its own mode back when the last embedded chat in it leaves (`ui/EmbeddedKeyboardMode`). Neither calls `openChat()`. Every chat on screen shows the one chat model:
 it stays visible (`isChatOpen`) while any of them is started and keeps loading and listening while any is resumed, so
 removing one of two embedded views leaves the other running; the app going to the background stops it for all.
 
