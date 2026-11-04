@@ -2,10 +2,13 @@ package sh.reception.client
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,8 +24,9 @@ import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Team names and photos: restored together from [cache], then refreshed from authoritative team details. Photos are
- * held in memory by member, keyed by their photo ID; a replacement downloads while the previous photo stays visible.
- * A failed download is not retried until the next update. Main thread only, the cache on [Storage]; [scope] ends
+ * held in memory by member, keyed by their photo ID; a replacement downloads and decodes while the previous photo
+ * stays visible. A failed download is not retried until the next update. State changes on [scope]'s dispatcher (the
+ * main thread); files are read and written on [storage], one at a time, and photos decode on [decoding]. [scope] ends
  * every download.
  */
 internal class TeamProfiles(
@@ -30,6 +34,8 @@ internal class TeamProfiles(
     private val cache: TeamProfileCache? = null,
     private val download: suspend (String) -> ByteArray? = ::downloadPhoto,
     private val decode: (ByteArray) -> Bitmap? = { BitmapFactory.decodeByteArray(it, 0, it.size) },
+    private val storage: CoroutineDispatcher = Storage.dispatcher,
+    private val decoding: CoroutineDispatcher = Dispatchers.Default,
 ) {
     private class Pending(val key: String, val url: String, val attempt: Int, val job: Job)
 
@@ -41,32 +47,52 @@ internal class TeamProfiles(
     private val pending = mutableMapOf<String, Pending>()
     private var attempts = 0
     private var updated = false
+    private var lastWrite: Job? = null
 
     init {
-        // The cache loads on the storage thread; team details that arrived meanwhile are newer and win.
-        if (cache != null) scope.launch { restore(Storage.run { cache.load() }) }
+        if (cache != null) {
+            // Every later write waits for the load, so an early update cannot replace entries it has not read yet.
+            val loading = scope.async(storage) { cache.load() }
+            lastWrite = loading
+            scope.launch { restore(loading.await()) }
+        }
     }
 
     private suspend fun restore(entries: Map<String, TeamProfileCache.Entry>) {
-        val members = mutableMapOf<String, TeamMember>()
-        val images = mutableMapOf<String, Bitmap>()
-        for ((id, entry) in entries) {
-            entry.name?.let { members[id] = TeamMember(id, it, photoId = entry.photoId) }
-            entry.data?.let { data -> withContext(Dispatchers.Default) { decode(data) } }?.let { images[id] = it }
+        val images = withContext(decoding) {
+            entries.mapNotNull { (id, entry) -> entry.data?.let(decode)?.let { id to it } }.toMap()
         }
-        if (updated) return
-        mutableMembers.value = members
+        // Team details that arrived meanwhile are newer: they keep their names, and a cached photo is used only when
+        // it is exactly the one they are downloading.
+        if (!updated) {
+            mutableMembers.value = entries.mapNotNull { (id, entry) ->
+                entry.name?.let { id to TeamMember(id, it, photoId = entry.photoId) }
+            }.toMap()
+        }
         for ((id, image) in images) {
-            if (id in mutableImages.value || id in pending) continue
+            val photoId = entries[id]?.photoId
+            val wanted = if (updated) photoId != null && pending[id]?.key == photoId else id !in mutableImages.value
+            if (!wanted) continue
+            pending.remove(id)?.job?.cancel()
             mutableImages.value += id to image
-            loadedKeys[id] = entries[id]?.photoId
+            loadedKeys[id] = photoId
+        }
+    }
+
+    /** Cache writes run in order on [storage], independent of [scope], so a late write is never lost or reordered. */
+    private fun write(block: (TeamProfileCache) -> Unit) {
+        val cache = cache ?: return
+        val previous = lastWrite
+        lastWrite = scope.launch(storage + NonCancellable) {
+            previous?.join()
+            block(cache)
         }
     }
 
     fun update(team: Map<String, TeamMember>, showsPhotos: Boolean = true) {
         updated = true
         mutableMembers.value = team
-        cache?.let { Storage.launch { it.update(team, showsPhotos) } }
+        write { it.update(team, showsPhotos) }
         val photos = if (showsPhotos) team else emptyMap()
         for (id in mutableImages.value.keys + pending.keys) {
             if (photos[id]?.photoId != null || photos[id]?.photoUrl != null) continue
@@ -95,14 +121,14 @@ internal class TeamProfiles(
         try {
             val data = download(url)
             if (pending[id]?.attempt != attempt) return
-            val image = data?.let { withContext(Dispatchers.Default) { decode(it) } }
+            val image = data?.let { withContext(decoding) { decode(it) } }
             if (pending[id]?.attempt != attempt) return
             pending.remove(id)
             if (data == null || image == null) return
             mutableImages.value += id to image
             loadedKeys[id] = key
             val photoId = member.photoId
-            if (photoId != null && cache != null) Storage.launch { cache.save(data, photoId, id) }
+            if (photoId != null) write { it.save(data, photoId, id) }
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (_: IOException) {
