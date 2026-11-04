@@ -95,6 +95,11 @@ class SessionAuthorizationTest {
 
     private fun summary() = requests.map { "${it.method} ${it.path} ${it.getHeader("Authorization").orEmpty()}".trim() }
 
+    /** The session's own requests (devices, conversation), without what configure reads besides them. */
+    private fun sessionSummary() = requests.toList()
+        .filter { it.path?.startsWith("/v1/devices") == true || it.path?.startsWith("/v1/conversation") == true }
+        .map { "${it.method} ${it.path}" }
+
     @Test
     fun concurrentCallersShareOneRenewal() = runTest(dispatcher) {
         respond = { request ->
@@ -403,8 +408,8 @@ class SessionAuthorizationTest {
         assertEquals(DeviceIdentity(name = "Ada"), current.pending)
         current.prepared()
         assertEquals(DeviceIdentity(name = "Ada"), current.store.pending)
-        // Configure's subscription check reads the automations without a token; it is not part of the session.
-        assertEquals(listOf("POST /v1/devices/me/token"), summary().filter { it != "GET /v1/automations" })
+        // Configure's own reads (automations, appearance, paywalls) arrive in any order; only the session's count.
+        assertEquals(listOf("POST /v1/devices/me/token"), sessionSummary())
     }
 
     @Test
@@ -425,10 +430,10 @@ class SessionAuthorizationTest {
         withContext(RequestContext(automation = true)) { session.token() }
         session.update()
 
-        // Configure's subscription check reads the automations on its own connection, so it can arrive first.
-        val sessionRequests = requests.filter { it.path != "/v1/automations" }
-        assertEquals(listOf("POST /v1/devices", "PATCH /v1/devices/me"), sessionRequests.map { "${it.method} ${it.path}" })
-        val (registered, updated) = sessionRequests
+        // Configure's own reads arrive on their own connections in any order; each session request is found by path.
+        assertEquals(listOf("POST /v1/devices", "PATCH /v1/devices/me"), sessionSummary())
+        val registered = requests.single { it.method == "POST" && it.path == "/v1/devices" }
+        val updated = requests.single { it.method == "PATCH" && it.path == "/v1/devices/me" }
         val registration = Json.parseToJsonElement(registered.body.readUtf8()).jsonObject
         assertEquals("app_payloadPayloadPayload1", registered.getHeader("X-App-Id"))
         assertEquals("Reception-Android/1.0.0", registered.getHeader("User-Agent"))
