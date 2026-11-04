@@ -194,6 +194,51 @@ class SessionAuthorizationTest {
     }
 
     @Test
+    fun aCallerThatReadsDuringAnUnsavedRegistrationSendsNothing() = runTest(dispatcher) {
+        respond = { json(201, """{"token":"t","sessionSecret":"s"}""") }
+        val answers = LinkedBlockingQueue<SecureStore.ReadResult>()
+        val reads = Semaphore(0)
+        val gated = DeviceStore.CredentialStorage(
+            read = { reads.release(); answers.take() },
+            save = storage.save,
+            delete = storage.delete,
+        )
+        val store = DeviceStore(context, "app_test${System.nanoTime()}", credentialStorage = gated)
+        val session = DeviceSession(ReceptionAPI(APP_ID, server.url("/")), store, refreshSleep = {})
+        answers.put(SecureStore.ReadResult.Unavailable)
+        session.prepared()
+        savesFail = true
+        val callers = List(2) {
+            async {
+                try {
+                    withContext(RequestContext(automation = true)) {
+                        session.api.request<EmptyResponse>("conversation/unread", authenticated = true)
+                    }
+                    null
+                } catch (error: ReceptionAPIError) {
+                    error.code
+                }
+            }
+        }
+        runCurrent()
+        answers.put(SecureStore.ReadResult.Unavailable)
+        answers.put(SecureStore.ReadResult.Unavailable)
+        // The first caller's second read is on the storage thread, the second caller's is queued behind it.
+        withContext(Dispatchers.IO) { assertTrue(reads.tryAcquire(4, 5, TimeUnit.SECONDS)) }
+        runCurrent()
+        answers.put(SecureStore.ReadResult.Missing)
+        // The first caller registers; its save waits on the storage thread behind the second caller's read.
+        withContext(Dispatchers.IO) { assertTrue(reads.tryAcquire(1, 5, TimeUnit.SECONDS)) }
+        while (session.accessToken == null) {
+            withContext(Dispatchers.IO) { Thread.sleep(10) }
+            runCurrent()
+        }
+        answers.put(SecureStore.ReadResult.Missing)
+        assertEquals(listOf("secure_storage_unavailable", "secure_storage_unavailable"), callers.awaitAll())
+        assertEquals(listOf("POST /v1/devices"), summary())
+    }
+
+    @Test
     fun aRegistrationThatCannotBeStoredIsRetriedFromMemoryBeforeUse() = runTest(dispatcher) {
         respond = { json(201, """{"token":"t","sessionSecret":"s"}""") }
         val store = DeviceStore(context, "app_test${System.nanoTime()}", credentialStorage = storage)

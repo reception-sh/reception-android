@@ -31,13 +31,10 @@ internal suspend fun DeviceSession.token(): String {
         Log.debug { "Request skipped, session halted" }
         throw ReceptionAPIError("session_halted", 0)
     }
-    persistPendingCredentials()
-    accessToken?.let { return it }
-    registration?.let { return it.awaitShared() }
+    settledToken()?.let { return it }
     if (storedCredentials() != null) return renewedToken(replacing = null)
-    // The read may suspend: a caller that read at the same time can have started the registration meanwhile.
-    accessToken?.let { return it }
-    registration?.let { return it.awaitShared() }
+    // The read may suspend: a caller that read at the same time can have registered or started to meanwhile.
+    settledToken()?.let { return it }
     if (context.probe != null) registrationAllowed = true
     if (!registrationAllowed && !context.automation && !context.launch) throw ReceptionAPIError("chat_not_started", 0)
     // Launch registration belongs to the foreground; the reads above may have outlasted it.
@@ -48,11 +45,11 @@ internal suspend fun DeviceSession.token(): String {
 /** A token other than [replacing]: one a concurrent refresh already stored, or a new one. Refreshes one at a time. */
 internal suspend fun DeviceSession.renewedToken(replacing: String?): String {
     if (invalidated) throw ReceptionAPIError("cancelled", 0)
-    accessToken?.takeIf { it != replacing }?.let { return it }
+    settledToken(replacing)?.let { return it }
     refresh?.let { return it.awaitShared() }
     val secret = storedCredentials()?.sessionSecret ?: throw ReceptionAPIError("session_revoked", 401)
-    // The read may suspend: a concurrent caller can have started the renewal meanwhile.
-    accessToken?.takeIf { it != replacing }?.let { return it }
+    // The read may suspend: a concurrent caller can have registered or started the renewal meanwhile.
+    settledToken(replacing)?.let { return it }
     refresh?.let { return it.awaitShared() }
     // A renewal limit fails callers at once instead of holding their requests for the whole wait.
     admit(listOf(RetryScope.SESSION))
@@ -71,6 +68,20 @@ internal suspend fun DeviceSession.renewedToken(replacing: String?): String {
     }
     refresh = task
     return task.awaitShared()
+}
+
+/**
+ * The token in memory other than [replacing], only once no registration is in flight and its credentials are on
+ * disk: a registration sets the token before its save, so a caller that sees it early waits for that save (and fails
+ * with it) instead of sending requests for a session that may not survive a restart.
+ */
+private suspend fun DeviceSession.settledToken(replacing: String? = null): String? {
+    while (true) {
+        registration?.awaitShared()
+        persistPendingCredentials()
+        // Both steps may suspend, and another registration may have started meanwhile.
+        if (registration == null) return accessToken?.takeIf { it != replacing }
+    }
 }
 
 @Serializable
