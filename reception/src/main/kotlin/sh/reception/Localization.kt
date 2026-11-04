@@ -42,6 +42,10 @@ internal object ReceptionLocalization {
     val appLanguage: String
         get() = canonical(languageOverride ?: AppLocale.languageTag(context) ?: "en")
 
+    /** [language], resolved through [applicationContext] while `configure` has not supplied one yet. */
+    fun language(applicationContext: Context): String =
+        resolveLanguage(languageOverride ?: AppLocale.languageTag(context ?: applicationContext) ?: "en")
+
     val language: String
         get() = resolveLanguage(appLanguage)
 

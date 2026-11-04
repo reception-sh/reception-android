@@ -1,6 +1,9 @@
 package sh.reception
 
+import android.app.LocaleManager
 import android.os.LocaleList
+import org.robolectric.RuntimeEnvironment
+import org.robolectric.annotation.Config
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,5 +29,21 @@ class AppLocaleTest {
     @Test
     fun withoutADeclarationTheFirstSystemLocaleIsUsed() {
         assertEquals("de-DE", AppLocale.resolve(emptyList(), german))
+    }
+
+    @Test
+    @Config(sdk = [34])
+    fun beforeConfigureTheSuppliedContextNamesTheAppsLanguage() {
+        val context = RuntimeEnvironment.getApplication()
+        val locales = context.getSystemService(LocaleManager::class.java)
+        locales.applicationLocales = LocaleList.forLanguageTags("de")
+        try {
+            AppLocale.invalidate()
+            ReceptionLocalization.context = null
+            assertEquals("de", ReceptionLocalization.language(context))
+        } finally {
+            locales.applicationLocales = LocaleList.getEmptyLocaleList()
+            AppLocale.invalidate()
+        }
     }
 }

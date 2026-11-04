@@ -96,10 +96,10 @@ internal object PushNotifications {
         val content = PendingIntent.getActivity(context, 0, tap,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val channel = channel(updatesAppBadge)
-        // Created on every post, so the channel's name follows the app's language.
+        // Created on every post, so the channel's name follows the app's language, also before configure.
         manager.createNotificationChannel(
             NotificationChannelCompat.Builder(channel, NotificationManagerCompat.IMPORTANCE_HIGH)
-                .setName(ReceptionLocalization.string(Strings.supportReplies))
+                .setName(ReceptionLocalization.string(ReceptionLocalization.language(context), Strings.supportReplies))
                 .setShowBadge(updatesAppBadge)
                 .build(),
         )

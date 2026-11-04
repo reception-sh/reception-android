@@ -50,6 +50,12 @@ internal object AppLocale {
         Storage.launch { if (declared == null) declared = readDeclared(context) }
     }
 
+    /** [prepare] and wait, for work that needs the final language before anything configured the SDK. */
+    suspend fun prepared(context: Context) {
+        if (declared != null) return
+        Storage.run { if (declared == null) declared = readDeclared(context) }
+    }
+
     /**
      * The first system locale the app declares; when it declares languages but none matches, its first declared one,
      * so an English-only app stays English on a German-only phone. Without a declaration, the first system locale.
