@@ -8,7 +8,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import sh.reception.AppLocale
-import sh.reception.ReceptionPush
+import sh.reception.PendingChatOpen
 import sh.reception.ReceptionState
 import sh.reception.ui.ChatPresenter
 import java.lang.ref.WeakReference
@@ -63,7 +63,7 @@ internal object ApplicationLifecycle : DefaultLifecycleObserver, Application.Act
         // A new per-app or system language recreates activities, so the app language is read again.
         AppLocale.invalidate()
         ChatPresenter.activityResumed(activity)
-        ReceptionPush.activityResumed(activity)
+        PendingChatOpen.activityResumed(activity)
     }
 
     override fun onActivityPaused(activity: Activity) {

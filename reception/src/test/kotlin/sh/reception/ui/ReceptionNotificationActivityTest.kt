@@ -181,4 +181,20 @@ class ReceptionNotificationActivityTest {
         tap("d3")
         assertEquals(ReceptionChatActivity::class.java.name, resume(host)?.component?.className)
     }
+
+    @OptIn(ReceptionInternalApi::class)
+    @Test
+    fun routingTurnedOffAfterTheResumeButBeforeTheOpenRunsCancelsIt() {
+        val host = Robolectric.buildActivity(Activity::class.java).setup().get()
+        for (enablesAgain in listOf(false, true)) {
+            tap("g$enablesAgain")
+            // The resume takes the request and posts the open; routing turns off before that runs.
+            ApplicationLifecycle.noteCurrentActivity(host)
+            Reception.setNotificationRoutingEnabled(false)
+            if (enablesAgain) Reception.setNotificationRoutingEnabled(true)
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(3))
+            assertNull(shadowOf(host).nextStartedActivity)
+            Reception.setNotificationRoutingEnabled(true)
+        }
+    }
 }

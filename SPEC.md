@@ -272,7 +272,8 @@ docs) with the activity they are attached to. It seeds the current-activity trac
 
 The plugins' `configure(handlesNotifications: false)` calls the internal
 `Reception.setNotificationRoutingEnabled(false)` (`@ReceptionInternalApi`, plugin-only, main thread): it discards the
-pending tap and cancels the post-configure drain, and `ReceptionNotificationActivity` then only brings the app forward
+pending tap and cancels the post-configure drain and a tap's chat that waits for the next resume, also one whose
+activity already resumed but whose open has not run yet (a routing generation captured when the open is queued), and `ReceptionNotificationActivity` then only brings the app forward
 (restores its task or starts the launcher) without opening the chat. `true` (the default) routes taps again. The app's
 own `handlePushNotification(data, openChat)` calls are unaffected. Plugins that let the host own notifications call
 `setNotificationRoutingEnabled(false)` before `configure`, because the flag lives in memory and a tap that arrived

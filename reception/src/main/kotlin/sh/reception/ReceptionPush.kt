@@ -1,6 +1,5 @@
 package sh.reception
 
-import android.app.Activity
 import android.content.Context
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.app.NotificationManagerCompat
@@ -30,7 +29,6 @@ internal object ReceptionPush {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var registration: Job? = null
     private var drain: Job? = null
-    private var opensWhenResumed = false
 
     /** False while a Flutter or React Native app handles notifications itself: taps only bring the app forward. */
     private var routesTaps = true
@@ -89,7 +87,7 @@ internal object ReceptionPush {
     }
 
     /** `Reception.handlePushNotification`, the iOS routing call; it never posts a notification. */
-    fun handleNotification(data: Map<String, String>, openChat: Boolean): Boolean {
+    private fun handleNotification(data: Map<String, String>, openChat: Boolean): Boolean {
         val id = data[PushNotifications.PAYLOAD_KEY]?.takeIf { it.isNotEmpty() }
             ?: return false.also { Log.debug { "Push payload ignored, no conversation id" } }
         Log.debug { "Push payload recognized, conversation $id" }
@@ -108,7 +106,7 @@ internal object ReceptionPush {
     /** Opens the chat over the resumed activity, or over the next one when the app is still starting. */
     private fun requestOpen() {
         if (ReceptionState.session == null) return Log.error { "openChat called before configure, ignored" }
-        if (ApplicationLifecycle.currentActivity == null) return openWhenResumed()
+        if (ApplicationLifecycle.currentActivity == null) return PendingChatOpen.request()
         ChatPresenter.open()
     }
 
@@ -136,7 +134,7 @@ internal object ReceptionPush {
         drain?.cancel()
         drain = null
         routing.discardPendingTap()
-        opensWhenResumed = false
+        PendingChatOpen.routingTurnedOff()
     }
 
     /** A configure: a tap that launched the app before it opens the chat once, shortly after. */
@@ -160,24 +158,11 @@ internal object ReceptionPush {
         when (routing.action(key, openChat = true)) {
             NotificationRouting.Action.RECEIVE_AND_OPEN -> {
                 received(conversationId)
-                openWhenResumed()
+                PendingChatOpen.request()
             }
-            NotificationRouting.Action.OPEN -> openWhenResumed()
+            NotificationRouting.Action.OPEN -> PendingChatOpen.request()
             NotificationRouting.Action.RECEIVE, NotificationRouting.Action.IGNORE -> Log.debug { "Notification tap ignored, handled already" }
         }
-    }
-
-    /** The tap brings the app forward; the chat opens over the activity that resumes then. */
-    private fun openWhenResumed() {
-        opensWhenResumed = true
-        Log.debug { "Chat opens once an activity is resumed" }
-    }
-
-    fun activityResumed(activity: Activity) {
-        if (!opensWhenResumed) return
-        opensWhenResumed = false
-        // After the activity's own onResume, so the sheet starts over a settled screen.
-        activity.window?.decorView?.post { if (ReceptionState.session != null) ChatPresenter.open() }
     }
 
     /** Unread reached [count]; with `updatesAppBadge`, read replies leave the notification shade. */
