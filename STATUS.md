@@ -2,6 +2,32 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-04: Phase B2 done (see verification/phase-b2.md). `Reception.identify(token)` is now `identifyWithToken`.
+  Public appearance: `Reception.Appearance` (Compose-state-backed properties, so changes reach an open chat; title
+  texts track whether the host set them), `CloseIcon`, `WelcomeIcon` (`symbol`/`image(Painter)`/`hidden`), `FontDesign`,
+  `ColorScheme`, `appearance`, `usesRemoteAppearance`; these must sit inside `Reception.kt` (Kotlin has no nested
+  typealiases), so that file is 327 lines. Internal state in `ReceptionAppearance.kt` (`resolved`, `imageUrl`, refresh
+  task started at configure/foreground/session resume, cancelled in background). `configuration/`: RemoteAppearance +
+  RemoteAppearanceResolution (`applying` → `ResolvedAppearance`, colors per mode as `AdaptiveColor`, null variants =
+  native default chosen at draw time), AppearanceCache (envelope + ETag in SharedPreferences `sh.reception.appearance`;
+  iOS keeps the ETag in memory only, the brief asked to persist it, so a cold start gets a 304), AppearanceConfiguration
+  (active vs latest, `activate()` at chat opening, uses the current session only when it has the same App ID),
+  HostAppearanceReport (filled into the device payload directly; `FacadeState.appearanceReport` is gone), HostAccent
+  (theme `colorPrimary`, then `colorAccent`, fallback iOS system blue), AppearanceSymbols + 34 Material Symbols
+  (Rounded) drawables `reception_symbol_*` (THIRD_PARTY_NOTICES.md), AppearanceIconView + AppearanceImages (own Coil
+  loader, memory cache only). Theme: `ThemeAppearance.kt` (`LocalAppearance`, `LocalHostAccent`), `ThemeFonts.kt`,
+  ThemeColors resolve background/secondary/incoming/accent/onAccent/welcome icon colors and `outgoingBackground(olderBy)`
+  (no increased-contrast exemption on Android). Client: ImagePreparation, ImageUploader, UploadProgress,
+  AttachmentImageLoader (+ `AttachmentImageState` StateFlow) and AttachmentImages (`DeviceSession.attachmentImages`,
+  cleared on deactivate), TeamProfiles (StateFlows; OkHttp, not Coil, because the bytes also go to TeamProfileCache),
+  LinkPolicy (`queryIntentActivities`, cached per scheme+host), `HttpExchange.data`. Phase C must: provide
+  `LocalAppearance` (`ReceptionAppearance.resolved`) and `LocalHostAccent` (MaterialTheme primary when embedded,
+  `HostAccent.color(activity)` in the sheet) at the chat root, call `ReceptionAppearance.configuration.activate()` when
+  the chat opens, run `refreshWhileActive` while an embedded `ReceptionChatView` is visible, and use
+  `activePushPrompt`. Open: the reported/default accent of Compose-only hosts (their XML theme often keeps the platform
+  `colorPrimary`, e.g. `#F5F5F5` in the example) — consider reporting the accent last drawn, or `colorAccent` first.
+  Next, Phase C: ChatModel port (`viewmodel/`), Compose views, presenter and `ReceptionChatActivity`, `openChat`,
+  `closeChat`, `ReceptionChatView`.
 - 2026-11-04: Phase B1 done except the live smoke test (see verification/phase-b1.md). Toolchain: AGP 8.9.3, Gradle
   8.11.1, no compileSdk suppression; Compose ui/foundation/material3 are `api`. Strings are Kotlin now:
   `tool/sync_strings.py` writes `sh.reception.strings.<Tag>` objects plus `Strings.kt` (keys, `languages` registry)
