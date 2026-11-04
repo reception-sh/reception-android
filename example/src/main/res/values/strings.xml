@@ -14,6 +14,7 @@
     <string name="appearance_light">Light</string>
     <string name="appearance_dark">Dark</string>
     <string name="ok">OK</string>
+    <string name="updates_app_badge">Update app badge</string>
     <string name="register_push">Register for push</string>
     <string name="track_event">Track event</string>
     <string name="delete_data">Delete data</string>

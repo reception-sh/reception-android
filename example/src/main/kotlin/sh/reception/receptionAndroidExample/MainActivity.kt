@@ -108,6 +108,14 @@ private fun Settings() {
             Reception.languageOverride = if (it) "de" else null
         })
     }
+    var badge by rememberSaveable { mutableStateOf(Reception.updatesAppBadge) }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(stringResource(R.string.updates_app_badge))
+        Switch(checked = badge, onCheckedChange = {
+            badge = it
+            Reception.updatesAppBadge = it
+        })
+    }
     OutlinedButton(onClick = {
         scheme = when (scheme) {
             null -> Reception.ColorScheme.LIGHT
