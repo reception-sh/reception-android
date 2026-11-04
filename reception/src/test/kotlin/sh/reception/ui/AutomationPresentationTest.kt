@@ -16,6 +16,7 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import sh.reception.Reception
 import sh.reception.ReceptionState
 import sh.reception.client.ApplicationLifecycle
 import sh.reception.client.Automations
@@ -78,6 +79,20 @@ class AutomationPresentationTest {
         assertEquals(ReceptionChatActivity::class.java.name, shadowOf(second).nextStartedActivity?.component?.className)
         assertTrue(finished)
         assertTrue(automations.takeOpenedChat())
+    }
+
+    @Test
+    fun aChatTheHostClosedWhileTheRecordIsSavedIsNotOpenedAgain() {
+        val host = resumed()
+        val release = openWhileStorageIsHeld()
+        Reception.closeChat()
+        release()
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(200))
+        harness.settle()
+        assertNull("the automation reopened the chat the host closed", shadowOf(host).nextStartedActivity)
+        assertFalse(ChatPresenter.isPresented)
+        assertTrue(finished)
+        assertFalse(automations.takeOpenedChat())
     }
 
     @Test

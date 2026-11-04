@@ -52,9 +52,13 @@ internal object ChatPresenter {
         present(stillWanted)
     }
 
-    /** `Reception.closeChat()`: only the SDK's own sheet; a host-embedded chat is the host's to remove. */
+    /**
+     * `Reception.closeChat()`: only the SDK's own sheet; a host-embedded chat is the host's to remove. It also withdraws
+     * an automation's open that is still pending ([ReceptionState.closeRevision]).
+     */
     fun close() {
         if (ReceptionState.session == null) return Log.error { "closeChat called before configure, ignored" }
+        ReceptionState.chatClosedByHost()
         if (!dismiss()) Log.debug { "Chat close skipped, chat not presented by the SDK" }
     }
 

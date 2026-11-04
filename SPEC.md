@@ -434,7 +434,8 @@ The chat an automation opens follows the iOS rule (only within 5 s of `track`, o
 is resumed), with one Android difference: the sheet starts only after its presentation record is saved, so the rule
 waits for that outcome instead of a synchronous answer. A presentation cancelled meanwhile (another activity resumed)
 is tried again over the settled activity within the same 5 s, and the window and the session are checked again right
-before the sheet starts, so a save that ends after the window opens nothing.
+before the sheet starts, so a save that ends after the window opens nothing. A `closeChat()` call after the message
+arrived withdraws the open for good: a presentation it cancels during the save is not tried again.
 
 Paid access: iOS reads StoreKit. Android reads Play Billing when `com.android.billingclient:billing` (5+) is on the
 host's classpath: at configure and every foreground, `BillingClient.queryPurchasesAsync` for `SUBS` and `INAPP`; any

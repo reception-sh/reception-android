@@ -96,12 +96,14 @@ internal class Automations(
     /**
      * Opens the chat as soon as the app is active and no activity is still starting or closing, if that comes within
      * the window after the event; later, it would surprise the user. The chat stays closed if the person logged out
-     * meanwhile or the chat is already open. A presentation cancelled before its sheet started (another activity
-     * resumed while its record was saved) is tried again within the same window, which is checked once more right
-     * before the sheet starts.
+     * meanwhile, the host called `closeChat()` since, or the chat is already open. A presentation cancelled before its
+     * sheet started because another activity resumed while its record was saved is tried again within the same window,
+     * which is checked once more right before the sheet starts.
      */
     suspend fun openChatWhenSettled(start: Long, presentation: Int, arriving: Boolean) {
-        val wanted = { clock() - start < OPEN_WINDOW_MILLIS && presentation == ReceptionState.presentationRevision }
+        val closes = ReceptionState.closeRevision
+        val current = { presentation == ReceptionState.presentationRevision && closes == ReceptionState.closeRevision }
+        val wanted = { clock() - start < OPEN_WINDOW_MILLIS && current() }
         while (wanted()) {
             if (ReceptionState.isChatOpen.value) return
             if (presenter.isSettled) {
@@ -112,6 +114,7 @@ internal class Automations(
             delay(SETTLE_POLL_MILLIS)
         }
         if (presentation != ReceptionState.presentationRevision) return
+        if (closes != ReceptionState.closeRevision) return Log.debug { "Chat not opened, the app closed the chat" }
         Log.debug { "Chat not opened, the app or its screens did not settle in time" }
     }
 

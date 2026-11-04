@@ -58,6 +58,12 @@ internal object ReceptionState {
         private set
     var presentationRevision: Int = 0
         private set
+    /**
+     * Advanced by `Reception.closeChat()`: the host closed the chat on purpose, so an automation's open that is still
+     * pending stops. A screen change only cancels one attempt, which the automation tries again.
+     */
+    var closeRevision: Int = 0
+        private set
     val isChatOpen: MutableStateFlow<Boolean> = MutableStateFlow(false)
     val unreadMonitor: UnreadMonitor = UnreadMonitor()
     var logoutRevocations: LogoutRevocations? = null
@@ -165,6 +171,10 @@ internal object ReceptionState {
     fun chatModel(): ChatModel = chat ?: ChatModel(session).also { chat = it }
 
     /** A configure, logout or deletion: work queued for the earlier presentation state (an automation's open) stops. */
+    fun chatClosedByHost() {
+        closeRevision += 1
+    }
+
     fun advancePresentationRevision(dismissesChat: Boolean = true) {
         presentationRevision += 1
         if (dismissesChat) ChatPresenter.dismiss()
