@@ -89,11 +89,12 @@ internal object ChatPresenter {
         return true
     }
 
-    /** The save took a moment: the presentation may have been closed or superseded, or its screen left. */
+    /** The save took a moment: the presentation may have been closed or superseded, or its screen left or finished. */
     private fun startIfWanted(host: Activity, token: String, stillWanted: () -> Boolean): Boolean {
         if (presentation != token) return false
         val reason = when {
             ApplicationLifecycle.currentActivity !== host -> "the screen changed before it started"
+            host.isFinishing || host.isDestroyed -> "the screen closed before it started"
             !stillWanted() -> "it was withdrawn before it started"
             else -> return start(host, token)
         }

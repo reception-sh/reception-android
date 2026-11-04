@@ -102,6 +102,28 @@ class ChatPresentationTest {
     }
 
     @Test
+    fun aScreenThatFinishesWhileTheRecordIsSavedGetsNoSheet() {
+        harness.start()
+        for (destroyed in listOf(false, true)) {
+            val controller = Robolectric.buildActivity(Activity::class.java).setup()
+            val host = controller.get()
+            ApplicationLifecycle.onActivityResumed(host)
+            val release = CountDownLatch(1)
+            val storageHeld = Storage.launch { release.await(5, TimeUnit.SECONDS) }
+            ChatPresenter.open()
+            // The host closes itself before its pause arrives, so it is still the current activity.
+            host.finish()
+            if (destroyed) controller.destroy()
+            release.countDown()
+            runBlocking { storageHeld.join() }
+            harness.settle()
+            assertNull("sheet started over a finishing screen", shadowOf(host).nextStartedActivity)
+            assertFalse(ChatPresenter.isPresented)
+            assertNull(PresentationRecord.load(RuntimeEnvironment.getApplication()))
+        }
+    }
+
+    @Test
     fun anOpenedSheetIsPresented() {
         val sheet = created(launch { ChatPresenter.open() })
         assertFalse(sheet.isFinishing)
