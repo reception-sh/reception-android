@@ -59,10 +59,11 @@ kotlin {
 }
 
 dependencies {
-    implementation(platform(libs.compose.bom))
-    implementation(libs.compose.ui)
-    implementation(libs.compose.foundation)
-    implementation(libs.compose.material3)
+    // ReceptionChatView exposes Modifier, so hosts compile against the same Compose artifacts.
+    api(platform(libs.compose.bom))
+    api(libs.compose.ui)
+    api(libs.compose.foundation)
+    api(libs.compose.material3)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.process)
