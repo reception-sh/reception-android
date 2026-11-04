@@ -30,7 +30,8 @@ internal class ChatHarness {
     @Volatile
     var respond: (RecordedRequest) -> MockResponse? = { null }
 
-    fun start(): ChatModel {
+    /** [beforeChat] runs once the session exists and before the chat model is created, e.g. to seed its storage. */
+    fun start(beforeChat: (DeviceSession) -> Unit = {}): ChatModel {
         SecureStore.keys = SoftwareKey()
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
@@ -43,6 +44,7 @@ internal class ChatHarness {
         ReceptionState.configure(RuntimeEnvironment.getApplication(), APP_ID)
         // Robolectric does not run the process lifecycle initializer; the app becomes active by hand.
         (ProcessLifecycleOwner.get().lifecycle as LifecycleRegistry).currentState = Lifecycle.State.RESUMED
+        beforeChat(session)
         val chat = ReceptionState.chatModel()
         mainLoopUntil { session.isRegistered && chat.isRestored }
         return chat
