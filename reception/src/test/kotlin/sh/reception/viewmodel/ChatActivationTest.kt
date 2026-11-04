@@ -28,6 +28,8 @@ class ChatActivationTest {
         val chat = harness.start()
         harness.session.store.hasStartedChat = true
         harness.session.store.hasConversation = true
+        // The server agrees with itself: an unread answer that says "no conversation" after the load would rightly
+        // stop the chat from listening.
         harness.respond = { request ->
             when (request.path?.substringBefore('?')) {
                 "/v1/conversation" -> {
@@ -35,6 +37,7 @@ class ChatActivationTest {
                     harness.json("""{"conversation":$CONVERSATION,"messages":[]}""")
                 }
                 "/v1/conversation/events" -> harness.json("{}")
+                "/v1/conversation/unread" -> harness.json("""{"hasConversation":true,"unreadCount":0}""")
                 else -> null
             }
         }
@@ -60,8 +63,7 @@ class ChatActivationTest {
         val chat = startedChat()
         chat.activate()
         release.countDown()
-        // A session resume may open the stream on its own, so the activation itself is what proves it.
-        harness.mainLoopUntil { chat.isChatActive }
+        harness.mainLoopUntil { chat.isChatActive && harness.requests("GET", "/v1/conversation/events").isNotEmpty() }
         chat.deactivate(keepsPolling = false)
     }
 }
