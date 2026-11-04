@@ -2,6 +2,20 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-04: Fixes 10 done (see verification/fixes-10.md), one commit each. X-2 `ui/KeyboardWindow`: the embedded
+  chat adjusts the window that shows its composition (a Compose `Dialog`'s, the activity's, or a platform dialog's
+  through its root's window parameters), counted per window; found live: a Compose `Dialog` measures its content
+  against the display, so its window adjusts nothing from Android 11 and pans before (f106957). X-3 only the adjust bits
+  go back, and only while the window still carries the SDK's mode. X-1 `adjustNothing` resizes under an embedded chat
+  before Android 11. X-4 the paywall limits are private (`apiDump` −2 fields). X-5 `notificationSmallIcon` is stored by
+  resource name in `sh.reception.push` and restored with `getIdentifier` in a process FCM started (plugins need no
+  persistence). Example (debug): Chat in a dialog, `--ez adjustNothing true`, App notification icon switch.
+  `tool/release_check.sh` passes; `--rerun-tasks`: 18 of 19 runs green, one run failed one unnamed test (reports
+  overwritten, not reproduced in 14 further runs); live on Android 16 and Android 10 (`reception_api29`, shut
+  down after) StrictMode-clean: X-1 composer above Gboard, X-2 dialog `nothing` with the activity untouched, X-5 the
+  star icon from a killed process with a real FCM reply. Open: on Android 10 a Compose `Dialog`'s pan clips the
+  composer's lower edge (cursor line visible); whether overriding a host's explicit mode on a Compose `Dialog` is
+  acceptable; the unnamed flaky test.
 - 2026-11-04: Fixes 9 done (see verification/fixes-9.md), one commit each. U-1 `handlePushMessage(context, data,
   messageId)` (new overload): the SDK's service passes `RemoteMessage.messageId`, which Firebase keeps out of `data`, so
   real redeliveries now deduplicate; U-5 one global list of 64 message IDs across configure. U-2 no token leaves an
