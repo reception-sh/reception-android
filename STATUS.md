@@ -2,6 +2,17 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-04: Fixes 5 done (see verification/fixes-5.md), one commit each. K-1 `ui/ChatLifecycle` (process stop
+  deactivates unconditionally), K-2 `settled()` gate before every token hand-out, K-3 `onPaywall` Compose state, K-4
+  `LinkPolicy.normalizedScheme` in host queries and every launch, K-5 text links share the card route (no event or
+  receipt), K-6 lightbox gestures start past the touch slop (double tap 7/7 live). N-1 notification taps go to
+  `ui/ReceptionNotificationActivity` (records the tap, starts the launcher only as a new task's root, finishes; not
+  `excludeFromRecents`, which hid the app's task after a cold tap); launcher extras and `onNewIntent` listening are
+  gone; live: second activity on top, background, process killed with and without task. N-2 internal
+  `Reception.noteCurrentActivity` (`@ReceptionInternalApi`, plugin-only). N-3 SPEC note. N-4: the "no purchases →
+  subscribed false" path needs a Google account on the device; it stays covered by `PaidAccessTest` only. Splits:
+  `SubscriptionEvents.kt` out of `Automations.kt` (165), `Reception.kt` 397 (delegations and nested public types).
+  Example: Second screen. Open: a sheet buried under another app activity blocks `openChat()` and taps.
 - 2026-11-04: Phase D done (see verification/phase-d.md). Push: `ReceptionPush` (receipt, taps, registration),
   `client/PushNotifications` (channel `reception_replies`, tag `reception`, id from the conversation, launcher intent with
   `FLAG_ACTIVITY_SINGLE_TOP` and the two extras), `client/NotificationRouting` (port, 64 keys, pending tap drained 500 ms
