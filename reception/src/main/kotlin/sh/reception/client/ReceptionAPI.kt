@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
+import okhttp3.Headers
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
@@ -88,7 +89,7 @@ internal class ReceptionAPI(
         }
         val accepted = expectedStatus?.let { reply.status == it } ?: (reply.status in 200..299)
         if (!accepted) {
-            logRateLimit(reply)
+            logRateLimit(reply.status, reply.headers)
             val envelope = ErrorEnvelope.parse(json, reply.body)
             val wait = wait(reply.status, reply.headers["Retry-After"], envelope?.retryScope, path, method, token != null)
             throw ReceptionAPIError(envelope?.code ?: "http_error", reply.status, envelope?.message.orEmpty(),
@@ -162,9 +163,9 @@ internal class ReceptionAPI(
             throw ReceptionAPIError("invalid_input", 0)
         }
 
-        fun logRateLimit(reply: HttpReply) {
-            if (reply.status != 429) return
-            val seconds = retryAfter(reply.status, reply.headers["Retry-After"]) ?: 0
+        fun logRateLimit(status: Int, headers: Headers) {
+            if (status != 429) return
+            val seconds = retryAfter(status, headers["Retry-After"]) ?: 0
             Log.debug { "Rate limited, HTTP 429, retry after ${seconds}s" }
         }
     }

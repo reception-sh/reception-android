@@ -27,7 +27,7 @@ internal suspend fun ReceptionAPI.appearance(etag: String?): AppearanceReply {
     }
     if (reply.status == 304 && etag != null) return AppearanceReply(null, null, reply.headers["ETag"])
     if (reply.status != 200) {
-        ReceptionAPI.logRateLimit(reply)
+        ReceptionAPI.logRateLimit(reply.status, reply.headers)
         val envelope = ErrorEnvelope.parse(ReceptionAPI.json, reply.body)
         throw ReceptionAPIError(envelope?.code ?: "appearance_unavailable", reply.status,
             retryAfter = ReceptionAPI.retryAfter(reply.status, reply.headers["Retry-After"]))
