@@ -146,3 +146,17 @@ mavenPublishing {
         }
     }
 }
+
+// With -PreceptionComposeBom (see the root build.gradle.kts), the jars the unit tests run on, for
+// tool/compose_binary_check.py.
+if (providers.gradleProperty("receptionComposeBom").isPresent) {
+    tasks.register("composeCompatibilityClasspath") {
+        val jars = configurations.getByName("debugUnitTestRuntimeClasspath").incoming.artifactView {
+            attributes { attribute(Attribute.of("artifactType", String::class.java), "android-classes-jar") }
+        }.files
+        val output = layout.buildDirectory.file("compose-compatibility/classpath.txt")
+        inputs.files(jars)
+        outputs.file(output)
+        doLast { output.get().asFile.writeText(jars.joinToString("\n") { it.path } + "\n") }
+    }
+}

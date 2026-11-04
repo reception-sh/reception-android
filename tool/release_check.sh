@@ -102,8 +102,12 @@ pass
 
 step "Compose compatibility: unit tests and example on BOM $newest_compose_bom"
 # The library compiles against its own BOM; hosts run it on theirs. A signature that a newer Compose removed fails a
-# test or the example here with NoSuchMethodError (see the root build.gradle.kts).
-gradle compose-compatibility -PreceptionComposeBom="$newest_compose_bom" :reception:test :example:assembleDebug
+# test or the example here with NoSuchMethodError (see the root build.gradle.kts); the binary check finds such a call
+# also on paths the tests do not reach.
+gradle compose-compatibility -PreceptionComposeBom="$newest_compose_bom" :reception:test :example:assembleDebug \
+  :reception:composeCompatibilityClasspath
+python3 tool/compose_binary_check.py reception/build/tmp/kotlin-classes/debug \
+  reception/build/compose-compatibility/classpath.txt
 pass
 
 step "publishToMavenLocal and the POM"

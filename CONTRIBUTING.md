@@ -76,7 +76,7 @@ The SDK compiles against the Compose BOM in `gradle/libs.versions.toml` (and pub
 ./gradlew -PreceptionComposeBom=2026.09.00 :reception:test :example:assembleDebug
 ```
 
-`ChatScreensTest` and `DeliveryStatusTest` compose every screen (the embedded chat, the sheet, the history with each kind of message and a failed one with Retry, the composer, the cards, the lightbox, the status line), so a removed signature fails a test. The release check runs this once with `newest_compose_bom` from `tool/release_check.sh`. To bump it, look up the newest stable BOM:
+`ChatScreensTest` and `DeliveryStatusTest` compose every screen (the embedded chat, the sheet, the history with each kind of message and a failed one with Retry, the composer, the cards, the lightbox, the status line), so a removed signature fails a test. `tool/compose_binary_check.py` also checks every androidx method and field the SDK's compiled classes reference against that BOM's jars (listed by `:reception:composeCompatibilityClasspath`), including paths no test composes. The release check runs both once with `newest_compose_bom` from `tool/release_check.sh`. To bump it, look up the newest stable BOM:
 
 ```sh
 curl -s https://dl.google.com/dl/android/maven2/androidx/compose/compose-bom/maven-metadata.xml | grep -oE '<version>[0-9.]+</version>' | tail -1
