@@ -106,7 +106,9 @@ Android 14+). It is an activity, not a dialog fragment, so it works over any hos
 `FlutterActivity` and React Native's `ReactActivity`, survives configuration changes and keeps the keyboard inset
 logic in one place. The presenter (`ChatPresenter`) starts it from the current resumed activity; when no activity
 is resumed (app in background) the request is dropped with a debug log, like iOS when no window exists. A second
-`openChat()` while the sheet is up is a no-op. The sheet reports `isChatOpen` from its actual visibility
+`openChat()` while the sheet is up is a no-op. When another of the app's activities covers the sheet (it exists but is
+stopped), `openChat()` and a notification tap bring that sheet back with `FLAG_ACTIVITY_REORDER_TO_FRONT` instead of
+starting a second one. The sheet reports `isChatOpen` from its actual visibility
 (`onStart`/`onStop`), not from the request.
 
 While the keyboard is open, the sheet closes only by a drag that starts on its header (drag handle and title bar,

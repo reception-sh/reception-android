@@ -1,5 +1,6 @@
 package sh.reception.ui
 
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.SystemClock
@@ -47,9 +48,9 @@ internal object ChatPresenter {
         get() = sheet?.get() != null ||
             requestedAt?.let { SystemClock.uptimeMillis() - it < START_WINDOW_MILLIS } == true
 
-    /** Answers whether the sheet was started. */
+    /** Answers whether the sheet was started or brought to the front. */
     fun present(): Boolean {
-        if (ReceptionState.isChatOpen.value || isPresented) {
+        if (ReceptionState.isChatOpen.value || (isPresented && sheet?.get() == null)) {
             Log.debug { "Chat presentation skipped, chat already open" }
             return false
         }
@@ -58,6 +59,8 @@ internal object ChatPresenter {
             Log.debug { "Chat presentation skipped, no resumed activity" }
             return false
         }
+        // The sheet exists but another of the app's activities covers it: bring that sheet back instead of a second one.
+        if (sheet?.get() != null) return bringToFront(host)
         ReceptionAppearance.configuration.activate()
         presentation += 1
         return try {
@@ -68,6 +71,15 @@ internal object ChatPresenter {
             Log.error { "Chat presentation failed, ReceptionChatActivity missing from the merged manifest" }
             false
         }
+    }
+
+    private fun bringToFront(host: Activity): Boolean = try {
+        host.startActivity(Intent(host, ReceptionChatActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+        Log.debug { "Chat brought to the front" }
+        true
+    } catch (_: ActivityNotFoundException) {
+        Log.error { "Chat presentation failed, ReceptionChatActivity missing from the merged manifest" }
+        false
     }
 
     /**

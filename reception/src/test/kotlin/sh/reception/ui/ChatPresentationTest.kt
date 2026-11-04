@@ -3,6 +3,7 @@ package sh.reception.ui
 import android.app.Activity
 import android.content.Intent
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -50,6 +51,22 @@ class ChatPresentationTest {
         val sheet = created(launch { ChatPresenter.open() })
         assertFalse(sheet.isFinishing)
         assertTrue(ChatPresenter.isPresented)
+        ChatPresenter.close()
+    }
+
+    @Test
+    fun aSheetCoveredByAnotherActivityIsBroughtToTheFront() {
+        // Created but not started: what a sheet under another activity looks like to the presenter.
+        val sheet = created(launch { ChatPresenter.open() })
+        assertFalse(ReceptionState.isChatOpen.value)
+        val cover = Robolectric.buildActivity(Activity::class.java).setup().get()
+        ApplicationLifecycle.onActivityResumed(cover)
+        ChatPresenter.open()
+        val started = shadowOf(cover).nextStartedActivity
+        assertEquals(ReceptionChatActivity::class.java.name, started.component?.className)
+        assertTrue(started.flags and Intent.FLAG_ACTIVITY_REORDER_TO_FRONT != 0)
+        assertFalse(started.hasExtra(ChatPresenter.EXTRA_PRESENTATION))
+        assertFalse(sheet.isFinishing)
         ChatPresenter.close()
     }
 
