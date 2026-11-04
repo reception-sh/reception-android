@@ -2,9 +2,11 @@ package sh.reception.client
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -69,21 +71,25 @@ internal class LogoutRevocations(private val secureStore: SecureStore) {
     }
 
     /**
-     * Queues the revocation of the session secret [sessionSecret] reads. The returned job ends once the queue is on disk (or, when secure
-     * storage cannot be read yet, held in memory), so the caller's local reset never outruns it.
+     * Queues the revocation of the session secret [sessionSecret] reads. The result is true once the queue, merged with
+     * the stored one, is on disk; false when it is held in memory only (secure storage unreadable or a failed write) or
+     * when there is nothing to revoke. Either way it finishes only after the initial load, so the caller's local reset
+     * never deletes the credentials before the revocation had its chance to reach the disk.
      */
-    fun enqueue(api: ReceptionAPI, sessionSecret: suspend () -> String?): Job = scope.launch {
+    fun enqueue(api: ReceptionAPI, sessionSecret: suspend () -> String?): Deferred<Boolean> = scope.async {
         val secret = try {
             sessionSecret()
         } catch (_: ReceptionAPIError) {
-            return@launch Log.error { "Session revocation skipped, secure storage unavailable" }
-        } ?: return@launch
+            Log.error { "Session revocation skipped, secure storage unavailable" }
+            return@async false
+        } ?: return@async false
+        load()
+        loading?.join()
         val entry = Entry(api.appId, secret, address(api.baseUrl))
-        if (entry !in entries) {
-            entries = entries + entry
-            persist()
-        }
+        if (entry !in entries) entries = entries + entry
+        val stored = persist()
         resume()
+        stored
     }
 
     fun becameActive() {
@@ -159,11 +165,16 @@ internal class LogoutRevocations(private val secureStore: SecureStore) {
     @Serializable
     private class SecretInput(val sessionSecret: String)
 
-    private suspend fun persist() {
-        if (!loaded) return
-        // Retain in-memory work if secure storage is temporarily unavailable.
+    /** True when the queue reached the disk. An unread queue is never written, so it cannot overwrite the stored one. */
+    private suspend fun persist(): Boolean {
+        if (!loaded) {
+            Log.error { "Session revocation queue not stored, secure storage unreadable, kept in memory" }
+            return false
+        }
         val value = ReceptionAPI.json.encodeToString(serializer, entries)
-        if (!Storage.run { secureStore.save(value, ACCOUNT) }) Log.error { "Session revocation queue not stored, kept in memory" }
+        val stored = Storage.run { secureStore.save(value, ACCOUNT) }
+        if (!stored) Log.error { "Session revocation queue not stored, kept in memory" }
+        return stored
     }
 
     private companion object {
