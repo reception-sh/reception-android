@@ -1,5 +1,6 @@
 package sh.reception
 
+import androidx.annotation.VisibleForTesting
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -50,6 +51,11 @@ internal object ReceptionUnread {
             if (listeners.any { it === listener }) listener(count)
         }
     }
+
+    /** The refresh in flight, for tests that wait for it. */
+    @get:VisibleForTesting(otherwise = VisibleForTesting.NONE)
+    val runningRefresh: Job?
+        get() = refreshTask
 
     fun cancelRefresh() {
         refreshTask?.cancel()
