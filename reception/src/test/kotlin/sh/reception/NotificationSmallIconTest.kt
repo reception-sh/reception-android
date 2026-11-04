@@ -19,6 +19,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import sh.reception.client.Storage
 import sh.reception.viewmodel.ChatHarness
 
@@ -101,5 +103,28 @@ class NotificationSmallIconTest {
         preferences.edit().putString("notificationSmallIcon", "${application.packageName}:drawable/removed_in_an_update").commit()
         assertEquals(R.drawable.reception_symbol_notifications, deliver())
         assertNull(Reception.notificationSmallIcon)
+    }
+
+    @Test
+    fun aChatOpenedWhileTheStoredIconIsReadGetsNoNotification() {
+        // The first delivery reads the app's declared languages, so the next one waits only for the stored icon.
+        Reception.notificationSmallIcon = R.drawable.reception_symbol_chat
+        deliver()
+        settle()
+        restartProcess()
+        notifications.cancelAll()
+        val release = CountDownLatch(1)
+        Storage.launch { release.await(5, TimeUnit.SECONDS) }
+        try {
+            assertTrue(Reception.handlePushMessage(application, mapOf("reception" to "c1", "title" to "Team", "body" to "Hi")))
+            shadowOf(Looper.getMainLooper()).idle()
+            ReceptionState.isChatOpen.value = true
+            release.countDown()
+            settle()
+            assertEquals(0, notifications.activeNotifications.size)
+        } finally {
+            release.countDown()
+            ReceptionState.isChatOpen.value = false
+        }
     }
 }

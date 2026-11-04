@@ -77,11 +77,12 @@ internal object ReceptionPush {
         scope.launch {
             // Before configure nothing has read the app's declared languages, which name the channel.
             AppLocale.prepared(context)
+            val icon = NotificationSmallIcon.resolved(context)
+            // No suspension from here to the post: the chat may have opened, and badges or appearance changed, meanwhile.
             if (ReceptionState.isChatOpen.value) return@launch Log.debug { "Notification not shown, chat open" }
             val badges = ReceptionState.updatesAppBadge
             val number = PushNotifications.number(payload, badges)
             val accent = ReceptionAppearance.resolved.accent.light?.toArgb()
-            val icon = NotificationSmallIcon.resolved(context)
             PushNotifications.post(context, payload, key, badges, number, accent, icon)
         }
     }

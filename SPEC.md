@@ -223,7 +223,8 @@ like the iOS `willPresent` policy. The payload is `{ reception: "<conversationId
 (`reception` is `brand.pushPayloadKey`), with `android.collapse_key` set to the conversation id. The host's
 `FirebaseMessagingService.onMessageReceived` calls `Reception.handlePushMessage(this, remoteMessage.data,
 remoteMessage.messageId)`: for a
-Reception payload it sets `hasConversation`, refreshes unread and, unless the chat is open, posts a notification
+Reception payload it sets `hasConversation`, refreshes unread and, unless the chat is open (checked after the disk reads
+the notification needs, together with the badge and appearance values, right before posting), posts a notification
 (channel `reception_replies`, or `reception_replies_unbadged` with `setShowBadge(false)` while `updatesAppBadge` is
 false, because a channel's badge setting cannot change once created; both named with the localized "Support replies",
 importance high, sound when `sound` is set, the badge number when `updatesAppBadge`, `setGroup(conversationId)`, tag
