@@ -16,7 +16,7 @@ have.
 
 ## Stack (fixed)
 
-Kotlin 2.0.21 with `explicitApi()`, Jetpack Compose (BOM 2024.12.01, Material 3), AGP 8.7.3, Gradle 8.9, JDK 17,
+Kotlin 2.0.21 with `explicitApi()`, Jetpack Compose (BOM 2024.12.01, Material 3), AGP 8.9.3, Gradle 8.11.1, JDK 17,
 minSdk 24, compileSdk/targetSdk 36, kotlinx-coroutines and kotlinx-serialization, OkHttp + okhttp-sse, Coil. Firebase
 Messaging and Play Billing are `compileOnly` and only ever touched behind a class-presence check. **No other
 dependencies**, no native code. Must build without warnings (`allWarningsAsErrors`) and pass `lint` with the

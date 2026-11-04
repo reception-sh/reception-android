@@ -14,7 +14,7 @@ Written 2026-11-04 for SDK 1.0.0, which bundles the feature set of iOS SDK 1.7.0
 | --- | --- | --- |
 | Language | Kotlin 2.0.21, `explicitApi()` | Readable by hosts on Kotlin 2.0 (Expo modules default), 2.1 (React Native 0.86) and 2.4 (Flutter 3.47). Never raise it above the oldest host toolchain minus nothing. |
 | UI | Jetpack Compose, Compose BOM 2024.12.01, Material 3 | Google's current UI toolkit; a year old so hosts are never forced to upgrade. |
-| Build | AGP 8.7.3, Gradle 8.9, JDK 17 | Consumed as an AAR by AGP 8.x and 9.x hosts. |
+| Build | AGP 8.9.3, Gradle 8.11.1, JDK 17 | The oldest AGP that supports compileSdk 36 without a suppression flag. Consumed as an AAR by AGP 8.x and 9.x hosts. |
 | minSdk / compileSdk / targetSdk | 24 / 36 / 36 | Flutter and Expo default to minSdk 24; a higher library minimum breaks the host build. |
 | Coordinates | `sh.reception:reception:<version>` on Maven Central, Kotlin package `sh.reception` | Same namespace as the iOS bundle and the service. |
 | Dependencies | kotlinx-coroutines, kotlinx-serialization-json, OkHttp 4.12 + okhttp-sse, Coil 2.7 (compose), androidx core, activity-compose, lifecycle-process, exifinterface, browser (Custom Tabs). `compileOnly`: firebase-messaging, play billing. | Everything a Compose host already has, plus the two de-facto standards for HTTP and images. No Firebase or Billing dependency is forced on the host; both are used only when the host already ships them (see Push, Paid access). |
@@ -113,7 +113,7 @@ anywhere closes the sheet. This matches the iOS sheet rule exactly.
 `closeChat()` finishes the SDK's activity; a host-embedded `ReceptionChatView` is the host's to remove. Logout,
 reconfiguration and successful `deleteData()` finish the SDK's activity.
 
-`ReceptionChatView()` (composable) is the chat screen without the sheet, for host navigation. The View wrapper
+`ReceptionChatView()` (composable) is the chat screen without the sheet, for host navigation. Because its signature exposes `Modifier`, the Compose UI, foundation and Material 3 artifacts are `api` dependencies of the library. The View wrapper
 embeds the composable in a `ComposeView`; it needs a host that sets a `ViewTreeLifecycleOwner` (every activity and
 Flutter/React Native platform view does). Neither calls `openChat()`.
 
@@ -139,14 +139,23 @@ status)` is a Kotlin `Exception` with the two public read-only fields; status 0 
 
 ### Language
 
-`Reception.languageOverride: String?` (BCP 47), null follows the app's locale (`AppCompatDelegate`'s per-app locale
-when set, otherwise the first system locale). Changes update built-in strings, formatting, layout direction and
-cached remote translations immediately; the matching rules and the 48 bundled languages are the iOS ones. The strings
-are generated from the iOS String Catalog by `tool/sync_strings.py` into `values-<tag>/strings.xml` (Android
-qualifiers: `fr-rCA`, `b+es+419`, `pt-rBR`, `pt-rPT`, `b+zh+Hans`, `b+zh+Hant`, `b+zh+Hant+HK`, `nb`, `he` → `iw`
-and `b+he`, `id` → `in` and `b+id`); the SDK resolves the language itself (`ReceptionLocalization`) and reads
-strings through a locale-configured `Resources`, so the host app's own locale configuration never changes the chat
-language rules.
+`Reception.languageOverride: String?` (BCP 47), null follows the app's language. Changes update built-in strings,
+formatting, layout direction and cached remote translations immediately; the matching rules and the 48 bundled
+languages are the iOS ones.
+
+The app's language without an override: the per-app locale when one is set (`LocaleManager` on Android 13+,
+`AppCompatDelegate` below, read by name because AppCompat is optional); otherwise, on Android 13+ when the host
+declares `android:localeConfig`, the first system locale that the host's declared locales match (the iOS rule: an
+English-only app stays English on a German phone); otherwise the first system locale.
+
+Strings are not Android resources: Play's App Bundle language splits would strip every language the device does not
+use, and `languageOverride` would silently fall back to English. Instead `tool/sync_strings.py` generates one Kotlin
+object per language from the iOS String Catalog (`sh.reception.strings.<Tag>`, a `Map<String, String>` keyed by the
+stable `Strings` constants) plus `tool/android-strings.json`, a small overlay with the strings only Android needs
+("Rate on Google Play", the notification channel name "Support replies") in all 48 languages. Plural forms are
+selected with `android.icu.text.PluralRules` for the resolved locale; placeholders use `%1$s`/`%1$d` and
+`String.format(locale, …)`. The generated code is checked by `tool/sync_strings.py --check` in the release check.
+Vector icons remain resources (`reception_` prefix).
 
 ### Push notifications
 
