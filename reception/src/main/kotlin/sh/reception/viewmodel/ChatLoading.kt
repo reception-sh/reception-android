@@ -3,7 +3,7 @@ package sh.reception.viewmodel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import sh.reception.ReceptionState
+import sh.reception.ReceptionUnread
 import sh.reception.client.ApplicationLifecycle
 import sh.reception.client.ReceptionAPIError
 import sh.reception.client.RetryScope
@@ -38,12 +38,12 @@ internal suspend fun ChatModel.load(recheckLimits: Boolean = false) {
         session.retries["load"]?.delay?.let { delay(it) }
         session.update()
         if (!current || !currentCoroutineContext().isActive || !ApplicationLifecycle.isActive) return
-        val generation = ReceptionState.readGeneration
+        val generation = ReceptionUnread.readGeneration
         val checked = if (recheckLimits && isWatched) session.cooldowns.beginRecheck() else emptyMap()
         val path = if (checked.isEmpty()) "conversation" else "conversation?limits=1"
         val response = session.api.request<ConversationResponse>(path, authenticated = true)
         if (!current || !currentCoroutineContext().isActive) return
-        if (generation != ReceptionState.readGeneration) return reloadAfterStaleGet()
+        if (generation != ReceptionUnread.readGeneration) return reloadAfterStaleGet()
         session.store.hasConversation = response.conversation != null
         response.push?.let { session.store.pushActive = it }
         response.device?.let { updateSendingPermission(it, permissionRevision) }
@@ -98,11 +98,11 @@ internal suspend fun ChatModel.poll() {
         while (hasMore) {
             if (!stillPolling()) return
             val after = maxSeq
-            val generation = ReceptionState.readGeneration
+            val generation = ReceptionUnread.readGeneration
             val permissionRevision = sendingPermissionRevision
             val response = session.api.request<MessagesResponse>("conversation/messages?after=$after", authenticated = true)
             if (!stillPolling()) return
-            if (generation != ReceptionState.readGeneration) return reloadAfterStaleGet()
+            if (generation != ReceptionUnread.readGeneration) return reloadAfterStaleGet()
             response.device?.let { updateSendingPermission(it, permissionRevision) }
             replaceTeam(team + (response.team ?: emptyList()).associateBy { it.id })
             merge(response.messages)

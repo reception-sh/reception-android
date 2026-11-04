@@ -11,11 +11,16 @@ import kotlinx.coroutines.launch
 import sh.reception.client.ApplicationLifecycle
 import sh.reception.client.isRegistered
 
-/** The unread count `Reception.unreadCount` publishes, and the one refresh of the current session that updates it. */
+/**
+ * The unread count `Reception.unreadCount` publishes, the one refresh of the current session that updates it, and the
+ * read generation that lets a newer read or send replace older unread answers.
+ */
 internal object ReceptionUnread {
     val count: MutableStateFlow<Int> = MutableStateFlow(0)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var refreshTask: Job? = null
+    var readGeneration: Int = 0
+        private set
 
     fun set(count: Int) {
         this.count.value = maxOf(0, count)
@@ -44,5 +49,18 @@ internal object ReceptionUnread {
         }
         refreshTask = task
         task.start()
+    }
+
+    /** A read or a send confirmation makes older unread answers and reads obsolete. */
+    fun invalidateRead(): Int {
+        readGeneration += 1
+        return readGeneration
+    }
+
+    /** A read of generation [generation] reported [count]; a newer read or send has replaced an older one. */
+    fun noteRead(count: Int, generation: Int) {
+        if (generation != readGeneration) return
+        invalidateRead()
+        set(count)
     }
 }

@@ -6,7 +6,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import sh.reception.ReceptionState
 import sh.reception.ReceptionUnread
 import sh.reception.client.hasStartedChat
 import sh.reception.viewmodel.ChatHarness.Companion.CONVERSATION
@@ -50,7 +49,7 @@ class ChatReadTest {
         chat.scope.launch { chat.load() }
         harness.mainLoopUntil { harness.requests("GET", "/v1/conversation").isNotEmpty() }
         // A send confirmation lands while the GET is in flight.
-        ReceptionState.invalidateRead()
+        ReceptionUnread.invalidateRead()
         release.countDown()
         harness.mainLoopUntil { harness.requests("POST", "/v1/conversation/read").isNotEmpty() }
         assertEquals(2, harness.requests("GET", "/v1/conversation").size)

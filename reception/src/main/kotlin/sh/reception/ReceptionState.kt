@@ -35,8 +35,6 @@ internal object ReceptionState {
         private set
     var updatesAppBadge: Boolean = true
     var onEvent: ((ReceptionEvent) -> Unit)? = null
-    var readGeneration: Int = 0
-        private set
     /** Compose state, so an open chat rebuilds with the new session's model after a reset. */
     var revision: Int by mutableIntStateOf(0)
         private set
@@ -189,19 +187,6 @@ internal object ReceptionState {
     }
 
     fun chatModel(): ChatModel = chat ?: ChatModel(session).also { chat = it }
-
-    /** A read or a send confirmation makes older unread answers and reads obsolete. */
-    fun invalidateRead(): Int {
-        readGeneration += 1
-        return readGeneration
-    }
-
-    /** A read of generation [generation] reported [count]; a newer read or send has replaced an older one. */
-    fun noteRead(count: Int, generation: Int) {
-        if (generation != readGeneration) return
-        invalidateRead()
-        ReceptionUnread.set(count)
-    }
 
     private fun advancePresentationRevision() {
         presentationRevision += 1

@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 import sh.reception.Log
 import sh.reception.ReceptionEvent
 import sh.reception.ReceptionState
+import sh.reception.ReceptionUnread
 import sh.reception.client.ApplicationLifecycle
 import sh.reception.client.ImageUploader
 import sh.reception.client.ReceptionAPI
@@ -119,7 +120,7 @@ private suspend fun ChatModel.deliver(id: String) {
         val response = session.api.request<SendResponse>("conversation/messages", "POST", authenticated = true,
             body = ReceptionAPI.encode(SendInput(id, draft.text, attachments)), photos = attachments.isNotEmpty())
         if (!current) return
-        ReceptionState.invalidateRead()
+        ReceptionUnread.invalidateRead()
         session.store.hasConversation = true
         merge(listOf(response.message.let { it.copy(clientId = it.clientId ?: id) }), advancesCursor = false)
         if (verificationRequired) clearVerificationRequirement()

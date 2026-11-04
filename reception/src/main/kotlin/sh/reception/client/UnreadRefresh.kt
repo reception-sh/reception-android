@@ -32,7 +32,7 @@ internal suspend fun DeviceSession.refreshUnread(updateDevice: Boolean = false, 
     try {
         if (!probe) retries["unread"]?.delay?.let { delay(it) }
         if (updateDevice && !probe) update()
-        val generation = ReceptionState.readGeneration
+        val generation = ReceptionUnread.readGeneration
         val response = withContext(RequestContext.current().copy(probe = if (probe) RequestProbe() else null)) {
             api.request<UnreadResponse>("conversation/unread", authenticated = true)
         }
@@ -45,7 +45,7 @@ internal suspend fun DeviceSession.refreshUnread(updateDevice: Boolean = false, 
         store.pushActive = response.push
         store.unreadPolling = response.unreadPolling
         // A read invalidates older badge responses, even after the chat closes.
-        if (generation == ReceptionState.readGeneration && ReceptionState.chat?.isVisible != true) {
+        if (generation == ReceptionUnread.readGeneration && ReceptionState.chat?.isVisible != true) {
             ReceptionUnread.set(response.unreadCount)
         }
         Log.debug { "Unread refresh, ${response.unreadCount} unread" }

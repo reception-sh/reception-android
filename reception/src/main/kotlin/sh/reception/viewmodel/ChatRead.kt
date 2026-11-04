@@ -4,7 +4,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import sh.reception.ReceptionState
+import sh.reception.ReceptionUnread
 import sh.reception.client.ApplicationLifecycle
 import sh.reception.client.ReceptionAPI
 import sh.reception.client.ReceptionAPIError
@@ -71,7 +71,7 @@ internal fun ChatModel.processedReadTarget(
 internal suspend fun ChatModel.markRead(target: ReadTarget?) {
     val session = session ?: return
     if (target == null || !canApplyRead()) return
-    val generation = ReceptionState.invalidateRead()
+    val generation = ReceptionUnread.invalidateRead()
     val count = when (target) {
         is ReadTarget.Bounded -> {
             val cursor = target.cursor
@@ -86,14 +86,14 @@ internal suspend fun ChatModel.markRead(target: ReadTarget?) {
         ReadTarget.Legacy -> {
             // Older servers ignore read bodies. Preserve their explicit unbounded contract.
             session.api.request<EmptyResponse>("conversation/read", "POST", authenticated = true)
-            if (!canApplyRead() || generation != ReceptionState.readGeneration) return
+            if (!canApplyRead() || generation != ReceptionUnread.readGeneration) return
             val response = session.api.request<UnreadCountResponse>("conversation/unread", authenticated = true)
             if (response.unreadCount < 0) throw ReceptionAPIError("invalid_response", 0)
             response.unreadCount
         }
     }
     if (!canApplyRead()) return
-    ReceptionState.noteRead(count, generation)
+    ReceptionUnread.noteRead(count, generation)
 }
 
 private suspend fun ChatModel.canApplyRead(): Boolean =

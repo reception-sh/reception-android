@@ -13,6 +13,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import sh.reception.ReceptionAppearance
 import sh.reception.ReceptionState
+import sh.reception.ReceptionUnread
 import sh.reception.client.DeviceSession
 import sh.reception.client.NetworkMonitor
 import sh.reception.client.Storage
@@ -183,7 +184,7 @@ internal class ChatModel(val session: DeviceSession?) {
         isChatActive = false
         reloadTask?.cancel()
         reloadTask = null
-        if (current) ReceptionState.invalidateRead()
+        if (current) ReceptionUnread.invalidateRead()
         sendTyping(false)
         cancelStream()
         setTyping(false)
