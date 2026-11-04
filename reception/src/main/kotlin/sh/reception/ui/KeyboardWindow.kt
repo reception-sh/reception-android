@@ -10,7 +10,12 @@ import androidx.compose.ui.window.DialogWindowProvider
  * view's root was added with (a platform dialog's), reached through the root's window layout parameters, which are the
  * same object as that window's attributes. [root] identifies the window. Main thread only.
  */
-internal class KeyboardWindow private constructor(val root: View, private val window: Window?) {
+internal class KeyboardWindow private constructor(
+    val root: View,
+    private val window: Window?,
+    /** A Compose `Dialog`'s window, whose content is measured against the display and never shrinks with the window. */
+    val isComposeDialog: Boolean = false,
+) {
     var softInputMode: Int
         get() = window?.attributes?.softInputMode ?: parameters?.softInputMode ?: 0
         set(value) {
@@ -29,7 +34,7 @@ internal class KeyboardWindow private constructor(val root: View, private val wi
         fun of(view: View): KeyboardWindow? {
             var current: Any? = view
             while (current is View) {
-                if (current is DialogWindowProvider) return KeyboardWindow(current.window.decorView, current.window)
+                if (current is DialogWindowProvider) return KeyboardWindow(current.window.decorView, current.window, isComposeDialog = true)
                 current = current.parent
             }
             val root = view.rootView.takeIf { view.isAttachedToWindow } ?: return null

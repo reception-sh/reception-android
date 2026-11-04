@@ -18,6 +18,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowLooper
 
 /** A chat in a dialog adjusts the dialog's window, never the activity's, and each window counts its own chats. */
@@ -27,47 +28,70 @@ class EmbeddedKeyboardWindowsTest {
     private val Window.adjust: Int
         get() = attributes.softInputMode and LayoutParams.SOFT_INPUT_MASK_ADJUST
 
-    @Test
-    fun anActivityChatAndADialogChatEachAdjustTheirOwnWindow() {
-        val activity = Robolectric.buildActivity(ComponentActivity::class.java).setup().get()
-        activity.window.setSoftInputMode(LayoutParams.SOFT_INPUT_ADJUST_PAN)
+    /** An activity chat and a Compose `Dialog` chat whose window the host set to [dialogMode]. */
+    private class Screen(dialogMode: Int) {
+        val activity: ComponentActivity = Robolectric.buildActivity(ComponentActivity::class.java).setup().get()
         var activityChat by mutableStateOf(true)
         var dialogChat by mutableStateOf(false)
         var dialogWindow: Window? = null
-        activity.setContent {
-            if (activityChat) EmbeddedKeyboardAdjustment()
-            if (dialogChat) {
-                Dialog(onDismissRequest = {}) {
-                    val window = (LocalView.current.parent as DialogWindowProvider).window
-                    // A host dialog whose window pans, set before the chat composes.
-                    DisposableEffect(window) {
-                        window.setSoftInputMode(LayoutParams.SOFT_INPUT_ADJUST_PAN)
-                        dialogWindow = window
-                        onDispose {}
+
+        init {
+            activity.window.setSoftInputMode(LayoutParams.SOFT_INPUT_ADJUST_PAN)
+            activity.setContent {
+                if (activityChat) EmbeddedKeyboardAdjustment()
+                if (dialogChat) {
+                    Dialog(onDismissRequest = {}) {
+                        val window = (LocalView.current.parent as DialogWindowProvider).window
+                        // The host's dialog mode, set before the chat composes.
+                        DisposableEffect(window) {
+                            window.setSoftInputMode(dialogMode)
+                            dialogWindow = window
+                            onDispose {}
+                        }
+                        EmbeddedKeyboardAdjustment()
                     }
-                    EmbeddedKeyboardAdjustment()
                 }
             }
+            ShadowLooper.idleMainLooper()
         }
-        ShadowLooper.idleMainLooper()
-        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_RESIZE, activity.window.adjust)
+    }
 
-        dialogChat = true
-        ShadowLooper.idleMainLooper()
-        val dialog = checkNotNull(dialogWindow)
-        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_RESIZE, dialog.adjust)
+    @Test
+    fun anActivityChatAndADialogChatEachAdjustTheirOwnWindow() {
+        val screen = Screen(LayoutParams.SOFT_INPUT_ADJUST_PAN)
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_RESIZE, screen.activity.window.adjust)
 
-        // The activity's chat leaving gives the activity its mode back; the dialog's chat keeps its own window resized.
-        activityChat = false
+        // A Compose dialog's content never shrinks with its window, so it adjusts nothing and the insets lift the chat.
+        screen.dialogChat = true
         ShadowLooper.idleMainLooper()
-        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_PAN, activity.window.adjust)
-        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_RESIZE, dialog.adjust)
+        val dialog = checkNotNull(screen.dialogWindow)
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_NOTHING, dialog.adjust)
 
-        activityChat = true
-        dialogChat = false
+        // The activity's chat leaving gives the activity its mode back; the dialog's chat keeps its own window adjusted.
+        screen.activityChat = false
         ShadowLooper.idleMainLooper()
-        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_RESIZE, activity.window.adjust)
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_PAN, screen.activity.window.adjust)
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_NOTHING, dialog.adjust)
+
+        screen.activityChat = true
+        screen.dialogChat = false
+        ShadowLooper.idleMainLooper()
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_RESIZE, screen.activity.window.adjust)
         assertEquals(LayoutParams.SOFT_INPUT_ADJUST_PAN, dialog.adjust)
+    }
+
+    @Test
+    @Config(sdk = [29])
+    fun aComposeDialogPansBeforeAndroid11() {
+        // Before Android 11 only a resize sends IME insets, and a Compose dialog cannot resize its content.
+        val screen = Screen(LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        screen.dialogChat = true
+        ShadowLooper.idleMainLooper()
+        val dialog = checkNotNull(screen.dialogWindow)
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_PAN, dialog.adjust)
+        screen.dialogChat = false
+        ShadowLooper.idleMainLooper()
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_RESIZE, dialog.adjust)
     }
 
     @Test

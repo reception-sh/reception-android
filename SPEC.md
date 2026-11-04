@@ -147,7 +147,9 @@ Studio's Compose template) would move it a second time, and before Android 11 a 
 insets at all, so the composer would stay behind the keyboard; while a chat is embedded such a window is set to
 `adjustResize` and gets its own mode back when the last embedded chat in it leaves (`ui/EmbeddedKeyboardMode`, counted
 per window: the window is the one that shows the composition, so a chat in a Compose `Dialog` or a platform dialog
-adjusts that dialog's window and never the activity's, `ui/KeyboardWindow`; only the adjust bits go back, and only while
+adjusts that dialog's window and never the activity's, `ui/KeyboardWindow`; a Compose `Dialog` measures its content
+against the display, so it cannot shrink with a resized window: its window adjusts nothing from Android 11, where the
+IME insets alone lift the composer, and pans before, where only a resize would send IME insets; only the adjust bits go back, and only while
 the window still carries the SDK's `adjustResize`, so a mode or state flags the host set meanwhile stay; an
 unspecified mode comes back as what Android resolves it to, resize with a shown scroll container, else pan, because
 Android keeps the last adjust mode when it is asked for "unspecified" again). Neither calls `openChat()`. Every chat on screen shows the one chat model:

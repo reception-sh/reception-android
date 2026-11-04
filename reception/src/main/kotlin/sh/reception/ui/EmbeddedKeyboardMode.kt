@@ -26,9 +26,11 @@ internal fun EmbeddedKeyboardAdjustment() {
  * (`adjustPan`, or `adjustUnspecified`, the default of an activity without `windowSoftInputMode`, as in Android Studio's
  * Compose template) moves it a second time, a keyboard height too far, and pushes the host's top bar off screen. Before
  * Android 11 a window that adjusts nothing gets no IME insets at all, so the composer stays behind the keyboard. While a
- * chat is embedded in such a window, the window resizes instead, counted per window (the activity's, a dialog's); when
- * the last embedded chat in it leaves, the host's adjust mode comes back, unless the host changed the mode since. Main
- * thread only.
+ * chat is embedded in such a window, the window resizes instead. A Compose `Dialog` cannot resize its content (it is
+ * measured against the display, so it would overflow the shrunk window): from Android 11 it adjusts nothing and the
+ * insets alone lift the composer, before it pans, which then gives no IME insets. Counted per window (the activity's, a
+ * dialog's); when the last embedded chat in it leaves, the host's adjust mode comes back, unless the host changed the
+ * mode since. Main thread only.
  */
 internal object EmbeddedKeyboardMode {
     /** [installed] is the adjust mode the SDK set, null when it left the window alone. */
@@ -42,7 +44,8 @@ internal object EmbeddedKeyboardMode {
             return
         }
         val original = window.softInputMode
-        val installed = if (adjusts(original and LayoutParams.SOFT_INPUT_MASK_ADJUST)) RESIZE else null
+        val adjust = original and LayoutParams.SOFT_INPUT_MASK_ADJUST
+        val installed = target(window, adjust)?.takeIf { it != adjust }
         installed?.let { window.softInputMode = (original and LayoutParams.SOFT_INPUT_MASK_ADJUST.inv()) or it }
         holds[window.root] = Hold(original, installed, 1)
     }
@@ -65,10 +68,15 @@ internal object EmbeddedKeyboardMode {
     @Suppress("DEPRECATION")
     private const val RESIZE = LayoutParams.SOFT_INPUT_ADJUST_RESIZE
 
-    private fun adjusts(adjust: Int): Boolean = when (adjust) {
-        LayoutParams.SOFT_INPUT_ADJUST_UNSPECIFIED, LayoutParams.SOFT_INPUT_ADJUST_PAN -> true
-        LayoutParams.SOFT_INPUT_ADJUST_NOTHING -> Build.VERSION.SDK_INT < Build.VERSION_CODES.R
-        else -> false
+    /** The adjust mode under which the chat's IME insets lift the composer exactly once; null keeps the host's. */
+    private fun target(window: KeyboardWindow, adjust: Int): Int? {
+        val insetsAlways = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+        if (window.isComposeDialog) return if (insetsAlways) LayoutParams.SOFT_INPUT_ADJUST_NOTHING else LayoutParams.SOFT_INPUT_ADJUST_PAN
+        return when (adjust) {
+            LayoutParams.SOFT_INPUT_ADJUST_UNSPECIFIED, LayoutParams.SOFT_INPUT_ADJUST_PAN -> RESIZE
+            LayoutParams.SOFT_INPUT_ADJUST_NOTHING -> if (insetsAlways) null else RESIZE
+            else -> null
+        }
     }
 
     /**
