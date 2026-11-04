@@ -18,9 +18,12 @@ internal object Theme {
     val headerFadeHeight = 80.dp
     val headerFadeOverlap = 64.dp
     val sheetTopInset = 20.dp
+    val titleBarHeight = 44.dp
+    val sheetGrabberWidth = 36.dp
+    val sheetGrabberHeight = 5.dp
 
     /** The band a drag may close the sheet from: the drag handle inset and the title bar below it. */
-    val sheetHandleHeight = sheetTopInset + 44.dp
+    val sheetHandleHeight = sheetTopInset + titleBarHeight
     const val LAYOUT_SETTLE_MILLIS = 250L
     const val AUTOMATION_TYPING_MILLIS = 800L
     val uploadProgressHorizontalInset = 24.dp

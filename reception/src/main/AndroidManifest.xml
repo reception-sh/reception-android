@@ -1,8 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Hosts without Firebase or another networking library would otherwise lack it. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- The connection banner follows the default network; a normal permission, granted at install. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <queries>
+        <!-- Web links open in a Custom Tab when a browser offers one. -->
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
+    </queries>
+
+    <application>
+        <activity
+            android:name="sh.reception.ui.ReceptionChatActivity"
+            android:enableOnBackInvokedCallback="true"
+            android:exported="false"
+            android:theme="@style/Reception.Chat"
+            android:windowSoftInputMode="adjustResize"
+            tools:targetApi="33" />
+    </application>
 
 </manifest>

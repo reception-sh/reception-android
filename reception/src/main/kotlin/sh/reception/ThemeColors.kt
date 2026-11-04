@@ -98,3 +98,10 @@ internal fun Theme.outgoingBackground(accent: Color, olderBy: Int, fades: Boolea
         alpha = accent.alpha,
     )
 }
+
+/** The iOS system blue: the sheet's accent below Android 12, where there is no dynamic color. */
+internal val Theme.systemBlueLight: Color
+    get() = Color(0xFF007AFF)
+
+internal val Theme.systemBlueDark: Color
+    get() = Color(0xFF0A84FF)

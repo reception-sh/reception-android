@@ -19,6 +19,7 @@ import sh.reception.client.Storage
 import sh.reception.client.UnreadMonitor
 import sh.reception.client.recordFailure
 import sh.reception.client.registerIfNeeded
+import sh.reception.ui.ChatPresenter
 import sh.reception.viewmodel.ChatModel
 import sh.reception.viewmodel.startStream
 
@@ -204,5 +205,6 @@ internal object ReceptionState {
 
     private fun advancePresentationRevision() {
         presentationRevision += 1
+        ChatPresenter.dismiss()
     }
 }

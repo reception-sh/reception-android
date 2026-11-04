@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import sh.reception.configuration.AppearanceIcon
 import sh.reception.strings.Strings
+import sh.reception.ui.ChatPresenter
 
 /** In-app support chat. Call every member from the main thread; a call from another thread is posted there. */
 public object Reception {
@@ -56,6 +57,14 @@ public object Reception {
     @JvmStatic
     public val isChatOpen: StateFlow<Boolean>
         get() = ReceptionState.isChatOpen
+
+    /** Presents the chat as a bottom sheet over the current activity. Does nothing while it is already open. */
+    @JvmStatic
+    public fun openChat(): Unit = MainThread.run { ChatPresenter.open() }
+
+    /** Dismisses the sheet [openChat] presented; a [ReceptionChatView] placed by the app is removed by the app. */
+    @JvmStatic
+    public fun closeChat(): Unit = MainThread.run { ChatPresenter.close() }
 
     /** Receives chat events on the main thread. Keep it light; assignment replaces the previous handler. */
     @JvmStatic
