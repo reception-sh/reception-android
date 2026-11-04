@@ -13,6 +13,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import sh.reception.ReceptionResets
 import sh.reception.ReceptionState
 import sh.reception.model.Attachment
 import java.io.IOException
@@ -134,7 +135,7 @@ internal class AttachmentImageLoader(
         } catch (error: ReceptionAPIError) {
             checkCurrent()
             // Only resolver errors carry device authentication. Storage errors never reset support.
-            ReceptionState.handleReset(session, error)
+            ReceptionResets.handleReset(session, error)
             throw error
         }
     }

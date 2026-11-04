@@ -13,6 +13,7 @@ import sh.reception.FacadeState
 import sh.reception.Log
 import sh.reception.ReceptionIdentity
 import sh.reception.ReceptionLocalization
+import sh.reception.ReceptionResets
 import sh.reception.ReceptionState
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -116,7 +117,7 @@ internal fun DeviceSession.retryPreferencesIfNeeded() {
                     throw cancellation
                 } catch (error: Throwable) {
                     if (invalidated) return@launch
-                    if (ReceptionState.handleReset(this@retryPreferencesIfNeeded, error)) return@launch
+                    if (ReceptionResets.handleReset(this@retryPreferencesIfNeeded, error)) return@launch
                     if (halt != null) return@launch
                     preferenceRetry.failed(error)
                 }

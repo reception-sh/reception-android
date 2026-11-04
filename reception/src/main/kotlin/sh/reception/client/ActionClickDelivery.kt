@@ -5,7 +5,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import sh.reception.ReceptionState
+import sh.reception.ReceptionResets
 import sh.reception.model.EmptyResponse
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -51,7 +51,7 @@ internal fun DeviceSession.flushActionClicks() {
                         actionClickFinished(messageId, outcome)
                         continue
                     }
-                    if (!invalidated) ReceptionState.handleReset(this@flushActionClicks, error)
+                    if (!invalidated) ReceptionResets.handleReset(this@flushActionClicks, error)
                     if (invalidated || halt != null) return@launch
                     retries.getOrPut(key) { RetryState() }.failed(error)
                     return@launch

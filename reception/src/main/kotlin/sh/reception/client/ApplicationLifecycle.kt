@@ -9,7 +9,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import sh.reception.AppLocale
 import sh.reception.PendingChatOpen
-import sh.reception.ReceptionState
+import sh.reception.ReceptionLifecycle
 import sh.reception.ui.ChatPresenter
 import java.lang.ref.WeakReference
 
@@ -40,11 +40,11 @@ internal object ApplicationLifecycle : DefaultLifecycleObserver, Application.Act
     }
 
     override fun onResume(owner: LifecycleOwner) {
-        if (!registering) ReceptionState.applicationBecameActive()
+        if (!registering) ReceptionLifecycle.applicationBecameActive()
     }
 
     override fun onStop(owner: LifecycleOwner) {
-        if (!registering) ReceptionState.applicationEnteredBackground()
+        if (!registering) ReceptionLifecycle.applicationEnteredBackground()
     }
 
     /**

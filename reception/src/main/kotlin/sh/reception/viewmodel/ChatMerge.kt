@@ -1,6 +1,6 @@
 package sh.reception.viewmodel
 
-import sh.reception.ReceptionState
+import sh.reception.ReceptionResets
 import sh.reception.client.cursor
 import sh.reception.model.Message
 import sh.reception.model.MessageStatus
@@ -62,5 +62,5 @@ private fun precedes(left: Message, right: Message): Boolean {
 internal fun ChatModel.handleReset(error: Throwable): Boolean {
     val session = session ?: return false
     if (!current) return false
-    return ReceptionState.handleReset(session, error)
+    return ReceptionResets.handleReset(session, error)
 }

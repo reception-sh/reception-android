@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import sh.reception.Log
+import sh.reception.ReceptionLifecycle
 import sh.reception.ReceptionState
 import sh.reception.ReceptionUnread
 import sh.reception.viewmodel.retryFailedAutomatically
@@ -20,7 +21,7 @@ internal fun DeviceSession.requestSucceeded(probe: Boolean) {
     halt = null
     preferenceRetry = RetryState()
     Log.debug { "Session resumed" }
-    if (isCurrent) ReceptionState.sessionResumed()
+    if (isCurrent) ReceptionLifecycle.sessionResumed()
 }
 
 internal fun DeviceSession.recordFailure(error: Throwable) {

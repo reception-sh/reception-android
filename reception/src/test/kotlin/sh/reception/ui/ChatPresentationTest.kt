@@ -18,6 +18,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowAppTask
+import sh.reception.ReceptionResets
 import sh.reception.ReceptionState
 import sh.reception.client.ApplicationLifecycle
 import sh.reception.client.PresentationRecord
@@ -200,7 +201,7 @@ class ChatPresentationTest {
     @Test
     fun aLogoutDuringTheLaunchFinishesTheQueuedSheet() {
         val intent = launch { ChatPresenter.open() }
-        ReceptionState.resetLocal()
+        ReceptionResets.resetLocal()
         assertTrue(created(intent).isFinishing)
     }
 
@@ -238,7 +239,7 @@ class ChatPresentationTest {
         val intent = launch { ChatPresenter.open() }
         created(intent)
         processRestarted()
-        ReceptionState.resetLocal()
+        ReceptionResets.resetLocal()
         assertTrue(restored(intent).isFinishing)
         assertFalse(ChatPresenter.isPresented)
     }
@@ -307,7 +308,7 @@ class ChatPresentationTest {
         processRestartedWithoutConfigure()
         val sheet = recreated(intent)
         ReceptionState.configure(RuntimeEnvironment.getApplication(), ChatHarness.APP_ID)
-        ReceptionState.resetLocal()
+        ReceptionResets.resetLocal()
         harness.mainLoopUntil { sheet.isFinishing || ChatPresenter.isPresented }
         assertTrue(sheet.isFinishing)
     }

@@ -38,7 +38,7 @@ internal object ReceptionAccount {
         ReceptionIdentity.forget()
         Log.info { "Logged out, session revocation queued" }
         // The old session's credentials are deleted only after its revocation is stored.
-        ReceptionState.resetLocal(after = queued)
+        ReceptionResets.resetLocal(after = queued)
         ReceptionPaywalls.refresh(invalidate = true)
         // Logout clears the staged token; the new session gets it again.
         ReceptionPush.registerIfAuthorized()
@@ -81,7 +81,7 @@ internal object ReceptionAccount {
         // A response from an old session must not erase a newly configured or logged-in session.
         if (ReceptionState.presentationRevision == generation) {
             ReceptionIdentity.forget()
-            ReceptionState.resetLocal()
+            ReceptionResets.resetLocal()
             ReceptionPaywalls.refresh(invalidate = true)
             ReceptionPush.registerIfAuthorized()
         }

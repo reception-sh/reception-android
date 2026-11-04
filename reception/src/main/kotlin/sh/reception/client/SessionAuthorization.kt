@@ -10,6 +10,7 @@ import sh.reception.FacadeState
 import sh.reception.Log
 import sh.reception.ReceptionIdentity
 import sh.reception.ReceptionLocalization
+import sh.reception.ReceptionResets
 import sh.reception.ReceptionState
 
 /**
@@ -197,5 +198,5 @@ private fun DeviceSession.sessionRevoked() {
     accessToken = null
     credentials = null
     credentialsUnsaved = false
-    if (isCurrent) ReceptionState.resetChat(revision = 0, deviceDeleted = true)
+    if (isCurrent) ReceptionResets.resetChat(revision = 0, deviceDeleted = true)
 }

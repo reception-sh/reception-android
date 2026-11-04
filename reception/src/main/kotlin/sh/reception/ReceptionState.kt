@@ -15,18 +15,18 @@ import sh.reception.client.DeviceSession
 import sh.reception.client.DeviceStore
 import sh.reception.client.LogoutRevocations
 import sh.reception.client.ReceptionAPI
-import sh.reception.client.ReceptionAPIError
 import sh.reception.client.SecureStore
 import sh.reception.client.SetupCheck
-import sh.reception.client.Storage
 import sh.reception.client.UnreadMonitor
-import sh.reception.client.recordFailure
 import sh.reception.client.registerIfNeeded
 import sh.reception.ui.ChatPresenter
 import sh.reception.viewmodel.ChatModel
-import sh.reception.viewmodel.startStream
 
-/** The facade's internal state and the session lifecycle behind it. Main thread only. */
+/**
+ * The facade's internal state: the configured App ID, the current session and its chat model. Configure starts it;
+ * [ReceptionResets] replaces the session after a logout, deletion or reset, and [ReceptionLifecycle] follows the app's
+ * foreground. Main thread only.
+ */
 internal object ReceptionState {
     var session: DeviceSession? = null
         private set
@@ -63,7 +63,8 @@ internal object ReceptionState {
         private set
 
     /** The latest deletion on the storage thread; a session opened later waits for it. */
-    private var storageWork: Job? = null
+    var storageWork: Job? = null
+        private set
 
     fun configure(context: Context, appId: String) {
         if (!ReceptionAPI.accepts(appId)) {
@@ -136,92 +137,32 @@ internal object ReceptionState {
         SetupCheck.resetForTests()
     }
 
-    fun applicationBecameActive() {
-        ReceptionAppearance.becameActive()
-        ReceptionPaywalls.refresh()
-        unreadMonitor.becameActive()
-        logoutRevocations?.becameActive()
-        if (session != null) {
-            ReceptionAutomations.checkSubscriptions()
-            ReceptionPush.registerIfAuthorized()
-        }
-    }
-
-    fun applicationEnteredBackground() {
-        ReceptionAppearance.enteredBackground()
-        unreadMonitor.enteredBackground()
-        logoutRevocations?.suspend()
-    }
-
-    /** Ends the session in memory at once; its stored values are deleted on the storage thread after [after]. */
-    fun resetLocal(dismissChat: Boolean = true, after: Job? = null) {
-        unreadMonitor.setActive(false)
-        ReceptionUnread.cancelRefresh()
-        val session = session ?: return
-        val namespace = namespace ?: return
-        val context = session.store.context
-        val deleted = session.invalidate(storageWork, after)
-        storageWork = deleted
-        chat?.stop()
-        chat = null
-        // The deletion rotates the generation, so the new session opens a fresh namespace after it.
-        this.session = DeviceSession(session.api, DeviceStore(context, namespace), halt = session.halt, after = deleted)
-        ReceptionUnread.set(0)
-        chatKey = null
-        if (dismissChat) advancePresentationRevision()
-    }
-
-    fun resetChat(revision: Int, deviceDeleted: Boolean = false) {
-        val session = session ?: return
-        if (deviceDeleted) {
-            val identity = session.pending
-            resetLocal(dismissChat = false)
-            this.session?.stage { identity }
-            return
-        }
-        unreadMonitor.setActive(false)
-        ReceptionUnread.cancelRefresh()
-        session.deactivate()
-        chat?.stop()
-        session.store.resetChat(revision)
-        val store = session.store
-        val cleared = Storage.launch(storageWork) { store.clearChatFiles() }
-        storageWork = cleared
-        chat = null
-        this.session = DeviceSession(session.api, store.renewed(), after = cleared)
-        ReceptionUnread.set(0)
-        chatKey = null
-    }
-
-    /** A `409 chat_reset` from the current session clears the chat and keeps the session. */
-    fun handleReset(session: DeviceSession, error: Throwable): Boolean {
-        if (session !== this.session || error !is ReceptionAPIError) return false
-        session.recordFailure(error)
-        val resetRevision = error.resetRevision
-        if (error.status != 409 || error.code != "chat_reset" || resetRevision == null || resetRevision < 0) return false
-        Log.info { "Chat reset by the team, local history cleared, revision $resetRevision" }
-        resetChat(resetRevision)
-        return true
-    }
-
     /** The current session's stored values are loaded: what configure could not do without them happens now. */
     fun sessionPrepared() {
         chatKey = session?.store?.chatIdentity
         unreadMonitor.sessionPrepared()
     }
 
-    fun sessionResumed() {
-        val session = session ?: return
-        chat?.sendingResumed()
-        logoutRevocations?.resumed(session.api)
-        ReceptionAppearance.sessionResumed()
-        unreadMonitor.reschedule()
-        chat?.startStream()
+    /** The chat model of the ended session stops; the next use creates one for the new session. */
+    fun stopChat() {
+        chat?.stop()
+        chat = null
+    }
+
+    /**
+     * After a reset ([ReceptionResets]): [next] becomes the current session, and an open chat rebuilds with it once its
+     * store is loaded. [storage] is the reset's disk work, which every session opened later waits for.
+     */
+    fun replaceSession(next: DeviceSession, storage: Job?) {
+        storageWork = storage
+        session = next
+        chatKey = null
     }
 
     fun chatModel(): ChatModel = chat ?: ChatModel(session).also { chat = it }
 
-    private fun advancePresentationRevision(dismissesChat: Boolean = true) {
+    /** A configure, logout or deletion: work queued for the earlier presentation state (an automation's open) stops. */
+    fun advancePresentationRevision(dismissesChat: Boolean = true) {
         presentationRevision += 1
         if (dismissesChat) ChatPresenter.dismiss()
     }

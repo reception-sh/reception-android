@@ -7,6 +7,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import sh.reception.Log
+import sh.reception.ReceptionResets
 import sh.reception.ReceptionState
 import sh.reception.ReceptionUnread
 import sh.reception.model.Timestamp
@@ -63,7 +64,7 @@ internal suspend fun DeviceSession.refreshUnread(updateDevice: Boolean = false, 
             }
         }
         if (halt == null) retries.getOrPut("unread") { RetryState() }.failed(error)
-        ReceptionState.handleReset(this, error)
+        ReceptionResets.handleReset(this, error)
     } finally {
         if (isCurrent && currentCoroutineContext().isActive) ReceptionState.unreadMonitor.reschedule()
     }
