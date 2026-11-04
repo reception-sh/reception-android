@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -59,8 +61,9 @@ class MainActivity : ComponentActivity() {
 private fun HomeScreen(embed: () -> Unit) {
     Scaffold { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+            // Scrolls on small screens and with large fonts.
+            modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             val unread by Reception.unreadCount.collectAsState()
@@ -72,10 +75,24 @@ private fun HomeScreen(embed: () -> Unit) {
                 Text(stringResource(R.string.identify))
             }
             OutlinedButton(onClick = { Reception.logout() }) { Text(stringResource(R.string.logout)) }
+            Actions()
             Settings()
             Text(stringResource(R.string.unread_count, unread))
             Text(stringResource(R.string.sdk_version, Reception.version), style = MaterialTheme.typography.bodySmall)
         }
+    }
+}
+
+/** Push, automations, deletion and a verified user switch, two buttons a row. */
+@Composable
+private fun Actions() {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(onClick = ExampleActions::registerForPush) { Text(stringResource(R.string.register_push)) }
+        OutlinedButton(onClick = ExampleActions::track) { Text(stringResource(R.string.track_event)) }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(onClick = ExampleActions::deleteData) { Text(stringResource(R.string.delete_data)) }
+        OutlinedButton(onClick = ExampleActions::switchUser) { Text(stringResource(R.string.switch_user)) }
     }
 }
 

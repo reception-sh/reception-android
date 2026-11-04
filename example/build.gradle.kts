@@ -28,6 +28,11 @@ android {
         val appId = rootProject.file(".local/app-id.txt").takeIf { it.exists() }?.readText()?.trim().orEmpty()
         buildConfigField("String", "RECEPTION_APP_ID", "\"$appId\"")
         buildConfigField("String", "RECEPTION_SERVICE_URL", "\"http://10.0.2.2:3123\"")
+        // The local test app's identity secret, for the token button; never in a real app, which signs on its server.
+        val identitySecret = rootProject.file(".local/identity-secret.txt").takeIf { it.exists() }?.readText()?.trim().orEmpty()
+        buildConfigField("String", "RECEPTION_IDENTITY_SECRET", "\"$identitySecret\"")
+        // The SDK's messaging service shows the replies; a bare build has no Firebase to start it.
+        manifestPlaceholders["receptionMessaging"] = (!bare).toString()
     }
 
     buildTypes {

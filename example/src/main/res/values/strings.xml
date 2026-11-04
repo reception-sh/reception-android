@@ -14,4 +14,8 @@
     <string name="appearance_light">Light</string>
     <string name="appearance_dark">Dark</string>
     <string name="ok">OK</string>
+    <string name="register_push">Register for push</string>
+    <string name="track_event">Track event</string>
+    <string name="delete_data">Delete data</string>
+    <string name="switch_user">Switch user (token)</string>
 </resources>
