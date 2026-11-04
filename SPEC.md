@@ -225,7 +225,15 @@ data class ReceptionPaywall(id, title, source: Source? = null, products: List<Pr
 class ReceptionScreen(id: String, open: () -> Unit) / ReceptionScreen(id: String, value: String, open: (String) -> Unit)
 ```
 
-Validation limits, availability generations, info-only entries, receipts and events are the iOS ones. Link taps:
+Validation limits, availability generations, info-only entries, receipts and events are the iOS ones.
+
+`onPaywall` runs while the chat stays open, as on iOS. The SDK's sheet is its own activity
+(`ReceptionChatActivity`), so a dialog the host shows on its own activity appears under the sheet. A host that presents
+its paywall from `onPaywall` as a dialog or an activity calls `Reception.closeChat()` first when it wants the paywall
+above the SDK's sheet. iOS keeps the chat open underneath the paywall; Android cannot. An embedded `ReceptionChatView`
+is part of the host's screen and has no such limit.
+
+Link taps:
 
 1. `reception-screen:<id>[?value=…]` closes the SDK's activity (an embedded view stays) and runs the screen on the
    main thread; outcome `handled`/`failed` as on iOS.
