@@ -137,7 +137,8 @@ internal class ChatModel(val session: DeviceSession?) {
         maxSeq = store.cursor
         // Text written while the history loaded is the newer draft.
         if (composer.isEdited) store.draftText = composer.text else composer.restore(store.draftText)
-        teamProfiles = TeamProfiles(scope, store.teamProfileCache).also { updateTeamProfiles(it) }
+        // Only a conversation response names the team; until then the cached names and photos stand.
+        teamProfiles = TeamProfiles(scope, store.teamProfileCache)
         isRestored = true
     }
 
