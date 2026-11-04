@@ -2,6 +2,11 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-04: Phase C must also, in the SDK's own sheet: apply `MaterialTheme` with `dynamicLight/DarkColorScheme` on
+  Android 12+ and the iOS blue (#007AFF/#0A84FF) below; provide `LocalReceptionDarkMode` (`receptionDarkMode(embedded =
+  false)` in the sheet, `true` in an embedded `ReceptionChatView`) and `LocalReceptionIncreasedContrast`
+  (`ContrastMonitor.increasedContrast` collected); call `ContrastMonitor.start(context)`/`stop()` as the chat becomes
+  visible and hidden.
 - 2026-11-04: Fixes 1 done (see verification/fixes-1.md): the client-core audit plus three decided items, one commit
   each. Storage: `client/Storage.kt` is the single storage thread (`Dispatchers.IO.limitedParallelism(1)`); SecureStore
   commits and returns the real result; a `DeviceSession` opens its `DeviceStore` there (`DeviceStore.open()`: generation,
