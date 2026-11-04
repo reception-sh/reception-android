@@ -9,6 +9,9 @@ cd "$root"
 [ -f settings.gradle.kts ] && [ -d reception ] || { echo "Run from the reception-android repository root." >&2; exit 1; }
 
 logs="$root/build/release_check"
+# The newest Compose BOM on Google Maven; the Compose compatibility step runs the SDK on it. Bump it as CONTRIBUTING.md
+# (Compose compatibility) describes.
+newest_compose_bom=2026.09.00
 summary=""
 current=""
 finish() {
@@ -95,6 +98,12 @@ pass
 
 step "example: bare release build (R8) without Firebase and Billing"
 gradle example-bare -PreceptionExampleBare=true :example:assembleRelease
+pass
+
+step "Compose compatibility: unit tests and example on BOM $newest_compose_bom"
+# The library compiles against its own BOM; hosts run it on theirs. A signature that a newer Compose removed fails a
+# test or the example here with NoSuchMethodError (see the root build.gradle.kts).
+gradle compose-compatibility -PreceptionComposeBom="$newest_compose_bom" :reception:test :example:assembleDebug
 pass
 
 step "publishToMavenLocal and the POM"

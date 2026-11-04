@@ -66,13 +66,31 @@ It sends one real message. It also runs for Flutter and React Native hosts, whic
 ./gradlew :reception:test
 ```
 
+## Compose compatibility
+
+The SDK compiles against the Compose BOM in `gradle/libs.versions.toml` (and publishes it), but runs on whatever Compose the host app resolves, usually a newer one. Compose keeps source compatibility across versions, not always binary compatibility: a call the SDK compiled against an overload that a later Compose removed crashes the host with `NoSuchMethodError` (`FlowRow` with `FlowRowOverflow`, removed in Compose 1.8, did this to the React Native example). Prefer stable, non-experimental APIs (`Row`, `Column`, `Box`, `Layout`), and treat any `@Experimental…Api` opt-in as a risk.
+
+`-PreceptionComposeBom=<version>` makes the library's unit tests and the example app resolve that BOM, while the library itself still compiles against its own:
+
+```sh
+./gradlew -PreceptionComposeBom=2026.09.00 :reception:test :example:assembleDebug
+```
+
+`ChatScreensTest` and `DeliveryStatusTest` compose every screen (the embedded chat, the sheet, the history with each kind of message and a failed one with Retry, the composer, the cards, the lightbox, the status line), so a removed signature fails a test. The release check runs this once with `newest_compose_bom` from `tool/release_check.sh`. To bump it, look up the newest stable BOM:
+
+```sh
+curl -s https://dl.google.com/dl/android/maven2/androidx/compose/compose-bom/maven-metadata.xml | grep -oE '<version>[0-9.]+</version>' | tail -1
+```
+
+set `newest_compose_bom` to it, run the command above, and commit. A newer Compose may ask for a newer compileSdk and Android Gradle plugin than this build uses; for this run the AAR metadata checks are off, because what matters is the SDK's bytecode on that Compose. Fix a failure in the SDK (replace or avoid the API); never pin hosts to an older Compose.
+
 ## Public API
 
 `reception/api/reception.api` lists every public symbol. `./gradlew :reception:apiCheck` (also part of `check` and the release check) fails when the public API changes; when the change is intended and listed in SPEC.md, record it with `./gradlew :reception:apiDump` and commit the file with the change.
 
 ## Checks
 
-`tool/release_check.sh` runs every automated check in order from the repository root and prints a summary. It requires a clean working tree, then checks that `Version.kt`, the top CHANGELOG entry and the README agree, verifies the generated strings, builds the library from clean (release build, lint, unit tests, API check) and fails on any warning line, builds the example's release variant with R8 with and without Firebase and Billing, publishes to Maven Local and checks the POM (coordinates, license, SCM, dependency scopes: Compose and coroutines `api`, the rest `implementation`, no Firebase or Billing), and signs the publication when a signing key is configured.
+`tool/release_check.sh` runs every automated check in order from the repository root and prints a summary. It requires a clean working tree, then checks that `Version.kt`, the top CHANGELOG entry and the README agree, verifies the generated strings, builds the library from clean (release build, lint, unit tests, API check) and fails on any warning line, builds the example's release variant with R8 with and without Firebase and Billing, runs the unit tests and builds the example on the newest Compose BOM (Compose compatibility, above), publishes to Maven Local and checks the POM (coordinates, license, SCM, dependency scopes: Compose and coroutines `api`, the rest `implementation`, no Firebase or Billing), and signs the publication when a signing key is configured.
 
 The manual checks before a release are the verification round on the emulator (SPEC.md, Verification): every push scenario with real FCM, the chat in light and dark mode, German, font scale 1.3, rotation, the keyboard over the sheet and the embedded chat, offline and reconnect, identity and token switch, logout, deletion and the setup check, with StrictMode on. Report actual results, or the precise reason a check was not run.
 
