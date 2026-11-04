@@ -136,9 +136,11 @@ for dependency in pom.findall("m:dependencies/m:dependency", ns):
 for key, scope in sorted(dependencies.items()):
     print(f"  {scope:8} {key}")
 
-# ReceptionChatView exposes Modifier, so the Compose artifacts are `api` (compile scope); everything else stays
-# runtime. Firebase and Billing are compileOnly and must not appear; nor may test libraries.
-api = {"androidx.compose.ui:ui", "androidx.compose.foundation:foundation", "androidx.compose.material3:material3"}
+# ReceptionChatView exposes Modifier, so the Compose artifacts are `api` (compile scope), and so are coroutines
+# (unreadCount and isChatOpen are StateFlows) and the Kotlin standard library the Kotlin plugin adds; everything else
+# stays runtime. Firebase and Billing are compileOnly and must not appear; nor may test libraries.
+api = {"androidx.compose.ui:ui", "androidx.compose.foundation:foundation", "androidx.compose.material3:material3",
+       "org.jetbrains.kotlinx:kotlinx-coroutines-android", "org.jetbrains.kotlin:kotlin-stdlib"}
 for key in api:
     if dependencies.get(key) != "compile":
         problems.append(f"{key} must be a compile (api) dependency, is {dependencies.get(key)}")
