@@ -78,7 +78,20 @@ full run 1..10 rc=0 tests 500 (250 debug + 250 release) failing 0
 
 ## Build
 
-RELEASE_CHECK
+`tool/release_check.sh` on the clean tree at 04c6bf5 (exit 0; signing skipped, no key on this machine):
+
+```
+== Summary
+  ok    clean working tree
+  ok    version agreement
+  ok    tool/sync_strings.py --check
+  ok    library: clean, release build, lint, unit tests, API check
+  ok    example: release build (R8) with Firebase and Billing
+  ok    example: bare release build (R8) without Firebase and Billing
+  ok    publishToMavenLocal and the POM
+  ok    signing configuration
+All checks passed.
+```
 
 ## Live run (StrictMode `penaltyDeath`)
 

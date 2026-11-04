@@ -2,6 +2,20 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-04: Fixes 11 done (see verification/fixes-11.md), one commit each. Y-1 `ChatPresenter.present(stillWanted)`:
+  a tap's open carries its routing generation through the record save and is withdrawn right before the sheet starts
+  if routing turned off meanwhile (also off-then-on); the host's own requests always start. Y-4 no sheet over a host
+  that finished or was destroyed during the save. Y-2 `present(…, completed)` reports whether the sheet started;
+  `AutomationPresenter.present` suspends on it, so an automation's open rule retries a cancelled presentation within
+  its 5 s window, which is checked again right before the sheet starts. Y-3 FCM message IDs are written with
+  `commit()` before the notification posts (failure logged, message handled once). Z-2 SPEC: the Compose `Dialog`
+  soft-input override and the Android 10 pan limit. Z-1 the flaky test is
+  `ChatPresentationTest.aLateConfigureFollowedByALogoutDoesNotRestore` (found under CPU load: `withContext` returns
+  synchronously when the storage read finishes first, so the restore completed inside `configure`, before the test's
+  logout, whose animated dismissal never ends in Robolectric); the test now holds the storage thread across configure
+  and logout; 60 loaded class runs and 10 full `--rerun-tasks` runs green (500 tests). Example (debug): `…TRACK --el
+  secondAfter <ms>`. `tool/release_check.sh` passes; live on Android 16 StrictMode-clean: automation open, the retry
+  over a second screen started during the save, routing off during a tap's save, normal tap.
 - 2026-11-04: Fixes 10 done (see verification/fixes-10.md), one commit each. X-2 `ui/KeyboardWindow`: the embedded
   chat adjusts the window that shows its composition (a Compose `Dialog`'s, the activity's, or a platform dialog's
   through its root's window parameters), counted per window; found live: a Compose `Dialog` measures its content
