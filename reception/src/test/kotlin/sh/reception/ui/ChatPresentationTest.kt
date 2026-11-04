@@ -329,8 +329,15 @@ class ChatPresentationTest {
         created(intent)
         processRestartedWithoutConfigure()
         val sheet = recreated(intent)
+        // The restore reads the record on the storage thread as soon as configure names the namespace. Unheld, a fast
+        // read can finish inside configure (withContext returns at once when its block is done first), so the sheet
+        // would be restored and then slide away for the logout; held, the logout always comes first.
+        val release = CountDownLatch(1)
+        val storageHeld = Storage.launch { release.await(5, TimeUnit.SECONDS) }
         ReceptionState.configure(RuntimeEnvironment.getApplication(), ChatHarness.APP_ID)
         ReceptionResets.resetLocal()
+        release.countDown()
+        runBlocking { storageHeld.join() }
         harness.mainLoopUntil { sheet.isFinishing || ChatPresenter.isPresented }
         assertTrue(sheet.isFinishing)
     }
