@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,18 +72,24 @@ internal fun rememberPhotoPicker(model: ComposerModel): (() -> Unit)? {
     if (LocalActivityResultRegistryOwner.current == null) return null
     val context = LocalContext.current
     val remaining = model.remainingPhotos
+    val owner = remember { Any() }
+    // Declared before the launchers, so a recreated launcher owns the open picker before its result arrives.
+    DisposableEffect(model, owner) {
+        model.picker.bound(owner)
+        onDispose { model.picker.released(owner, recreating = context.isChangingConfigurations()) }
+    }
     val several = remember(remaining) { PickMultipleVisualMedia(maxOf(2, remaining)) }
     val many = rememberLauncherForActivityResult(several) { uris ->
-        model.isPicking = false
+        model.picker.finished(owner)
         model.add(context, uris)
     }
     val one = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
-        model.isPicking = false
+        model.picker.finished(owner)
         if (uri != null) model.add(context, listOf(uri))
     }
     val request = PickVisualMediaRequest(PickVisualMedia.ImageOnly)
     return {
-        if (remaining > 0) model.isPicking = true
+        if (remaining > 0) model.picker.launched(owner)
         if (remaining > 1) many.launch(request) else if (remaining == 1) one.launch(request)
     }
 }

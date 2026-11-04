@@ -136,7 +136,7 @@ private fun RemoteAppearanceRefresh() {
     }
 }
 
-private fun Context.isChangingConfigurations(): Boolean {
+internal fun Context.isChangingConfigurations(): Boolean {
     var current: Context? = this
     while (current is ContextWrapper) {
         if (current is Activity) return current.isChangingConfigurations

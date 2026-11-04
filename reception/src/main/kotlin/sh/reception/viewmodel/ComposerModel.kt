@@ -47,11 +47,15 @@ internal class ComposerModel(private val scope: CoroutineScope) {
         private set
     var hasPhotoError: Boolean by mutableStateOf(false)
 
+    /** The launcher that has the system photo picker open, from its launch until its result or its disposal. */
+    val picker = PhotoPickerOwnership()
+
     /**
-     * The system photo picker is open over the chat, from its launch until its result. The chat counts as visible
-     * meanwhile, as under the iOS in-app picker sheet, so the hosting activity's stop and start change nothing.
+     * The system photo picker is open over the chat. The chat counts as visible meanwhile, as under the iOS in-app
+     * picker sheet, so the hosting activity's pause changes nothing; the app going to the background still does.
      */
-    var isPicking: Boolean = false
+    val isPicking: Boolean
+        get() = picker.isPicking
     val error: String?
         get() = if (hasPhotoError) ReceptionLocalization.string(Strings.couldNotLoadThisPhoto) else null
     val canSend: Boolean
