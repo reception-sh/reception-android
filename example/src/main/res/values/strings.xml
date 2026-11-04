@@ -22,4 +22,6 @@
     <string name="switch_user">Switch user (token)</string>
     <string name="add_second_chat">Add a second chat</string>
     <string name="remove_second_chat">Remove the second chat</string>
+    <string name="chat_in_dialog">Chat in a dialog</string>
+    <string name="app_notification_icon">App notification icon</string>
 </resources>

@@ -45,6 +45,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        if (BuildConfig.DEBUG) ExampleDebugTools.applyWindowMode(this)
         setContent {
             // A host theme of its own, so the embedded chat shows how it follows the app's colors.
             val scheme = if (isSystemInDarkTheme()) darkColorScheme(primary = Color(0xFF8AB4FF))
@@ -83,6 +84,7 @@ private fun HomeScreen(embed: () -> Unit) {
             OutlinedButton(onClick = { Reception.logout() }) { Text(stringResource(R.string.logout)) }
             Actions()
             Settings()
+            if (BuildConfig.DEBUG) DebugTools()
             Text(stringResource(R.string.unread_count, unread))
             Text(stringResource(R.string.sdk_version, Reception.version), style = MaterialTheme.typography.bodySmall)
         }
