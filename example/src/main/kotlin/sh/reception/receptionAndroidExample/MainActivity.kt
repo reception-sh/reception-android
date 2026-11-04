@@ -8,14 +8,17 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
@@ -46,6 +49,7 @@ class MainActivity : ComponentActivity() {
                 var embedded by rememberSaveable { mutableStateOf(false) }
                 BackHandler(enabled = embedded) { embedded = false }
                 if (embedded) EmbeddedScreen(close = { embedded = false }) else HomeScreen(embed = { embedded = true })
+                Notice()
             }
         }
     }
@@ -68,10 +72,50 @@ private fun HomeScreen(embed: () -> Unit) {
                 Text(stringResource(R.string.identify))
             }
             OutlinedButton(onClick = { Reception.logout() }) { Text(stringResource(R.string.logout)) }
+            Settings()
             Text(stringResource(R.string.unread_count, unread))
             Text(stringResource(R.string.sdk_version, Reception.version), style = MaterialTheme.typography.bodySmall)
         }
     }
+}
+
+/** The language override and the chat's color scheme, for checking both in the open chat. */
+@Composable
+private fun Settings() {
+    var german by rememberSaveable { mutableStateOf(Reception.languageOverride == "de") }
+    var scheme by rememberSaveable { mutableStateOf(Reception.appearance.preferredColorScheme) }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(stringResource(R.string.language_override))
+        Switch(checked = german, onCheckedChange = {
+            german = it
+            Reception.languageOverride = if (it) "de" else null
+        })
+    }
+    OutlinedButton(onClick = {
+        scheme = when (scheme) {
+            null -> Reception.ColorScheme.LIGHT
+            Reception.ColorScheme.LIGHT -> Reception.ColorScheme.DARK
+            Reception.ColorScheme.DARK -> null
+        }
+        Reception.appearance.preferredColorScheme = scheme
+    }) {
+        Text(stringResource(R.string.chat_appearance, when (scheme) {
+            null -> stringResource(R.string.appearance_system)
+            Reception.ColorScheme.LIGHT -> stringResource(R.string.appearance_light)
+            Reception.ColorScheme.DARK -> stringResource(R.string.appearance_dark)
+        }))
+    }
+}
+
+/** What a paywall or screen card asked the app to show. */
+@Composable
+private fun Notice() {
+    val notice = ExampleFeatures.notice ?: return
+    AlertDialog(
+        onDismissRequest = { ExampleFeatures.notice = null },
+        confirmButton = { TextButton(onClick = { ExampleFeatures.notice = null }) { Text(stringResource(R.string.ok)) } },
+        text = { Text(notice) },
+    )
 }
 
 /** The chat as a screen of the app's own navigation, under the app's theme. */

@@ -23,6 +23,7 @@ class ExampleApplication : Application() {
             Log.w(TAG, "No App ID in .local/app-id.txt, Reception is not configured")
             return
         }
+        ExampleFeatures.register()
         if (BuildConfig.DEBUG) {
             Reception.configureForTesting(this, appId, BuildConfig.RECEPTION_SERVICE_URL)
         } else {

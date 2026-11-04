@@ -8,4 +8,10 @@
     <string name="identify">Identify test user</string>
     <string name="logout">Log out</string>
     <string name="unread_count">Unread: %1$d</string>
+    <string name="language_override">Set language override (de)</string>
+    <string name="chat_appearance">Chat appearance: %1$s</string>
+    <string name="appearance_system">System</string>
+    <string name="appearance_light">Light</string>
+    <string name="appearance_dark">Dark</string>
+    <string name="ok">OK</string>
 </resources>
