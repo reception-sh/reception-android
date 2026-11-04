@@ -266,4 +266,32 @@ class ReceptionNotificationActivityTest {
         assertEquals(ReceptionChatActivity::class.java.name, shadowOf(host).nextStartedActivity?.component?.className)
         ChatPresenter.dismiss()
     }
+
+    @OptIn(ReceptionInternalApi::class)
+    @Test
+    fun aHostRequestDuringATapsRecordSaveKeepsThePresentationThroughARoutingDisable() {
+        val host = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val hostRequests = listOf<() -> Unit>(
+            { Reception.openChat() },
+            { assertTrue(Reception.handlePushNotification(mapOf(PushNotifications.PAYLOAD_KEY to "c1"), openChat = true)) },
+        )
+        for ((index, request) in hostRequests.withIndex()) {
+            val release = holdStorage()
+            tap("h$index")
+            ApplicationLifecycle.noteCurrentActivity(host)
+            shadowOf(Looper.getMainLooper()).idle()
+            assertTrue("the tap's open waits for its record", ChatPresenter.isPresented)
+            // The host asks for the chat while the tap's record is saved, then routing turns off.
+            request()
+            shadowOf(Looper.getMainLooper()).idle()
+            Reception.setNotificationRoutingEnabled(false)
+            release()
+            assertEquals("host request $index was dropped", ReceptionChatActivity::class.java.name,
+                shadowOf(host).nextStartedActivity?.component?.className)
+            assertNull("a second sheet started", shadowOf(host).nextStartedActivity)
+            ChatPresenter.dismiss()
+            harness.settle()
+            Reception.setNotificationRoutingEnabled(true)
+        }
+    }
 }

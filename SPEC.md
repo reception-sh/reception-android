@@ -120,7 +120,7 @@ Each presentation gets a random token that its launch intent carries; a sheet wh
 cancelled by logout, `deleteData()` or reconfiguration, or superseded before it was created) finishes at once. The token
 and the configured storage namespace are also committed to SharedPreferences `sh.reception.presentation` on the storage
 thread before the sheet starts (the presentation counts as requested meanwhile; after the commit the sheet starts only if
-that presentation is still current, its activity is still the resumed one and neither finishing nor destroyed, and the request is still wanted (see the routing and automation rules); otherwise the presentation is cancelled; a failed commit is logged and the sheet
+that presentation is still current, its activity is still the resumed one and neither finishing nor destroyed, and the request is still wanted (see the routing and automation rules); a request made while a presentation waits for its record joins it, and the joined presentation is wanted while any of its requests wants it, so a host's `openChat()` or `handlePushNotification(openChat = true)` during a tap's save keeps it through a routing disable; otherwise the presentation is cancelled; a failed commit is logged and the sheet
 starts without restoration), so when the process dies with the sheet on screen and Android restores it (Recents), the sheet reads the record
 and is shown again, with its saved state (an open lightbox included), if the record still names its token and the App
 ID configured in the new process; any dismissal, logout, deletion or reconfiguration clears the record first. The first

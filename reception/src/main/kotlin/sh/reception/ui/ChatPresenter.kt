@@ -36,6 +36,9 @@ internal object ChatPresenter {
      */
     private var presentation: String? = null
 
+    /** The presentation whose record is being saved, which later requests join. */
+    private var pending: PendingPresentation? = null
+
     /** Advanced by every presentation and dismissal, so a restore that read the record before one is rejected. */
     private var changes = 0
 
@@ -70,9 +73,14 @@ internal object ChatPresenter {
      * Answers whether the sheet was requested (it starts once its record is on disk) or brought to the front.
      * [completed] runs once, on the main thread, with whether the sheet was started or brought to the front; it is
      * false when the request was skipped or cancelled before the sheet started. [stillWanted] is asked right before the
-     * sheet starts; false cancels the presentation.
+     * sheet starts; false cancels the presentation. A request made while a presentation waits for its record joins it.
      */
     fun present(stillWanted: () -> Boolean = { true }, completed: (Boolean) -> Unit = {}): Boolean {
+        pending?.takeIf { it.token == presentation }?.let {
+            it.join(stillWanted, completed)
+            Log.debug { "Chat presentation joined the one waiting for its record" }
+            return true
+        }
         if (ReceptionState.isChatOpen.value || (isPresented && sheet?.get() == null)) {
             Log.debug { "Chat presentation skipped, chat already open" }
             return false.also(completed)
@@ -91,7 +99,12 @@ internal object ChatPresenter {
         requestedAt = SystemClock.uptimeMillis()
         val entry = ReceptionState.namespace?.let { PresentationRecord.Entry(token, it) }
             ?: return startIfWanted(host, token, stillWanted).also(completed)
-        SheetRecord.save(host, entry) { completed(startIfWanted(host, token, stillWanted)) }
+        val waiting = PendingPresentation(token, stillWanted, completed)
+        pending = waiting
+        SheetRecord.save(host, entry) {
+            if (pending === waiting) pending = null
+            waiting.finish(startIfWanted(host, token, waiting::stillWanted))
+        }
         return true
     }
 
@@ -218,6 +231,7 @@ internal object ChatPresenter {
         sheet = null
         requestedAt = null
         presentation = null
+        pending = null
         afterDismissal = null
     }
 }
