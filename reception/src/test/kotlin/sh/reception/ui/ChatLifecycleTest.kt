@@ -88,4 +88,56 @@ class ChatLifecycleTest {
         assertTrue(chat.isVisible)
         lifecycle.disposed()
     }
+
+    @Test
+    fun twoChatsShareTheModelAndItStopsOnlyWhenTheLastLeaves() {
+        val chat = startedChat()
+        val first = lifecycle(chat)
+        val second = lifecycle(chat)
+        for (owner in listOf(first, second)) {
+            owner.hostChanged(Lifecycle.Event.ON_START)
+            owner.hostChanged(Lifecycle.Event.ON_RESUME)
+        }
+        harness.mainLoopUntil { chat.isChatActive }
+
+        // One embedded chat leaves the composition; the other keeps showing and listening.
+        first.disposed()
+        assertTrue(chat.isChatActive)
+        assertTrue(chat.isVisible)
+        assertTrue(ReceptionState.isChatOpen.value)
+
+        second.disposed()
+        assertFalse(chat.isChatActive)
+        assertFalse(chat.isVisible)
+        assertFalse(ReceptionState.isChatOpen.value)
+    }
+
+    @Test
+    fun theBackgroundStopsEveryChatThatSharesTheModelAndEachComesBack() {
+        val chat = startedChat()
+        val owners = listOf(lifecycle(chat), lifecycle(chat))
+        for (owner in owners) {
+            owner.hostChanged(Lifecycle.Event.ON_START)
+            owner.hostChanged(Lifecycle.Event.ON_RESUME)
+        }
+        harness.mainLoopUntil { chat.isChatActive }
+        owners.first().backgrounded()
+        assertFalse(chat.isChatActive)
+        assertFalse(chat.isVisible)
+        for (owner in owners) {
+            owner.backgrounded()
+            owner.hostChanged(Lifecycle.Event.ON_PAUSE)
+            owner.hostChanged(Lifecycle.Event.ON_STOP)
+        }
+        for (owner in owners) {
+            owner.hostChanged(Lifecycle.Event.ON_START)
+            owner.hostChanged(Lifecycle.Event.ON_RESUME)
+        }
+        harness.mainLoopUntil { chat.isChatActive }
+        owners.first().disposed()
+        assertTrue(chat.isChatActive)
+        assertTrue(chat.isVisible)
+        owners.last().disposed()
+        assertFalse(chat.isVisible)
+    }
 }

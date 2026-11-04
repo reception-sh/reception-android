@@ -102,6 +102,10 @@ internal class ChatModel(val session: DeviceSession?) {
         private set
     private val restoration: Job
 
+    /** The chats on screen and the active ones that show this model (two embedded views share it). */
+    val startedOwners: MutableSet<Any> = mutableSetOf()
+    val resumedOwners: MutableSet<Any> = mutableSetOf()
+
     /** On screen; also `Reception.isChatOpen`, and the unread timer pauses while it holds. */
     var isVisible: Boolean by mutableStateOf(false)
         private set

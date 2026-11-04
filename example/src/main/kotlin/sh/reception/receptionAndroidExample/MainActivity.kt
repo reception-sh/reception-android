@@ -149,13 +149,25 @@ private fun Notice() {
     )
 }
 
-/** The chat as a screen of the app's own navigation, under the app's theme. */
+/**
+ * The chat as a screen of the app's own navigation, under the app's theme. Debug builds can show a second chat
+ * below it, to check that removing one leaves the other showing and listening.
+ */
 @Composable
 private fun EmbeddedScreen(close: () -> Unit) {
+    var twoChats by rememberSaveable { mutableStateOf(false) }
     Scaffold { padding ->
         Column(Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
-            TextButton(onClick = close, modifier = Modifier.padding(horizontal = 8.dp)) { Text(stringResource(R.string.back)) }
+            Row(Modifier.padding(horizontal = 8.dp)) {
+                TextButton(onClick = close) { Text(stringResource(R.string.back)) }
+                if (BuildConfig.DEBUG) {
+                    TextButton(onClick = { twoChats = !twoChats }) {
+                        Text(stringResource(if (twoChats) R.string.remove_second_chat else R.string.add_second_chat))
+                    }
+                }
+            }
             ReceptionChatView(Modifier.weight(1f))
+            if (twoChats) ReceptionChatView(Modifier.weight(1f))
         }
     }
 }

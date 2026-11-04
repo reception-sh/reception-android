@@ -20,4 +20,6 @@
     <string name="delete_data">Delete data</string>
     <string name="second_screen">Second screen</string>
     <string name="switch_user">Switch user (token)</string>
+    <string name="add_second_chat">Add a second chat</string>
+    <string name="remove_second_chat">Remove the second chat</string>
 </resources>
