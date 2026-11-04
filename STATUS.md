@@ -2,6 +2,29 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-04: Phase E done (see verification/phase-e.md): 1.0.0 is ready to publish. E-1 the setup check also starts
+  from the activity a plugin hands to `noteCurrentActivity` (Flutter/RN run the same adb command). E-2 a sheet restored
+  after process death waits up to 3 s for a late `configure` (logout, reconfiguration, newer presentations still finish
+  it). E-3 `ui/SheetGestures`. `Version.kt` is the only version source (Gradle reads it); public API tracked in
+  `reception/api/reception.api` (binary-compatibility-validator, `apiCheck`). README, CHANGELOG (1.0.0 unreleased),
+  CONTRIBUTING; THIRD_PARTY_NOTICES checked (Material Symbols only). `tool/release_check.sh` passes on a clean tree
+  (signing step skipped: no key on this machine). Found and fixed on the way: coroutines are `api` (public
+  `StateFlow`s); an embedded chat in a host window that pans for the keyboard (no `windowSoftInputMode`, Android
+  Studio's Compose template) floated a keyboard height too high, now `ui/EmbeddedKeyboardMode` resizes such a window
+  while a chat is embedded and restores it. Full matrix on the emulator with StrictMode: all steps passed (font scale
+  1.35 instead of 1.3, cooldown via the local limit budget); 0 StrictMode lines from the app, 0 FATAL.
+  **Andi's steps to publish:** (1) create a Sonatype Central Portal account (central.sonatype.com) and add the namespace
+  `sh.reception`; (2) add the verification key it shows as a DNS TXT record on `reception.sh` and verify the namespace;
+  (3) generate a portal user token; (4) create a GPG key, upload its public key to keyserver.ubuntu.com, and put
+  `mavenCentralUsername`, `mavenCentralPassword`, `signingInMemoryKey`, `signingInMemoryKeyId`,
+  `signingInMemoryKeyPassword` into `~/.gradle/gradle.properties` (never the repo); (5) set the CHANGELOG date for
+  1.0.0, run `tool/release_check.sh` (the signing step must now run), then `./gradlew publishToMavenCentral` and publish
+  the deployment in the portal; (6) `git tag 1.0.0`, push `main` and the tag, GitHub release with the CHANGELOG text.
+  Flutter (`reception_flutter` 1.2.0) and React Native (`react-native-reception` 1.6.0) wait for the artifact on Maven
+  Central. Known limits: the Play Billing live path (a signed-in Google account with a purchase) is unverified, only
+  `PaidAccessTest` and the "billing unavailable" path ran; the iOS `ChatPreview` launch argument is not ported; team
+  replies from scripts appear on the next load because the dev server's event bus is in-process. Open: the Flutter/RN
+  docs can mention that the setup check and the sheet restore now work for them.
 - 2026-11-04: Fixes 8 done (see verification/fixes-8.md), one commit each. T-1 a superseding paid-access read is
   installed before the previous one is cancelled. T-2 the token gate waits for credentials that changed during a save.
   T-3 the trampoline restores any app-rooted Recents task (also without activity records), never its own. T-4
