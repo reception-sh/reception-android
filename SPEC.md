@@ -253,9 +253,11 @@ Reception.appearance: Reception.Appearance        // a mutable class with the iO
 Reception.usesRemoteAppearance: Boolean           // default true
 ```
 
-`Appearance` has exactly the iOS properties with Compose types: `accentColor: Color?` (null = the host's Material
-`primary` when the chat is embedded in a host theme, otherwise the app's `colorPrimary`/`colorAccent` attribute,
-resolved at render time), `onAccentColor: Color?`, `title`, `welcomeTitle`, `welcomeText`, `showsCloseButton`,
+`Appearance` has exactly the iOS properties with Compose types: `accentColor: Color?` (null = `MaterialTheme.colorScheme.primary` of the enclosing theme when the
+host embeds `ReceptionChatView` in its own `MaterialTheme`; the SDK's own sheet wraps the chat in a Material theme with
+dynamic color on Android 12+, so the default is the device's system accent, and the iOS system blue (#007AFF light,
+#0A84FF dark) below 12. The XML theme attributes `colorPrimary`/`colorAccent` are never read: Compose-only apps leave
+them at platform defaults. The host appearance report sends the accent only when the host set one), `onAccentColor: Color?`, `title`, `welcomeTitle`, `welcomeText`, `showsCloseButton`,
 `chatBackground`, `incomingBackground`, `incomingForeground`, `preferredColorScheme: ColorScheme?` (`LIGHT`, `DARK`),
 `closeIcon: CloseIcon` (`XMARK`, `CHEVRON_DOWN`, `ARROW_DOWN`), `closeImage: Painter?`, `fontDesign: FontDesign?`
 (`DEFAULT`, `ROUNDED`, `SERIF`, `MONOSPACED`; Android has no rounded system face, so `ROUNDED` draws the default
