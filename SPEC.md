@@ -47,8 +47,8 @@ reception/                         library module (the SDK), published artifact
   src/main/res/                    vector icons (Material Symbols), the sheet's theme
   src/test/                        focused unit tests (JUnit 4, MockWebServer, Robolectric only where Android
                                    classes are unavoidable)
-example/                           verification app against a local backend (Compose), with Firebase and Play Billing
   api/reception.api                the public API dump (binary-compatibility-validator; apiCheck, apiDump)
+example/                           verification app against a local backend (Compose), with Firebase and Play Billing
 tool/                              release_check.sh, sync_strings.py (xcstrings → sh.reception.strings Kotlin objects)
 verification/                      evidence of the last verification round
 SPEC.md, AGENTS.md, STATUS.md, CHANGELOG.md, README.md, CONTRIBUTING.md, LICENSE (MIT), THIRD_PARTY_NOTICES.md
