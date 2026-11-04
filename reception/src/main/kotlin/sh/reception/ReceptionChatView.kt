@@ -5,14 +5,11 @@ import android.util.AttributeSet
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.AbstractComposeView
-import androidx.compose.ui.platform.LocalView
 import sh.reception.ui.ChatContent
 import sh.reception.ui.ChatRoot
-import sh.reception.ui.EmbeddedKeyboardMode
-import sh.reception.ui.findActivity
+import sh.reception.ui.EmbeddedKeyboardAdjustment
 
 /**
  * The chat screen without the sheet, for the app's own navigation or presentation. Use [Reception.openChat] for the
@@ -21,11 +18,7 @@ import sh.reception.ui.findActivity
  */
 @Composable
 public fun ReceptionChatView(modifier: Modifier = Modifier) {
-    val window = LocalView.current.context.findActivity()?.window
-    DisposableEffect(window) {
-        window?.let(EmbeddedKeyboardMode::acquire)
-        onDispose { window?.let(EmbeddedKeyboardMode::release) }
-    }
+    EmbeddedKeyboardAdjustment()
     Box(modifier) {
         ChatRoot(embedded = true) { ChatContent(showsSheetControls = false) }
     }
