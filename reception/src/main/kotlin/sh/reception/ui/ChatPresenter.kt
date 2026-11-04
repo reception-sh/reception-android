@@ -42,11 +42,14 @@ internal object ChatPresenter {
     /** Runs once the sheet a link closed is gone, so the host can navigate or present freely. */
     private var afterDismissal: (() -> Unit)? = null
 
-    /** `Reception.openChat()`. */
-    fun open() {
+    /**
+     * `Reception.openChat()`, and the opens a push or a tap asks for: [stillWanted] is asked again right before the
+     * sheet starts, so a request withdrawn while its record was being saved (routing turned off) does not appear.
+     */
+    fun open(stillWanted: () -> Boolean = { true }) {
         if (ReceptionState.session == null) return Log.error { "openChat called before configure, ignored" }
         Log.debug { "Chat presentation requested" }
-        present()
+        present(stillWanted)
     }
 
     /** `Reception.closeChat()`: only the SDK's own sheet; a host-embedded chat is the host's to remove. */
@@ -59,8 +62,11 @@ internal object ChatPresenter {
         get() = sheet?.get() != null ||
             requestedAt?.let { SystemClock.uptimeMillis() - it < START_WINDOW_MILLIS } == true
 
-    /** Answers whether the sheet was requested (it starts once its record is on disk) or brought to the front. */
-    fun present(): Boolean {
+    /**
+     * Answers whether the sheet was requested (it starts once its record is on disk) or brought to the front.
+     * [stillWanted] is asked right before the sheet starts; false cancels the presentation.
+     */
+    fun present(stillWanted: () -> Boolean = { true }): Boolean {
         if (ReceptionState.isChatOpen.value || (isPresented && sheet?.get() == null)) {
             Log.debug { "Chat presentation skipped, chat already open" }
             return false
@@ -77,18 +83,23 @@ internal object ChatPresenter {
         presentation = token
         changes += 1
         requestedAt = SystemClock.uptimeMillis()
-        val entry = ReceptionState.namespace?.let { PresentationRecord.Entry(token, it) } ?: return start(host, token)
-        SheetRecord.save(host, entry) {
-            // The save took a moment: the presentation may have been closed or superseded, or its screen left.
-            if (presentation != token) return@save
-            if (ApplicationLifecycle.currentActivity !== host) {
-                Log.debug { "Chat presentation cancelled, the screen changed before it started" }
-                dismiss()
-                return@save
-            }
-            start(host, token)
-        }
+        val entry = ReceptionState.namespace?.let { PresentationRecord.Entry(token, it) }
+            ?: return startIfWanted(host, token, stillWanted)
+        SheetRecord.save(host, entry) { startIfWanted(host, token, stillWanted) }
         return true
+    }
+
+    /** The save took a moment: the presentation may have been closed or superseded, or its screen left. */
+    private fun startIfWanted(host: Activity, token: String, stillWanted: () -> Boolean): Boolean {
+        if (presentation != token) return false
+        val reason = when {
+            ApplicationLifecycle.currentActivity !== host -> "the screen changed before it started"
+            !stillWanted() -> "it was withdrawn before it started"
+            else -> return start(host, token)
+        }
+        Log.debug { "Chat presentation cancelled, $reason" }
+        dismiss()
+        return false
     }
 
     private fun start(host: Activity, token: String): Boolean = try {

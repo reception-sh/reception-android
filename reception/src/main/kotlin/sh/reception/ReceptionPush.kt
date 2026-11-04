@@ -17,7 +17,6 @@ import sh.reception.client.PushMessageIds
 import sh.reception.client.PushNotifications
 import sh.reception.client.Storage
 import sh.reception.client.hasConversation
-import sh.reception.ui.ChatPresenter
 import java.util.UUID
 
 /** Push receipt, notification taps and token registration behind the facade (SPEC.md, Push notifications). Main thread only. */
@@ -108,7 +107,7 @@ internal object ReceptionPush {
     private fun requestOpen(source: PendingChatOpen.Source) {
         if (ReceptionState.session == null) return Log.error { "openChat called before configure, ignored" }
         if (ApplicationLifecycle.currentActivity == null) return PendingChatOpen.request(source)
-        ChatPresenter.open()
+        PendingChatOpen.open(source)
     }
 
     /** `Reception.registerForPushIfAuthorized()`: at configure, every foreground, after logout and deletion. */

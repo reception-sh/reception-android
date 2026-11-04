@@ -25,8 +25,12 @@ import sh.reception.ReceptionState
 import sh.reception.client.ReceptionAPI
 import sh.reception.client.ApplicationLifecycle
 import sh.reception.client.PushNotifications
+import sh.reception.client.Storage
 import sh.reception.viewmodel.ChatHarness
+import kotlinx.coroutines.runBlocking
 import java.time.Duration
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /** A notification tap brings the app forward and opens the chat over whatever activity resumes; repeats do nothing. */
 @RunWith(RobolectricTestRunner::class)
@@ -223,5 +227,43 @@ class ReceptionNotificationActivityTest {
             shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(3))
             Reception.setNotificationRoutingEnabled(true)
         }
+    }
+
+    /** Holds the storage thread, so a presentation waits for its record; returns what lets it go and waits for it. */
+    private fun holdStorage(): () -> Unit {
+        val release = CountDownLatch(1)
+        val held = Storage.launch { release.await(5, TimeUnit.SECONDS) }
+        return {
+            release.countDown()
+            runBlocking { held.join() }
+            harness.settle()
+        }
+    }
+
+    @OptIn(ReceptionInternalApi::class)
+    @Test
+    fun routingTurnedOffWhileATapsPresentationRecordIsSavedCancelsItButNotTheHostsOwnRequest() {
+        val host = Robolectric.buildActivity(Activity::class.java).setup().get()
+        for (enablesAgain in listOf(false, true)) {
+            val release = holdStorage()
+            tap("y$enablesAgain")
+            ApplicationLifecycle.noteCurrentActivity(host)
+            shadowOf(Looper.getMainLooper()).idle()
+            // The open ran and waits for its record; routing turns off (and maybe on again) meanwhile.
+            assertTrue(ChatPresenter.isPresented)
+            Reception.setNotificationRoutingEnabled(false)
+            if (enablesAgain) Reception.setNotificationRoutingEnabled(true)
+            release()
+            assertNull("tap launched after routing turned off", shadowOf(host).nextStartedActivity)
+            assertFalse(ChatPresenter.isPresented)
+            Reception.setNotificationRoutingEnabled(true)
+        }
+        val release = holdStorage()
+        assertTrue(Reception.handlePushNotification(mapOf(PushNotifications.PAYLOAD_KEY to "c1"), openChat = true))
+        shadowOf(Looper.getMainLooper()).idle()
+        Reception.setNotificationRoutingEnabled(false)
+        release()
+        assertEquals(ReceptionChatActivity::class.java.name, shadowOf(host).nextStartedActivity?.component?.className)
+        ChatPresenter.dismiss()
     }
 }
