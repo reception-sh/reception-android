@@ -45,6 +45,8 @@ class SessionAuthorizationTest {
     private val server = MockWebServer()
     private val dispatcher = StandardTestDispatcher()
     private val requests = Collections.synchronizedList(mutableListOf<RecordedRequest>())
+    // Read on MockWebServer's thread.
+    @Volatile
     private var respond: (RecordedRequest) -> MockResponse = { MockResponse().setResponseCode(404) }
     private val credentials = Collections.synchronizedMap(mutableMapOf<String, String>())
     @Volatile private var savesFail = false
@@ -69,6 +71,7 @@ class SessionAuthorizationTest {
 
     @After
     fun tearDown() {
+        ReceptionState.resetForTests()
         server.shutdown()
         Dispatchers.resetMain()
     }

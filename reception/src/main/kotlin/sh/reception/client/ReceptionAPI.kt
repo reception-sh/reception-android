@@ -147,9 +147,11 @@ internal class ReceptionAPI(
         /** The service never asks for more than a day; a longer value is capped rather than trusted. */
         const val MAXIMUM_RETRY_AFTER: Int = 86_400
 
+        val defaultServiceUrl: HttpUrl = "https://reception.sh".toHttpUrl()
+
         /** The hosted Reception service. Only Reception's own debuggable test apps point it elsewhere. */
         @Volatile
-        var serviceUrl: HttpUrl = "https://reception.sh".toHttpUrl()
+        var serviceUrl: HttpUrl = defaultServiceUrl
 
         val json: Json = Json {
             ignoreUnknownKeys = true

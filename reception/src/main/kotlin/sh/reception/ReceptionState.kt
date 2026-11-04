@@ -2,6 +2,7 @@ package sh.reception
 
 import android.app.Application
 import android.content.Context
+import androidx.annotation.VisibleForTesting
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -89,6 +90,23 @@ internal object ReceptionState {
         if (active) session?.registerIfNeeded()
         ReceptionAppearance.updateRefresh()
         Log.info { "Configured, SDK ${SDKVersion.current}" }
+    }
+
+    /** Ends the configured session and forgets the App ID, so each test starts unconfigured. */
+    @VisibleForTesting(otherwise = VisibleForTesting.NONE)
+    fun resetForTests() {
+        unreadMonitor.setActive(false)
+        cancelUnreadRefresh()
+        session?.deactivate()
+        session = null
+        chat = null
+        appId = null
+        storageWork = null
+        logoutRevocations?.suspend()
+        logoutRevocations = null
+        ReceptionIdentity.forget()
+        unreadCount.value = 0
+        ReceptionAPI.serviceUrl = ReceptionAPI.defaultServiceUrl
     }
 
     fun applicationBecameActive() {
