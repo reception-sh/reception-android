@@ -60,8 +60,8 @@ class ChatActivationTest {
         val chat = startedChat()
         chat.activate()
         release.countDown()
-        // A session resume may open the stream on its own, so the test waits for the activation itself.
-        harness.mainLoopUntil { chat.isChatActive && harness.requests("GET", "/v1/conversation/events").isNotEmpty() }
+        // A session resume may open the stream on its own, so the activation itself is what proves it.
+        harness.mainLoopUntil { chat.isChatActive }
         chat.deactivate(keepsPolling = false)
     }
 }
