@@ -11,6 +11,16 @@
             android:name=".SecondActivity"
             android:exported="true"
             tools:replace="android:exported" />
+        <!-- Verification only: `adb shell am broadcast -n …/.VerificationReceiver -a …PUSH|…ROUTING` (see the class). -->
+        <receiver
+            android:name=".VerificationReceiver"
+            android:exported="true"
+            tools:ignore="ExportedReceiver">
+            <intent-filter>
+                <action android:name="sh.reception.receptionAndroidExample.PUSH" />
+                <action android:name="sh.reception.receptionAndroidExample.ROUTING" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

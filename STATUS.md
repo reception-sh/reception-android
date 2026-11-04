@@ -2,6 +2,16 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-04: Fixes 7 done (see verification/fixes-7.md), one commit each. S7-1 internal
+  `Reception.setNotificationRoutingEnabled` (plugins' `handlesNotifications: false`: pending tap discarded, drain
+  cancelled, taps only bring the app forward; plugins must call it before `Reception.configure`). S7-2
+  `handlePushMessage` ignores a repeated `google.message_id` (last 64, `sh.reception.push`, per App ID namespace or
+  global before configure, checked on the storage thread). S7-3 `ReceptionColor.argb(light, dark = light)`. S7-4 the
+  payload test's flake was configure's parallel `GET /v1/automations` arriving first; requests are now found by path
+  (5× `--rerun-tasks` green, 402 tests). S7-5 AGENTS.md records `Reception.kt` (441 lines) as the one length
+  exception. Example: debug-only `VerificationReceiver` (push data, routing flag via `am broadcast`). Live: S7-1 and
+  S7-2 StrictMode-clean. Next, Phase E: full verification matrix (SPEC.md Verification), `tool/release_check.sh`,
+  README, CONTRIBUTING, CHANGELOG, Maven Central dry run; the Flutter and React Native plugins call the new hook.
 - 2026-11-04: Fixes 6 done (see verification/fixes-6.md), one commit each (P-1/P-2 together). Paid access: a failed
   read makes it unknown, only the latest read publishes. Push: `reception_replies_unbadged` channel while the host
   keeps the badge, tag `reception:<conversation>` + id 1 + per-conversation intent data, channel named in the host's
