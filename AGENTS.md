@@ -27,7 +27,11 @@ project's `lint.xml`.
 **Extremely clean, simple, safe at the boundaries.** The SDK runs in other apps: it must never crash, never block the
 main thread, never block startup, never require anything from the host.
 
-- One file, one responsibility. Nothing over ~200 lines.
+- One file, one responsibility. Nothing over ~200 lines. The one deliberate exception is `Reception.kt`: it holds the
+  public `Reception` object with its nested public types (`Appearance`, `CloseIcon`, `FontDesign`, `ColorScheme`,
+  `WelcomeIcon`, `LogLevel`), because Kotlin cannot move a nested public type out of its object without renaming it
+  (`Reception.Appearance` would become a new API). Everything else in it stays a one-line delegation to an internal
+  file.
 - Keep the public API small and exactly what SPEC.md lists. Everything else `internal`. No `public` "just in case".
   `explicitApi()` is on, so every public symbol is a decision.
 - Errors at the boundaries: network calls return `Result`/throw typed errors; the view model translates them into UI
