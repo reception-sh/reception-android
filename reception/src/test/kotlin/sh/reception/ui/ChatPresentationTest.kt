@@ -20,10 +20,13 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowAppTask
 import sh.reception.ReceptionState
 import sh.reception.client.ApplicationLifecycle
+import sh.reception.client.PresentationRecord
 import sh.reception.client.ReceptionAPI
 import sh.reception.client.Storage
 import sh.reception.viewmodel.ChatHarness
 import java.time.Duration
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /** A sheet whose presentation was closed or superseded before it was created finishes at once. */
 @RunWith(RobolectricTestRunner::class)
@@ -39,6 +42,7 @@ class ChatPresentationTest {
         // Robolectric gives each test a new application; the lifecycle callbacks stay on the first one.
         ApplicationLifecycle.onActivityResumed(host)
         open()
+        harness.settle()
         return shadowOf(host).nextStartedActivity
     }
 
@@ -46,12 +50,53 @@ class ChatPresentationTest {
         Robolectric.buildActivity(ReceptionChatActivity::class.java, requireNotNull(intent)).create().get()
 
     @Test
-    fun aSheetClosedInTheSameCallbackAsItsOpeningFinishesWhenCreated() {
+    fun aSheetClosedInTheSameCallbackAsItsOpeningIsNotStarted() {
         val intent = launch {
             ChatPresenter.open()
             ChatPresenter.close()
         }
+        assertNull(intent)
+        assertFalse(ChatPresenter.isPresented)
+    }
+
+    @Test
+    fun aSheetClosedAfterItStartedFinishesWhenCreated() {
+        val intent = launch { ChatPresenter.open() }
+        ChatPresenter.close()
         assertTrue(created(intent).isFinishing)
+        assertFalse(ChatPresenter.isPresented)
+    }
+
+    @Test
+    fun theSheetStartsOnceItsRecordIsOnDiskAndOnlyOverTheScreenThatAskedForIt() {
+        harness.start()
+        val host = Robolectric.buildActivity(Activity::class.java).setup().get()
+        ApplicationLifecycle.onActivityResumed(host)
+        val release = CountDownLatch(1)
+        val storageHeld = Storage.launch { release.await(5, TimeUnit.SECONDS) }
+        ChatPresenter.open()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertNull("sheet started before its record was saved", shadowOf(host).nextStartedActivity)
+        assertTrue(ChatPresenter.isPresented)
+        release.countDown()
+        runBlocking { storageHeld.join() }
+        harness.settle()
+        val intent = shadowOf(host).nextStartedActivity
+        val token = intent?.getStringExtra(ChatPresenter.EXTRA_PRESENTATION)
+        assertEquals(token, PresentationRecord.load(RuntimeEnvironment.getApplication())?.token)
+        ChatPresenter.close()
+        harness.settle()
+        // Another screen resumed while the record was being saved: the sheet does not start over either.
+        val held = CountDownLatch(1)
+        val storageHeldAgain = Storage.launch { held.await(5, TimeUnit.SECONDS) }
+        ChatPresenter.open()
+        val other = Robolectric.buildActivity(Activity::class.java).setup().get()
+        ApplicationLifecycle.onActivityResumed(other)
+        held.countDown()
+        runBlocking { storageHeldAgain.join() }
+        harness.settle()
+        assertNull(shadowOf(host).nextStartedActivity)
+        assertNull(shadowOf(other).nextStartedActivity)
         assertFalse(ChatPresenter.isPresented)
     }
 
@@ -71,6 +116,7 @@ class ChatPresentationTest {
         val cover = Robolectric.buildActivity(Activity::class.java).setup().get()
         ApplicationLifecycle.onActivityResumed(cover)
         ChatPresenter.open()
+        harness.settle()
         val started = shadowOf(cover).nextStartedActivity
         assertEquals(ReceptionChatActivity::class.java.name, started.component?.className)
         assertTrue(started.flags and Intent.FLAG_ACTIVITY_REORDER_TO_FRONT != 0)
@@ -153,10 +199,8 @@ class ChatPresentationTest {
 
     @Test
     fun aLogoutDuringTheLaunchFinishesTheQueuedSheet() {
-        val intent = launch {
-            ChatPresenter.open()
-            ReceptionState.resetLocal()
-        }
+        val intent = launch { ChatPresenter.open() }
+        ReceptionState.resetLocal()
         assertTrue(created(intent).isFinishing)
     }
 
@@ -206,6 +250,7 @@ class ChatPresentationTest {
         val host = Robolectric.buildActivity(Activity::class.java).setup().get()
         ApplicationLifecycle.onActivityResumed(host)
         ChatPresenter.open()
+        harness.settle()
         val second = shadowOf(host).nextStartedActivity
         created(second)
         processRestarted()

@@ -2,7 +2,6 @@ package sh.reception.ui
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
-import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
 import androidx.annotation.VisibleForTesting
@@ -60,7 +59,7 @@ internal object ChatPresenter {
         get() = sheet?.get() != null ||
             requestedAt?.let { SystemClock.uptimeMillis() - it < START_WINDOW_MILLIS } == true
 
-    /** Answers whether the sheet was started or brought to the front. */
+    /** Answers whether the sheet was requested (it starts once its record is on disk) or brought to the front. */
     fun present(): Boolean {
         if (ReceptionState.isChatOpen.value || (isPresented && sheet?.get() == null)) {
             Log.debug { "Chat presentation skipped, chat already open" }
@@ -77,16 +76,29 @@ internal object ChatPresenter {
         val token = UUID.randomUUID().toString()
         presentation = token
         changes += 1
-        val entry = ReceptionState.namespace?.let { PresentationRecord.Entry(token, it) }
-        if (entry != null) record(host) { PresentationRecord.save(it, entry) }
-        return try {
-            host.startActivity(Intent(host, ReceptionChatActivity::class.java).putExtra(EXTRA_PRESENTATION, token))
-            requestedAt = SystemClock.uptimeMillis()
-            true
-        } catch (_: ActivityNotFoundException) {
-            Log.error { "Chat presentation failed, ReceptionChatActivity missing from the merged manifest" }
-            false
+        requestedAt = SystemClock.uptimeMillis()
+        val entry = ReceptionState.namespace?.let { PresentationRecord.Entry(token, it) } ?: return start(host, token)
+        SheetRecord.save(host, entry) {
+            // The save took a moment: the presentation may have been closed or superseded, or its screen left.
+            if (presentation != token) return@save
+            if (ApplicationLifecycle.currentActivity !== host) {
+                Log.debug { "Chat presentation cancelled, the screen changed before it started" }
+                dismiss()
+                return@save
+            }
+            start(host, token)
         }
+        return true
+    }
+
+    private fun start(host: Activity, token: String): Boolean = try {
+        host.startActivity(Intent(host, ReceptionChatActivity::class.java).putExtra(EXTRA_PRESENTATION, token))
+        requestedAt = SystemClock.uptimeMillis()
+        true
+    } catch (_: ActivityNotFoundException) {
+        Log.error { "Chat presentation failed, ReceptionChatActivity missing from the merged manifest" }
+        requestedAt = null
+        false
     }
 
     /** An activity of the app resumed: it may be the one to reorder a covered sheet ([CoveredSheet]). */
@@ -144,7 +156,7 @@ internal object ChatPresenter {
         if (activity.isFinishing && activity.presentation != null && activity.presentation == presentation) {
             presentation = null
             changes += 1
-            record(activity, PresentationRecord::clear)
+            SheetRecord.clear(activity)
         }
         val next = afterDismissal ?: return
         afterDismissal = null
@@ -168,7 +180,7 @@ internal object ChatPresenter {
         presentation = null
         changes += 1
         CoveredSheet.cancel()
-        ReceptionState.session?.store?.context?.let { record(it, PresentationRecord::clear) }
+        ReceptionState.session?.store?.context?.let { SheetRecord.clear(it) }
         val activity = sheet?.get()
         if (activity == null) {
             if (requested) Log.debug { "Chat presentation cancelled" }
@@ -189,11 +201,5 @@ internal object ChatPresenter {
         requestedAt = null
         presentation = null
         afterDismissal = null
-    }
-
-    /** Writes the presentation record on the storage thread, in order with the other writes. */
-    private fun record(context: Context, write: (Context) -> Unit) {
-        val application = context.applicationContext
-        Storage.launch { write(application) }
     }
 }

@@ -4,6 +4,7 @@ import android.os.Looper
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.ProcessLifecycleOwner
+import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -16,6 +17,7 @@ import sh.reception.client.DeviceSession
 import sh.reception.client.ReceptionAPI
 import sh.reception.client.SecureStore
 import sh.reception.client.SoftwareKey
+import sh.reception.client.Storage
 import sh.reception.client.isRegistered
 import java.util.Collections
 
@@ -66,6 +68,14 @@ internal class ChatHarness {
 
     fun requests(method: String, path: String): List<RecordedRequest> =
         requests.toList().filter { it.method == method && it.path == path }
+
+    /** Lets the storage thread, then the main thread, finish what was started (a sheet starts once its record is saved). */
+    fun settle() {
+        repeat(2) {
+            runBlocking { Storage.run {} }
+            shadowOf(Looper.getMainLooper()).idle()
+        }
+    }
 
     /** Runs main-looper work until [condition] holds; network and storage finish on their own threads. */
     fun mainLoopUntil(condition: () -> Boolean) {

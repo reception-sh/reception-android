@@ -119,7 +119,9 @@ when the covering activity runs in another task of the app. Resumes in other tas
 Each presentation gets a random token that its launch intent carries; a sheet whose token is not the current one (closed,
 cancelled by logout, `deleteData()` or reconfiguration, or superseded before it was created) finishes at once. The token
 and the configured storage namespace are also committed to SharedPreferences `sh.reception.presentation` on the storage
-thread, so when the process dies with the sheet on screen and Android restores it (Recents), the sheet reads the record
+thread before the sheet starts (the presentation counts as requested meanwhile; after the commit the sheet starts only if
+that presentation is still current and its activity is still the resumed one; a failed commit is logged and the sheet
+starts without restoration), so when the process dies with the sheet on screen and Android restores it (Recents), the sheet reads the record
 and is shown again, with its saved state (an open lightbox included), if the record still names its token and the App
 ID configured in the new process; any dismissal, logout, deletion or reconfiguration clears the record first. The first
 `configure` in a process cancels nothing. A restored sheet created before the SDK is configured (Flutter and React

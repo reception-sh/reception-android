@@ -16,13 +16,9 @@ internal object PresentationRecord {
     /** The presentation's token and namespace. */
     data class Entry(val token: String, val namespace: String)
 
-    fun save(context: Context, entry: Entry) {
-        // Committed, because the process may die right after the sheet appears.
-        preferences(context).edit(commit = true) {
-            putString(TOKEN, entry.token)
-            putString(NAMESPACE, entry.namespace)
-        }
-    }
+    /** Commits [entry]; false when it did not reach the disk. */
+    fun save(context: Context, entry: Entry): Boolean =
+        preferences(context).edit().putString(TOKEN, entry.token).putString(NAMESPACE, entry.namespace).commit()
 
     fun clear(context: Context) {
         preferences(context).edit(commit = true) { clear() }

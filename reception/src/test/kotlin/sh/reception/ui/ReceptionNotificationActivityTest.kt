@@ -69,6 +69,7 @@ class ReceptionNotificationActivityTest {
     private fun resume(host: Activity): Intent? {
         ApplicationLifecycle.noteCurrentActivity(host)
         shadowOf(Looper.getMainLooper()).idle()
+        harness.settle()
         val started = shadowOf(host).nextStartedActivity
         // The presenter treats a sheet that was started but never created as presented for a moment.
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(3))
@@ -145,11 +146,13 @@ class ReceptionNotificationActivityTest {
         // Created and started before configure registered the lifecycle callbacks, as under Flutter.
         val host = Robolectric.buildActivity(Activity::class.java).create().start().get()
         Reception.openChat()
+        harness.settle()
         assertNull(shadowOf(host).nextStartedActivity)
         // Another test's activity may still be the current one and have taken that request.
         ChatPresenter.dismiss()
         Reception.noteCurrentActivity(host)
         Reception.openChat()
+        harness.settle()
         assertEquals(ReceptionChatActivity::class.java.name, shadowOf(host).nextStartedActivity?.component?.className)
     }
 
@@ -166,6 +169,7 @@ class ReceptionNotificationActivityTest {
         ApplicationLifecycle.noteCurrentActivity(host)
         ReceptionState.configure(application, ChatHarness.APP_ID)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
+        harness.settle()
         assertNull(shadowOf(host).nextStartedActivity)
     }
 
@@ -193,6 +197,7 @@ class ReceptionNotificationActivityTest {
             Reception.setNotificationRoutingEnabled(false)
             if (enablesAgain) Reception.setNotificationRoutingEnabled(true)
             shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(3))
+            harness.settle()
             assertNull(shadowOf(host).nextStartedActivity)
             Reception.setNotificationRoutingEnabled(true)
         }
@@ -212,6 +217,7 @@ class ReceptionNotificationActivityTest {
             ApplicationLifecycle.noteCurrentActivity(host)
             if (offAfterResume) Reception.setNotificationRoutingEnabled(false)
             shadowOf(Looper.getMainLooper()).idle()
+            harness.settle()
             assertEquals(ReceptionChatActivity::class.java.name, shadowOf(host).nextStartedActivity?.component?.className)
             ChatPresenter.dismiss()
             shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(3))
