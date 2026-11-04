@@ -22,7 +22,11 @@ object ExampleFeatures {
             ),
             ReceptionPaywall(id = "spring_sale", title = "Spring sale"),
         )
-        Reception.onPaywall = { id -> notice = "Paywall $id" }
+        // The chat is an activity above the app's own screens, so the app closes it before presenting the paywall.
+        Reception.onPaywall = { id ->
+            Reception.closeChat()
+            notice = "Paywall $id"
+        }
         Reception.screens = listOf(
             ReceptionScreen("settings") { notice = "Screen settings" },
             ReceptionScreen("order", value = "Order number") { number -> notice = "Screen order $number" },

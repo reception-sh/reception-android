@@ -81,7 +81,8 @@ internal fun ImageLightbox(attachment: Attachment, onDismiss: () -> Unit) {
                                 val event = awaitPointerEvent()
                                 val zoom = event.calculateZoom()
                                 val pan = event.calculatePan()
-                                if (zoom != 1f || scale > Theme.MINIMUM_ZOOM) {
+                                // A tap moves nothing and stays with the double-tap detector.
+                                if (zoom != 1f || (scale > Theme.MINIMUM_ZOOM && pan != Offset.Zero)) {
                                     scale = (scale * zoom).coerceIn(Theme.MINIMUM_ZOOM, Theme.MAXIMUM_ZOOM)
                                     offset = clamped(offset + pan, scale)
                                     event.changes.forEach { it.consume() }
