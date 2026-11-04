@@ -1,5 +1,7 @@
 package sh.reception
 
+import kotlinx.serialization.json.JsonObject
+
 /** In-app support chat. Every member is called from the main thread. */
 public object Reception {
     /** Minimum severity of developer logs, from quietest to most detailed. */
@@ -25,4 +27,19 @@ public object Reception {
         set(value) {
             Log.handler = value
         }
+}
+
+/** Facade values the device payload reports; the paywall, screen, paid access and appearance parts fill them. */
+internal object FacadeState {
+    /** `availablePaywalls` as registration entries. */
+    var paywalls: List<JsonObject> = emptyList()
+
+    /** `screens` as the service stores them: `{ id, value? }`. */
+    var screens: List<Map<String, String>> = emptyList()
+
+    /** Paid access from Play Billing; null while unknown. */
+    var subscribed: Boolean? = null
+
+    /** The host appearance report; null until the appearance model exists. */
+    var appearanceReport: JsonObject? = null
 }

@@ -1,0 +1,84 @@
+package sh.reception.client
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+
+@RunWith(RobolectricTestRunner::class)
+class DeviceStoreTest {
+    private val context = RuntimeEnvironment.getApplication()
+    private val credentials = mutableMapOf<String, String>()
+    private val storage = DeviceStore.CredentialStorage(
+        read = { account -> credentials[account]?.let { SecureStore.ReadResult.Value(it) } ?: SecureStore.ReadResult.Missing },
+        save = { value, account -> credentials[account] = value; true },
+        delete = { account -> credentials.remove(account); true },
+    )
+
+    private fun store(appId: String, rotate: Boolean = false) =
+        DeviceStore(context, appId + DeviceStore.generation(context, appId, rotate), appId, storage)
+
+    @Test
+    fun keepsTheGenerationUntilItRotates() {
+        val first = DeviceStore.generation(context, "app_a")
+        assertEquals(first, DeviceStore.generation(context, "app_a"))
+        val rotated = DeviceStore.generation(context, "app_a", rotate = true)
+        assertNotEquals(first, rotated)
+        assertEquals(rotated, DeviceStore.generation(context, "app_a"))
+        assertNotEquals(DeviceStore.generation(context, "app_b"), rotated)
+    }
+
+    @Test
+    fun aRotatedGenerationStartsWithoutTheOldSession() {
+        val old = store("app_rotation")
+        old.save(SessionCredentials("secret", "user-1"))
+        old.hasConversation = true
+        old.draftText = "draft"
+        old.cursor = 42
+        old.pushPromptDeclined = true
+        old.pending = DeviceIdentity(name = "Ada", pushToken = "token", pushEnvironment = "PRODUCTION")
+        assertEquals(SessionCredentials("secret", "user-1"), old.loadCredentials())
+
+        old.clear()
+        val fresh = store("app_rotation", rotate = true)
+        assertNull(fresh.loadCredentials())
+        assertTrue(fresh.credentialsMissing)
+        assertFalse(fresh.hasConversation)
+        assertEquals("", fresh.draftText)
+        assertEquals(0L, fresh.cursor)
+        assertEquals(DeviceIdentity(), fresh.pending)
+        // The notification card answer belongs to the device and App ID, not the session.
+        assertTrue(fresh.pushPromptDeclined)
+        // A cleared store refuses late draft writes from the discarded chat.
+        old.draftText = "late"
+        assertEquals("", old.draftText)
+    }
+
+    @Test
+    fun anUnreadableSessionIsNotAMissingOne() {
+        val unavailable = DeviceStore(context, "app_unavailable", credentialStorage = DeviceStore.CredentialStorage(
+            read = { SecureStore.ReadResult.Unavailable }, save = { _, _ -> false }, delete = { true }))
+        val error = runCatching { unavailable.loadCredentials() }.exceptionOrNull() as ReceptionAPIError
+        assertEquals("secure_storage_unavailable", error.code)
+        assertFalse(unavailable.credentialsMissing)
+    }
+
+    @Test
+    fun resetChatKeepsTheSessionAndStoresTheRevision() {
+        val store = store("app_reset")
+        store.save(SessionCredentials("secret"))
+        store.hasStartedChat = true
+        store.cooldowns = listOf(ServerCooldowns.Cooldown(RetryScope.MESSAGES, Long.MAX_VALUE, automatic = false))
+        store.resetChat(revision = 3)
+        assertEquals(3, store.chatRevision)
+        assertFalse(store.hasStartedChat)
+        assertEquals(SessionCredentials("secret"), store.loadCredentials())
+        // A reset by the team keeps the server's waits.
+        assertEquals(1, store.cooldowns.size)
+    }
+}
