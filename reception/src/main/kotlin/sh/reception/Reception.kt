@@ -91,8 +91,8 @@ public object Reception {
     /** The chat's colors, texts, icons and switches. Read by the chat while it draws; main thread only. */
     public class Appearance {
         /**
-         * Defaults to null: the app's primary color, from the enclosing `MaterialTheme` when the chat is embedded,
-         * otherwise from the app theme's `colorPrimary` (or `colorAccent`).
+         * Defaults to null: `MaterialTheme.colorScheme.primary` of the enclosing theme when the chat is embedded; the
+         * SDK's own sheet uses the device's dynamic accent on Android 12+ and the iOS system blue below.
          */
         public var accentColor: Color? by mutableStateOf(null)
 

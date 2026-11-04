@@ -14,17 +14,14 @@ import kotlin.math.roundToInt
 /**
  * The host's own appearance in the dashboard's schema (`appAppearanceSchema`), sent with device registration and
  * updates so the dashboard editor can start from what the app sets in code. It lists only values that differ from
- * `Appearance()`, plus the app's accent color; bundled images and font families are reported as present, never sent.
+ * `Appearance()`, so the accent only when the host set one; bundled images and font families are reported as present,
+ * never sent.
  */
 internal object HostAppearanceReport {
-    fun payload(
-        appearance: Reception.Appearance,
-        usesRemoteAppearance: Boolean,
-        themeAccent: () -> Pair<Color, Color>?,
-    ): JsonObject = buildJsonObject {
+    fun payload(appearance: Reception.Appearance, usesRemoteAppearance: Boolean): JsonObject = buildJsonObject {
         put("usesRemoteAppearance", usesRemoteAppearance)
         val colors = buildJsonObject {
-            (appearance.accentColor?.let(::pair) ?: themeAccent()?.let { pair(it.first, it.second) })?.let { put("accent", it) }
+            appearance.accentColor?.let { put("accent", pair(it)) }
             appearance.onAccentColor?.let { put("onAccent", pair(it)) }
             appearance.chatBackground?.let { put("background", pair(it)) }
             appearance.incomingBackground?.let { put("incoming", pair(it)) }

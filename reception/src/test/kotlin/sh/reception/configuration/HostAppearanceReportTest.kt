@@ -52,7 +52,7 @@ class HostAppearanceReportTest {
 
     @Test
     fun aFullAppearanceUsesOnlyTheSchemaFields() {
-        val report = HostAppearanceReport.payload(everything(), usesRemoteAppearance = false) { null }
+        val report = HostAppearanceReport.payload(everything(), usesRemoteAppearance = false)
         assertEquals(schema.getValue(""), report.keys)
         for (group in schema.keys - "" - "welcomeIcon" - "visibility") {
             assertEquals(group, schema.getValue(group), report.getValue(group).jsonObject.keys)
@@ -69,20 +69,20 @@ class HostAppearanceReportTest {
     }
 
     @Test
-    fun theDefaultAppearanceReportsOnlyTheSettingAndTheThemeAccent() {
-        val report = HostAppearanceReport.payload(Reception.Appearance(), usesRemoteAppearance = true) {
-            Color(0xFF6750A4) to Color(0xFFD0BCFF)
-        }
-        assertEquals("""{"usesRemoteAppearance":true,"colors":{"accent":{"light":"#6750A4","dark":"#D0BCFF"}}}""", report.toString())
-        assertEquals("""{"usesRemoteAppearance":true}""", HostAppearanceReport.payload(Reception.Appearance(), true) { null }.toString())
+    fun theDefaultAppearanceReportsOnlyTheSettingWithoutAnAccent() {
+        // The default accent is the theme's, which the host did not set; XML theme attributes are never read.
+        assertEquals("""{"usesRemoteAppearance":true}""", HostAppearanceReport.payload(Reception.Appearance(), true).toString())
+        val accent = Reception.Appearance().apply { accentColor = Color(0xFF6750A4) }
+        assertEquals("""{"usesRemoteAppearance":false,"colors":{"accent":{"light":"#6750A4","dark":"#6750A4"}}}""",
+            HostAppearanceReport.payload(accent, false).toString())
     }
 
     @Test
     fun hiddenOrImageWelcomeIconsAreReportedWithoutContent() {
-        val hidden = HostAppearanceReport.payload(Reception.Appearance().apply { welcomeIcon = Reception.WelcomeIcon.hidden }, true) { null }
+        val hidden = HostAppearanceReport.payload(Reception.Appearance().apply { welcomeIcon = Reception.WelcomeIcon.hidden }, true)
         assertEquals("""{"welcomeIcon":false}""", hidden.getValue("visibility").toString())
         val image = Reception.Appearance().apply { welcomeIcon = Reception.WelcomeIcon.image(ColorPainter(Color.Blue)) }
-        assertEquals("""{"image":true}""", HostAppearanceReport.payload(image, true) { null }.getValue("welcomeIcon").toString())
+        assertEquals("""{"image":true}""", HostAppearanceReport.payload(image, true).getValue("welcomeIcon").toString())
     }
 
     @Test

@@ -14,7 +14,6 @@ import sh.reception.FacadeState
 import sh.reception.ReceptionLocalization
 import sh.reception.ReceptionAppearance
 import sh.reception.ReceptionState
-import sh.reception.configuration.HostAccent
 import sh.reception.configuration.HostAppearanceReport
 import sh.reception.SDKVersion
 import java.util.Locale
@@ -58,8 +57,7 @@ internal object DeviceInfo {
             put("screens", JsonArray(FacadeState.screens.map { screen -> JsonObject(screen.mapValues { JsonPrimitive(it.value) }) }))
             put("capabilities", JsonArray(capabilities.map(::JsonPrimitive)))
             FacadeState.subscribed?.let { put("subscribed", it) }
-            put("appearance", HostAppearanceReport.payload(ReceptionAppearance.appearance,
-                ReceptionAppearance.remoteEnabled) { HostAccent.pair(context) })
+            put("appearance", HostAppearanceReport.payload(ReceptionAppearance.appearance, ReceptionAppearance.remoteEnabled))
             identityToken?.let { put("identityToken", it) }
         }
         return body.toString()

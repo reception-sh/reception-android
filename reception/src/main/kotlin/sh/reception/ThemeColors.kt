@@ -1,11 +1,11 @@
 package sh.reception
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 import sh.reception.configuration.AdaptiveColor
-import sh.reception.configuration.HostAccent
 
 // The iOS system colors (elevated sheet variants in dark mode) and the appearance colors, in the chat's color scheme.
 
@@ -64,10 +64,12 @@ internal val Theme.secondary: Color
 internal val Theme.incomingForeground: Color
     @Composable @ReadOnlyComposable get() = appearance.incomingText.resolve() ?: foreground
 
-/** The published or app accent, else the host's ([LocalHostAccent]), else the system blue. */
+/**
+ * The published or app accent, else the enclosing theme's primary (SPEC.md, Events, appearance): the host's
+ * `MaterialTheme` for an embedded chat; the SDK's sheet provides dynamic color, or the iOS system blue below Android 12.
+ */
 internal val Theme.accent: Color
-    @Composable @ReadOnlyComposable get() = appearance.accent.resolve() ?: LocalHostAccent.current
-        ?: adaptive(HostAccent.fallback.first, HostAccent.fallback.second)
+    @Composable @ReadOnlyComposable get() = appearance.accent.resolve() ?: MaterialTheme.colorScheme.primary
 
 internal val Theme.outgoingText: Color
     get() = Color.White
