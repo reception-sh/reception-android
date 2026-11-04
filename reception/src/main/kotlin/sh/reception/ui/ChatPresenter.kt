@@ -7,7 +7,6 @@ import android.os.SystemClock
 import sh.reception.Log
 import sh.reception.ReceptionAppearance
 import sh.reception.ReceptionState
-import sh.reception.client.AppTasks
 import sh.reception.client.ApplicationLifecycle
 import java.lang.ref.WeakReference
 
@@ -61,7 +60,7 @@ internal object ChatPresenter {
             return false
         }
         // The sheet exists but another of the app's activities covers it: bring that sheet back instead of a second one.
-        sheet?.get()?.let { return bringToFront(host, it) }
+        sheet?.get()?.let { return CoveredSheet.bringToFront(host, it) }
         ReceptionAppearance.configuration.activate()
         presentation += 1
         return try {
@@ -74,23 +73,8 @@ internal object ChatPresenter {
         }
     }
 
-    private fun bringToFront(host: Activity, covered: ReceptionChatActivity): Boolean {
-        // Reordering works inside the starting activity's task; a sheet in another task of the app moves with that task.
-        if (covered.taskId != host.taskId) {
-            val task = AppTasks.withId(host, covered.taskId) ?: return false
-            task.moveToFront()
-            Log.debug { "Chat brought to the front with its task" }
-            return true
-        }
-        return try {
-            host.startActivity(Intent(host, ReceptionChatActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
-            Log.debug { "Chat brought to the front" }
-            true
-        } catch (_: ActivityNotFoundException) {
-            Log.error { "Chat presentation failed, ReceptionChatActivity missing from the merged manifest" }
-            false
-        }
-    }
+    /** An activity of the app resumed: it may be the one to reorder a covered sheet ([CoveredSheet]). */
+    fun activityResumed(activity: Activity) = CoveredSheet.activityResumed(activity, sheet?.get())
 
     /**
      * A new sheet, or the same sheet recreated after a configuration change, which keeps its launch intent and so its
@@ -131,6 +115,7 @@ internal object ChatPresenter {
         val requested = requestedAt != null
         requestedAt = null
         presentation += 1
+        CoveredSheet.cancel()
         val activity = sheet?.get()
         if (activity == null) {
             if (requested) Log.debug { "Chat presentation cancelled" }

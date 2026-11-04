@@ -1,10 +1,12 @@
 package sh.reception.ui
 
 import android.app.Activity
+import android.app.ActivityManager
 import android.content.Intent
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -12,6 +14,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.shadows.ShadowAppTask
 import sh.reception.ReceptionState
 import sh.reception.client.ApplicationLifecycle
 import sh.reception.viewmodel.ChatHarness
@@ -64,6 +67,41 @@ class ChatPresentationTest {
         ChatPresenter.open()
         val started = shadowOf(cover).nextStartedActivity
         assertEquals(ReceptionChatActivity::class.java.name, started.component?.className)
+        assertTrue(started.flags and Intent.FLAG_ACTIVITY_REORDER_TO_FRONT != 0)
+        assertFalse(started.hasExtra(ChatPresenter.EXTRA_PRESENTATION))
+        assertFalse(sheet.isFinishing)
+        ChatPresenter.close()
+    }
+
+    /** An activity of the app in another task than the sheet's, like one started with `NEW_TASK` from elsewhere. */
+    class OtherTaskActivity : Activity() {
+        override fun getTaskId(): Int = 7
+    }
+
+    @Test
+    fun aSheetCoveredInItsOwnTaskWhileAnotherTaskIsInFrontIsReorderedWithinItsTask() {
+        // Task A: host, sheet, then a cover above the sheet (all task 0 here); task B in front.
+        val sheet = created(launch { ChatPresenter.open() })
+        val sheetTask = ShadowAppTask.newInstance()
+        shadowOf(sheetTask).setTaskInfo(ActivityManager.RecentTaskInfo().apply {
+            @Suppress("DEPRECATION")
+            persistentId = sheet.taskId
+            taskId = sheet.taskId
+            numActivities = 3
+        })
+        val application = RuntimeEnvironment.getApplication()
+        shadowOf(application.getSystemService(ActivityManager::class.java)).setAppTasks(listOf(sheetTask))
+        val front = Robolectric.buildActivity(OtherTaskActivity::class.java).setup().get()
+        ApplicationLifecycle.onActivityResumed(front)
+        ChatPresenter.open()
+        // Task A comes to the front; a start from task B would only land in B.
+        assertTrue(shadowOf(sheetTask).hasMovedToFront())
+        assertNull(shadowOf(front).nextStartedActivity)
+        // The cover above the sheet resumes in task A and reorders the sheet above itself.
+        val cover = Robolectric.buildActivity(Activity::class.java).setup().get()
+        ApplicationLifecycle.onActivityResumed(cover)
+        val started = shadowOf(cover).nextStartedActivity
+        assertEquals(ReceptionChatActivity::class.java.name, started?.component?.className)
         assertTrue(started.flags and Intent.FLAG_ACTIVITY_REORDER_TO_FRONT != 0)
         assertFalse(started.hasExtra(ChatPresenter.EXTRA_PRESENTATION))
         assertFalse(sheet.isFinishing)

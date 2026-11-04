@@ -109,7 +109,9 @@ is resumed (app in background) the request is dropped with a debug log, like iOS
 `openChat()` while the sheet is up is a no-op. When another of the app's activities covers the sheet (it exists but is
 stopped), `openChat()` and a notification tap bring that sheet back instead of starting a second one: with
 `FLAG_ACTIVITY_REORDER_TO_FRONT` from an activity in the sheet's task, or by moving the sheet's task to the front
-(`ActivityManager.AppTask.moveToFront`) when the covering activity runs in another task of the app. The sheet reports `isChatOpen` from its actual visibility
+(`ActivityManager.AppTask.moveToFront`, then the activity that resumes first in that task, the one covering the sheet,
+starts it with `FLAG_ACTIVITY_REORDER_TO_FRONT`; `AppTask.startActivity` ignores that flag and stacks a second sheet)
+when the covering activity runs in another task of the app. The sheet reports `isChatOpen` from its actual visibility
 (`onStart`/`onStop`), not from the request.
 
 While the keyboard is open, the sheet closes only by a drag that starts on its header (drag handle and title bar,

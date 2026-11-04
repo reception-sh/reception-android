@@ -10,6 +10,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import sh.reception.AppLocale
 import sh.reception.ReceptionPush
 import sh.reception.ReceptionState
+import sh.reception.ui.ChatPresenter
 import java.lang.ref.WeakReference
 
 /**
@@ -59,6 +60,7 @@ internal object ApplicationLifecycle : DefaultLifecycleObserver, Application.Act
         resumed = WeakReference(activity)
         // A new per-app or system language recreates activities, so the app language is read again.
         AppLocale.invalidate()
+        ChatPresenter.activityResumed(activity)
         ReceptionPush.activityResumed(activity)
     }
 
