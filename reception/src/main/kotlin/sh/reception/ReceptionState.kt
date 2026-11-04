@@ -70,6 +70,7 @@ internal object ReceptionState {
         this.appId = appId
         ReceptionIdentity.forget()
         val api = ReceptionAPI(appId)
+        ReceptionAppearance.configuration.configure(context, api, appId)
         var store = DeviceStore(context, appId + DeviceStore.generation(context, appId), deviceScope = appId)
         if (store.hasConversation && store.credentialsMissing) {
             // Keystore keys stay on their device, so a restored chat without its session is reset like logout.
@@ -87,15 +88,18 @@ internal object ReceptionState {
         val active = ApplicationLifecycle.isActive
         unreadMonitor.setActive(active)
         if (active) session?.registerIfNeeded()
+        ReceptionAppearance.updateRefresh()
         Log.info { "Configured, SDK ${SDKVersion.current}" }
     }
 
     fun applicationBecameActive() {
+        ReceptionAppearance.becameActive()
         unreadMonitor.becameActive()
         logoutRevocations?.becameActive()
     }
 
     fun applicationEnteredBackground() {
+        ReceptionAppearance.enteredBackground()
         unreadMonitor.enteredBackground()
         logoutRevocations?.suspend()
     }
@@ -151,6 +155,7 @@ internal object ReceptionState {
         val session = session ?: return
         chat?.sendingResumed()
         logoutRevocations?.resumed(session.api)
+        ReceptionAppearance.sessionResumed()
         unreadMonitor.reschedule()
         chat?.startStream()
     }

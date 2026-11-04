@@ -1,12 +1,13 @@
 package sh.reception.client
 
-import kotlinx.serialization.json.JsonObject
 import okhttp3.OkHttpClient
+import sh.reception.configuration.AppearanceCache
+import sh.reception.configuration.AppearanceEnvelope
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-/** A published appearance envelope as JSON text (null for `304`), and its ETag. */
-internal class AppearanceReply(val body: String?, val etag: String?)
+/** A published appearance envelope and its JSON text for the cache (both null for `304`), and its ETag. */
+internal class AppearanceReply(val envelope: AppearanceEnvelope?, val body: String?, val etag: String?)
 
 private val appearanceClient: OkHttpClient by lazy {
     HttpExchange.client.newBuilder().readTimeout(10, TimeUnit.SECONDS).build()
@@ -24,20 +25,16 @@ internal suspend fun ReceptionAPI.appearance(etag: String?): AppearanceReply {
     } catch (error: IOException) {
         throw ReceptionAPIError("connection_failed", 0, networkError = error.javaClass.simpleName)
     }
-    if (reply.status == 304 && etag != null) return AppearanceReply(null, reply.headers["ETag"])
+    if (reply.status == 304 && etag != null) return AppearanceReply(null, null, reply.headers["ETag"])
     if (reply.status != 200) {
         ReceptionAPI.logRateLimit(reply)
         val envelope = ErrorEnvelope.parse(ReceptionAPI.json, reply.body)
         throw ReceptionAPIError(envelope?.code ?: "appearance_unavailable", reply.status,
             retryAfter = ReceptionAPI.retryAfter(reply.status, reply.headers["Retry-After"]))
     }
-    val valid = try {
-        ReceptionAPI.json.parseToJsonElement(reply.body) is JsonObject
-    } catch (_: IllegalArgumentException) {
-        false
-    }
-    if (!valid) throw ReceptionAPIError("invalid_appearance", 200)
-    return AppearanceReply(reply.body, reply.headers["ETag"])
+    val envelope = AppearanceCache.decode(reply.body, requireCompatible = false)
+        ?: throw ReceptionAPIError("invalid_appearance", 200)
+    return AppearanceReply(envelope, reply.body, reply.headers["ETag"])
 }
 
 /** The largest appearance envelope the SDK reads or caches. */
