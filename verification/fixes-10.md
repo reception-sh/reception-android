@@ -150,7 +150,7 @@ example: its processes were 3182 and 3405).
 1. Android 10 and older, chat in a Compose `Dialog`: the pan shows the cursor line but clips the composer's lower
    edge. A full fix would need the dialog's content to follow the window (Compose measures against the display) or
    the SDK to request a larger visible rectangle; not attempted.
-3. A unit test failed once in 19 `--rerun-tasks` runs (run 4 above) and could not be named; the next round should
-   keep failing reports (for example `--continue` with the reports copied per run) to find it.
 2. Is it acceptable that the SDK overrides a host's explicit `adjustResize` on a Compose `Dialog` window (to
    `adjustNothing` on Android 11+, `adjustPan` before) while a chat is in it? It restores the mode afterwards.
+3. A unit test failed once in 19 `--rerun-tasks` runs (run 4 above) and could not be named; the next round should
+   keep failing reports (for example `--continue` with the reports copied per run) to find it.
