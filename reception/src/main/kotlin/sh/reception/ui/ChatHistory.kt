@@ -6,7 +6,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalView
 import kotlinx.coroutines.launch
-import sh.reception.model.Attachment
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -32,6 +31,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -76,7 +76,8 @@ internal fun ChatHistory(model: ChatModel, topInset: Dp, requestNotifications: (
     val listState = rememberLazyListState()
     val scrollState = remember(model) { ChatScrollState() }
     var scrollRevision by remember { mutableIntStateOf(0) }
-    var lightbox by remember { mutableStateOf<Attachment?>(null) }
+    // Saved by id, so the photo stays open through a rotation like on iOS; its zoom starts over.
+    var lightboxId by rememberSaveable { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val view = LocalView.current
     val messages = model.messages
@@ -131,7 +132,7 @@ internal fun ChatHistory(model: ChatModel, topInset: Dp, requestNotifications: (
                         message = message,
                         layout = layouts.getOrNull(index) ?: return@itemsIndexed,
                         width = rowWidth,
-                        actions = model.actions(message) { lightbox = it },
+                        actions = model.actions(message) { lightboxId = it.id },
                         modifier = Modifier.animateItem(),
                     )
                 }
@@ -146,7 +147,8 @@ internal fun ChatHistory(model: ChatModel, topInset: Dp, requestNotifications: (
         // Starting to write shows the newest message, like Messages.
         BottomBar(model, onFocus = { scrollRevision += 1 })
     }
-    lightbox?.let { ImageLightbox(it) { lightbox = null } }
+    val lightbox = lightboxId?.let { id -> messages.firstNotNullOfOrNull { message -> message.attachments.find { it.id == id } } }
+    lightbox?.let { ImageLightbox(it) { lightboxId = null } }
 }
 
 private const val TYPING_KEY = "support-typing"
