@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -69,7 +70,7 @@ class PushNotificationsTest {
         val payload = requireNotNull(PushNotifications.payload(mapOf("reception" to "c1", "title" to "Team", "body" to "Hi")))
         assertTrue(PushNotifications.post(context, payload, "n1", updatesAppBadge = true, number = 4, color = null,
             smallIcon = R.drawable.reception_symbol_notifications))
-        val posted = shadowOf(manager).getNotification(PushNotifications.TAG, PushNotifications.id("c1"))
+        val posted = shadowOf(manager).getNotification(PushNotifications.tag("c1"), PushNotifications.ID)
         assertEquals(4, posted.number)
         assertEquals("c1", posted.group)
         assertEquals(PushNotifications.CHANNEL, posted.channelId)
@@ -85,7 +86,7 @@ class PushNotificationsTest {
         val payload = requireNotNull(PushNotifications.payload(mapOf("reception" to "c1", "title" to "Team", "body" to "Hi")))
         assertTrue(PushNotifications.post(context, payload, "n1", updatesAppBadge = false, number = null, color = null,
             smallIcon = R.drawable.reception_symbol_notifications))
-        val posted = shadowOf(manager).getNotification(PushNotifications.TAG, PushNotifications.id("c1"))
+        val posted = shadowOf(manager).getNotification(PushNotifications.tag("c1"), PushNotifications.ID)
         assertEquals(PushNotifications.UNBADGED_CHANNEL, posted.channelId)
         val channel = manager.getNotificationChannel(PushNotifications.UNBADGED_CHANNEL)
         assertFalse(channel.canShowBadge())
@@ -94,6 +95,27 @@ class PushNotificationsTest {
             smallIcon = R.drawable.reception_symbol_notifications)
         assertTrue(manager.getNotificationChannel(PushNotifications.CHANNEL).canShowBadge())
         assertEquals(manager.getNotificationChannel(PushNotifications.CHANNEL).name, channel.name)
+    }
+
+    @Test
+    fun conversationsWhoseIdsShareAHashKeepTheirOwnNotificationAndTap() {
+        val ids = listOf("c0000000000000000000000an", "c0000000000000000000000c0")
+        assertEquals(ids[0].hashCode(), ids[1].hashCode())
+        for (id in ids) {
+            val payload = requireNotNull(PushNotifications.payload(mapOf("reception" to id, "title" to "Team", "body" to id)))
+            assertTrue(PushNotifications.post(context, payload, "n-$id", updatesAppBadge = true, number = null, color = null,
+                smallIcon = R.drawable.reception_symbol_notifications))
+        }
+        assertEquals(2, manager.activeNotifications.size)
+        for (id in ids) {
+            val posted = shadowOf(manager).getNotification(PushNotifications.tag(id), PushNotifications.ID)
+            val intent = shadowOf(posted.contentIntent).savedIntent
+            assertEquals(id, intent.getStringExtra(PushNotifications.EXTRA_CONVERSATION))
+            assertEquals("n-$id", intent.getStringExtra(PushNotifications.EXTRA_NOTIFICATION))
+        }
+        val first = shadowOf(manager).getNotification(PushNotifications.tag(ids[0]), PushNotifications.ID).contentIntent
+        val second = shadowOf(manager).getNotification(PushNotifications.tag(ids[1]), PushNotifications.ID).contentIntent
+        assertNotEquals(first, second)
     }
 
     @Test

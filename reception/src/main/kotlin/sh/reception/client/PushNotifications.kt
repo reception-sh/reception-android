@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
@@ -17,8 +18,8 @@ import sh.reception.ui.ReceptionNotificationActivity
 
 /**
  * The notifications the SDK posts for replies (SPEC.md, Push notifications): one per conversation on the
- * `reception_replies` channel (`reception_replies_unbadged` while the app keeps the badge), tagged `reception`; a tap
- * goes to [ReceptionNotificationActivity] with the conversation.
+ * `reception_replies` channel (`reception_replies_unbadged` while the app keeps the badge), tagged `reception:<conversation>`;
+ * a tap goes to [ReceptionNotificationActivity] with the conversation.
  */
 internal object PushNotifications {
     const val CHANNEL: String = "reception_replies"
@@ -49,8 +50,16 @@ internal object PushNotifications {
     /** The channel a reply posts to: launchers show a dot or count only while the SDK updates the badge. */
     fun channel(updatesAppBadge: Boolean): String = if (updatesAppBadge) CHANNEL else UNBADGED_CHANNEL
 
-    /** One notification per conversation; a newer reply replaces it. */
-    fun id(conversationId: String): Int = conversationId.hashCode()
+    /**
+     * One notification per conversation; a newer reply replaces it. Android keys a notification by tag and id; ids alone
+     * collide (two conversation ids can share a hash), so the tag carries the conversation and the id is fixed.
+     */
+    fun tag(conversationId: String): String = "$TAG:$conversationId"
+
+    const val ID: Int = 1
+
+    /** The tap's intent data: PendingIntents are equal when their intents are, extras aside, so each conversation needs its own. */
+    fun uri(conversationId: String): Uri = Uri.Builder().scheme(TAG).authority("conversation").appendPath(conversationId).build()
 
     /**
      * Posts [payload]; [updatesAppBadge] picks the channel, [number] is the badge count to show, [color] the accent.
@@ -80,10 +89,11 @@ internal object PushNotifications {
             return false.also { Log.error { "Notification not shown, the app has no launcher activity" } }
         }
         val tap = Intent(context, ReceptionNotificationActivity::class.java)
+            .setData(uri(payload.conversationId))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             .putExtra(EXTRA_CONVERSATION, payload.conversationId)
             .putExtra(EXTRA_NOTIFICATION, notificationId)
-        val content = PendingIntent.getActivity(context, id(payload.conversationId), tap,
+        val content = PendingIntent.getActivity(context, 0, tap,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val channel = channel(updatesAppBadge)
         // Created on every post, so the channel's name follows the app's language.
@@ -108,7 +118,7 @@ internal object PushNotifications {
         color?.let { builder.setColor(it) }
         number?.let { builder.setNumber(it) }
         return try {
-            manager.notify(TAG, id(payload.conversationId), builder.build())
+            manager.notify(tag(payload.conversationId), ID, builder.build())
             Log.debug { "Notification shown, conversation ${payload.conversationId}" }
             true
         } catch (_: SecurityException) {
@@ -125,6 +135,7 @@ internal object PushNotifications {
         } catch (_: SecurityException) {
             return
         }
-        delivered.filter { it.tag == TAG && it.packageName == context.packageName }.forEach { manager.cancel(TAG, it.id) }
+        delivered.filter { it.tag?.startsWith("$TAG:") == true && it.packageName == context.packageName }
+            .forEach { manager.cancel(it.tag, it.id) }
     }
 }

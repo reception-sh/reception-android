@@ -178,9 +178,12 @@ like the iOS `willPresent` policy. The payload is `{ reception: "<conversationId
 (`reception` is `brand.pushPayloadKey`), with `android.collapse_key` set to the conversation id. The host's
 `FirebaseMessagingService.onMessageReceived` calls `Reception.handlePushMessage(this, remoteMessage.data)`: for a
 Reception payload it sets `hasConversation`, refreshes unread and, unless the chat is open, posts a notification
-(channel `reception_replies`, name localized "Support replies", importance high, sound when `sound` is set, the
-badge number when `updatesAppBadge`, `setGroup(conversationId)`, tag `reception`, id from the conversation) whose
-content intent starts the SDK's `ReceptionNotificationActivity` with the extras `sh.reception.conversationId` and
+(channel `reception_replies`, or `reception_replies_unbadged` with `setShowBadge(false)` while `updatesAppBadge` is
+false, because a channel's badge setting cannot change once created; both named with the localized "Support replies",
+importance high, sound when `sound` is set, the badge number when `updatesAppBadge`, `setGroup(conversationId)`, tag
+`reception:<conversationId>` and the fixed id 1, because hashed ids of two conversations can collide) whose content
+intent starts the SDK's `ReceptionNotificationActivity` with the data `reception://conversation/<conversationId>` (so
+each conversation gets its own `PendingIntent`) and the extras `sh.reception.conversationId` and
 `sh.reception.notificationId` (see taps below); it returns true and the host does nothing else. Any
 other payload returns false and the host keeps its own handling. `ReceptionMessagingService` is a ready-made service
 that does only this (and forwards `onNewToken` to `setPushToken`), for hosts without a messaging service of their own.
@@ -239,8 +242,9 @@ foreground, like the Flutter plugin does on iOS, so hosts that already have Fire
 
 Badge: Android launchers show counts from `NotificationCompat.setNumber` and the channel's badge setting. With
 `updatesAppBadge` true the posted notification carries the unread count and reaching zero (a server answer, a read, a
-reset; not configure) cancels the SDK's delivered notifications (`activeNotifications` with tag `reception`); with false it does neither, and the server
-omits the badge field. There is no app-icon badge API beyond that on Android; the in-app `unreadCount` is unaffected.
+reset; not configure) cancels the SDK's delivered notifications (`activeNotifications` whose tag starts with
+`reception:`); with false it does neither, the server omits the badge field and the unbadged channel keeps launchers
+from showing a dot or count. There is no app-icon badge API beyond that on Android; the in-app `unreadCount` is unaffected.
 
 Notification card (`pushPrompt`): same rules as iOS. "Not determined" maps to: notifications enabled is false on
 Android 13+ and `POST_NOTIFICATIONS` has never been answered (`shouldShowRequestPermissionRationale` false and no
