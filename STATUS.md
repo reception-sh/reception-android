@@ -2,6 +2,19 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-05: Fixes 12 done (see verification/fixes-12.md), one commit each. AA-1 `KeyboardWindow` only finds the
+  window and its `DialogWindowProvider`; `EmbeddedKeyboardMode` applies the Compose `Dialog` rule only to
+  `androidx.compose.ui.window.DialogLayout` (name kept by `consumer-rules.pro`), so a Material 3 `ModalBottomSheet` and
+  other providers follow the resize rule. AA-2 a retained `ComposeView` moved between windows releases on detach and
+  acquires on attach (idempotent). AA-4 `ui/ComposeDialogModeGuard`: below API 31 a pre-draw check puts the SDK's adjust
+  mode back on a Compose `Dialog` window when the mode is exactly what Compose's `updateParameters` writes
+  (`adjustResize`, or the dialog theme's adjust mode); other host modes stay. AA-3 the push's stored icon is read before
+  the chat-open, badge and appearance decisions, which sit next to `post`. AB-1 one "Chat presentation cancelled,
+  <reason>" line. AA-5 the example's debug tools, icon and labels are in `src/debug` (release no-ops), plus "Chat in a
+  bottom sheet". Five `:reception:test --rerun-tasks` runs green (514 tests each); `tool/release_check.sh` passes; live
+  on Android 16 StrictMode-clean: bottom sheet and dialog over Gboard, push suppression with the chat open, a push into
+  a new process. Not run live: Android 10 (`reception_api29` crashed twice at setup, low host memory); AA-4 (no
+  recomposing dialog in the example).
 - 2026-11-04: Fixes 11 done (see verification/fixes-11.md), one commit each. Y-1 `ChatPresenter.present(stillWanted)`:
   a tap's open carries its routing generation through the record save and is withdrawn right before the sheet starts
   if routing turned off meanwhile (also off-then-on); the host's own requests always start. Y-4 no sheet over a host
