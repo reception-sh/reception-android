@@ -39,18 +39,18 @@ internal suspend fun DeviceSession.token(): String {
     if (!registrationAllowed && !context.automation && !context.launch) throw ReceptionAPIError("chat_not_started", 0)
     // Launch registration belongs to the foreground; the reads above may have outlasted it.
     if (context.launch && !ApplicationLifecycle.isActive) throw ReceptionAPIError("cancelled", 0)
-    return register()
+    return handedOut(register())
 }
 
 /** A token other than [replacing]: one a concurrent refresh already stored, or a new one. Refreshes one at a time. */
 internal suspend fun DeviceSession.renewedToken(replacing: String?): String {
     if (invalidated) throw ReceptionAPIError("cancelled", 0)
     settledToken(replacing)?.let { return it }
-    refresh?.let { return it.awaitShared() }
+    refresh?.let { return handedOut(it.awaitShared()) }
     val secret = storedCredentials()?.sessionSecret ?: throw ReceptionAPIError("session_revoked", 401)
     // The read may suspend: a concurrent caller can have registered or started the renewal meanwhile.
     settledToken(replacing)?.let { return it }
-    refresh?.let { return it.awaitShared() }
+    refresh?.let { return handedOut(it.awaitShared()) }
     // A renewal limit fails callers at once instead of holding their requests for the whole wait.
     admit(listOf(RetryScope.SESSION))
     // The renewal belongs to the session: only its own end clears it, so a cancelled caller never lets a second
@@ -67,20 +67,33 @@ internal suspend fun DeviceSession.renewedToken(replacing: String?): String {
         }
     }
     refresh = task
-    return task.awaitShared()
+    return handedOut(task.awaitShared())
+}
+
+/** The token in memory other than [replacing], once [settled]. */
+private suspend fun DeviceSession.settledToken(replacing: String? = null): String? {
+    settled()
+    return accessToken?.takeIf { it != replacing }
+}
+
+/** [token], from a renewal or registration that may have outlasted another change to the credentials, once [settled]. */
+private suspend fun DeviceSession.handedOut(token: String): String {
+    settled()
+    return token
 }
 
 /**
- * The token in memory other than [replacing], only once no registration is in flight and its credentials are on
- * disk: a registration sets the token before its save, so a caller that sees it early waits for that save (and fails
- * with it) instead of sending requests for a session that may not survive a restart.
+ * The gate before any token leaves this file: no registration in flight and no unsaved credentials. A registration
+ * sets the token before its save, and a device update may store a new verified user while a renewal awaits the
+ * network; a caller waits for those saves (and fails with them) instead of sending requests for a session that may
+ * not survive a restart.
  */
-private suspend fun DeviceSession.settledToken(replacing: String? = null): String? {
+private suspend fun DeviceSession.settled() {
     while (true) {
         registration?.awaitShared()
         persistPendingCredentials()
         // Both steps may suspend, and another registration may have started meanwhile.
-        if (registration == null) return accessToken?.takeIf { it != replacing }
+        if (registration == null) return
     }
 }
 

@@ -265,6 +265,40 @@ class SessionAuthorizationTest {
     }
 
     @Test
+    fun aRenewalThatEndsWithUnsavedCredentialsHandsOutNoToken() = runTest(dispatcher) {
+        val answer = CountDownLatch(1)
+        respond = { request ->
+            if (request.path == "/v1/devices/me/token") answer.await(5, TimeUnit.SECONDS)
+            json(200, """{"token":"fresh"}""")
+        }
+        val session = registeredSession()
+        session.storedCredentials()
+        val callers = List(2) {
+            async {
+                try {
+                    session.renewedToken(replacing = null)
+                } catch (error: ReceptionAPIError) {
+                    error.code
+                }
+            }
+        }
+        runCurrent()
+        while (requests.none { it.path == "/v1/devices/me/token" }) {
+            withContext(Dispatchers.IO) { Thread.sleep(10) }
+            runCurrent()
+        }
+        // A device update stores a new verified user while the renewal waits for the network, and the save fails.
+        savesFail = true
+        session.storeVerifiedUserId("user")
+        assertTrue(session.credentialsUnsaved)
+        answer.countDown()
+        assertEquals(listOf("secure_storage_unavailable", "secure_storage_unavailable"), callers.awaitAll())
+        savesFail = false
+        assertEquals("fresh", session.renewedToken(replacing = null))
+        assertFalse(session.credentialsUnsaved)
+    }
+
+    @Test
     fun anUnauthorizedRequestIsRetriedOnceWithARenewedToken() = runTest(dispatcher) {
         respond = { request ->
             when {
