@@ -21,6 +21,10 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
+        // The App ID of the local test app stays out of git: .local/app-id.txt, empty when missing.
+        val appId = rootProject.file(".local/app-id.txt").takeIf { it.exists() }?.readText()?.trim().orEmpty()
+        buildConfigField("String", "RECEPTION_APP_ID", "\"$appId\"")
+        buildConfigField("String", "RECEPTION_SERVICE_URL", "\"http://10.0.2.2:3123\"")
     }
 
     buildTypes {
@@ -38,6 +42,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     // Compose ships a prebuilt native library; without the NDK installed AGP cannot strip it and says so.
