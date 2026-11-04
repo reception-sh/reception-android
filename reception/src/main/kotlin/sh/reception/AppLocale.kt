@@ -20,32 +20,35 @@ internal object AppLocale {
     private val legacyLanguages = mapOf("iw" to "he", "in" to "id", "ji" to "yi")
 
     // Strings read the language on every lookup; the answer changes only with a configuration change or a new
-    // per-app locale, which `invalidate` covers.
+    // per-app locale, which `invalidate` covers. A provisional answer, given before `prepare` has finished, is not kept.
     private var cached: String? = null
 
+    // The app's `localeConfig` never changes while it runs; parsing it reads the APK, so only `prepare` does it, on the
+    // storage thread. Null until then; empty: the app declares no locale configuration.
+    @Volatile
+    private var declared: List<Locale>? = null
+
+    /** Never reads the disk: before [prepare] has finished it answers without the declared locales. */
     fun languageTag(context: Context?): String? {
         if (context == null) return LocaleList.getDefault()[0]?.toLanguageTag()
         cached?.let { return it }
-        val tag = perAppLanguageTag(context) ?: systemLanguageTag(context)
-        cached = tag
+        val declared = declared
+        val tag = perAppLanguageTag(context) ?: resolve(declared.orEmpty(), LocaleList.getDefault())
+        if (declared != null) cached = tag
         return tag
     }
-
-    // The app's `localeConfig` never changes while it runs; parsing it reads the APK, so `prepare` does it off the
-    // main thread. Empty: the app declares no locale configuration.
-    @Volatile
-    private var declared: List<Locale>? = null
 
     fun invalidate() {
         cached = null
     }
 
-    /** Reads the declared locales on the storage thread, before any request needs the language. */
+    /**
+     * Reads the declared locales on the storage thread. A session prepares on the same thread after this, so requests,
+     * which wait for `prepared()`, always send the final language.
+     */
     fun prepare(context: Context) {
-        Storage.launch { declaredLocales(context) }
+        Storage.launch { if (declared == null) declared = readDeclared(context) }
     }
-
-    private fun systemLanguageTag(context: Context): String? = resolve(declaredLocales(context), LocaleList.getDefault())
 
     /**
      * The first system locale the app declares; when it declares languages but none matches, its first declared one,
@@ -55,8 +58,6 @@ internal object AppLocale {
         if (declared.isEmpty()) return system[0]?.toLanguageTag()
         return (declaredMatch(declared, system) ?: declared.first()).toLanguageTag()
     }
-
-    private fun declaredLocales(context: Context): List<Locale> = declared ?: readDeclared(context).also { declared = it }
 
     private fun readDeclared(context: Context): List<Locale> {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return emptyList()
