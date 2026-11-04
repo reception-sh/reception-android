@@ -17,10 +17,14 @@ import sh.reception.ui.ReceptionNotificationActivity
 
 /**
  * The notifications the SDK posts for replies (SPEC.md, Push notifications): one per conversation on the
- * `reception_replies` channel, tagged `reception`; a tap goes to [ReceptionNotificationActivity] with the conversation.
+ * `reception_replies` channel (`reception_replies_unbadged` while the app keeps the badge), tagged `reception`; a tap
+ * goes to [ReceptionNotificationActivity] with the conversation.
  */
 internal object PushNotifications {
     const val CHANNEL: String = "reception_replies"
+
+    /** A channel's badge setting cannot change once it exists, so a host that keeps the badge gets its own channel. */
+    const val UNBADGED_CHANNEL: String = "reception_replies_unbadged"
     const val TAG: String = "reception"
     const val EXTRA_CONVERSATION: String = "sh.reception.conversationId"
     const val EXTRA_NOTIFICATION: String = "sh.reception.notificationId"
@@ -42,11 +46,25 @@ internal object PushNotifications {
     fun number(payload: Payload, updatesAppBadge: Boolean): Int? =
         if (updatesAppBadge) payload.badge?.takeIf { it > 0 } else null
 
+    /** The channel a reply posts to: launchers show a dot or count only while the SDK updates the badge. */
+    fun channel(updatesAppBadge: Boolean): String = if (updatesAppBadge) CHANNEL else UNBADGED_CHANNEL
+
     /** One notification per conversation; a newer reply replaces it. */
     fun id(conversationId: String): Int = conversationId.hashCode()
 
-    /** Posts [payload]; [number] is the badge count to show, [color] the accent. Returns false when nothing was shown. */
-    fun post(context: Context, payload: Payload, notificationId: String, number: Int?, color: Int?, smallIcon: Int): Boolean {
+    /**
+     * Posts [payload]; [updatesAppBadge] picks the channel, [number] is the badge count to show, [color] the accent.
+     * Returns false when nothing was shown.
+     */
+    fun post(
+        context: Context,
+        payload: Payload,
+        notificationId: String,
+        updatesAppBadge: Boolean,
+        number: Int?,
+        color: Int?,
+        smallIcon: Int,
+    ): Boolean {
         val manager = NotificationManagerCompat.from(context)
         if (Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -67,14 +85,15 @@ internal object PushNotifications {
             .putExtra(EXTRA_NOTIFICATION, notificationId)
         val content = PendingIntent.getActivity(context, id(payload.conversationId), tap,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val channel = channel(updatesAppBadge)
         // Created on every post, so the channel's name follows the app's language.
         manager.createNotificationChannel(
-            NotificationChannelCompat.Builder(CHANNEL, NotificationManagerCompat.IMPORTANCE_HIGH)
+            NotificationChannelCompat.Builder(channel, NotificationManagerCompat.IMPORTANCE_HIGH)
                 .setName(ReceptionLocalization.string(Strings.supportReplies))
-                .setShowBadge(true)
+                .setShowBadge(updatesAppBadge)
                 .build(),
         )
-        val builder = NotificationCompat.Builder(context, CHANNEL)
+        val builder = NotificationCompat.Builder(context, channel)
             .setSmallIcon(smallIcon)
             .setContentTitle(payload.title)
             .setContentText(payload.body)

@@ -58,9 +58,10 @@ internal object ReceptionPush {
         routing.action(key, openChat = false)
         received(payload.conversationId)
         if (ReceptionState.isChatOpen.value) return Log.debug { "Notification not shown, chat open" }
-        val number = PushNotifications.number(payload, ReceptionState.updatesAppBadge)
+        val badges = ReceptionState.updatesAppBadge
+        val number = PushNotifications.number(payload, badges)
         val accent = ReceptionAppearance.resolved.accent.light?.toArgb()
-        PushNotifications.post(context, payload, key, number, accent, smallIcon ?: R.drawable.reception_symbol_notifications)
+        PushNotifications.post(context, payload, key, badges, number, accent, smallIcon ?: R.drawable.reception_symbol_notifications)
     }
 
     /** `Reception.handlePushNotification`, the iOS routing call; it never posts a notification. */

@@ -67,7 +67,7 @@ class PushNotificationsTest {
     @Test
     fun aPostedReplyCarriesItsCountAndTapsGoToTheSdksActivity() {
         val payload = requireNotNull(PushNotifications.payload(mapOf("reception" to "c1", "title" to "Team", "body" to "Hi")))
-        assertTrue(PushNotifications.post(context, payload, "n1", number = 4, color = null,
+        assertTrue(PushNotifications.post(context, payload, "n1", updatesAppBadge = true, number = 4, color = null,
             smallIcon = R.drawable.reception_symbol_notifications))
         val posted = shadowOf(manager).getNotification(PushNotifications.TAG, PushNotifications.id("c1"))
         assertEquals(4, posted.number)
@@ -81,9 +81,25 @@ class PushNotificationsTest {
     }
 
     @Test
+    fun aHostThatKeepsTheBadgePostsToAChannelWithoutBadges() {
+        val payload = requireNotNull(PushNotifications.payload(mapOf("reception" to "c1", "title" to "Team", "body" to "Hi")))
+        assertTrue(PushNotifications.post(context, payload, "n1", updatesAppBadge = false, number = null, color = null,
+            smallIcon = R.drawable.reception_symbol_notifications))
+        val posted = shadowOf(manager).getNotification(PushNotifications.TAG, PushNotifications.id("c1"))
+        assertEquals(PushNotifications.UNBADGED_CHANNEL, posted.channelId)
+        val channel = manager.getNotificationChannel(PushNotifications.UNBADGED_CHANNEL)
+        assertFalse(channel.canShowBadge())
+        assertNull(manager.getNotificationChannel(PushNotifications.CHANNEL))
+        PushNotifications.post(context, payload, "n2", updatesAppBadge = true, number = 1, color = null,
+            smallIcon = R.drawable.reception_symbol_notifications)
+        assertTrue(manager.getNotificationChannel(PushNotifications.CHANNEL).canShowBadge())
+        assertEquals(manager.getNotificationChannel(PushNotifications.CHANNEL).name, channel.name)
+    }
+
+    @Test
     fun readingRemovesOnlyTheSdksNotifications() {
         val payload = requireNotNull(PushNotifications.payload(mapOf("reception" to "c1", "title" to "Team", "body" to "Hi")))
-        PushNotifications.post(context, payload, "n1", number = null, color = null,
+        PushNotifications.post(context, payload, "n1", updatesAppBadge = true, number = null, color = null,
             smallIcon = R.drawable.reception_symbol_notifications)
         val own = Notification.Builder(context, "app").setSmallIcon(R.drawable.reception_symbol_notifications).build()
         manager.notify("app", 7, own)
