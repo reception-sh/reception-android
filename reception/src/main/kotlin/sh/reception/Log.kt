@@ -39,6 +39,14 @@ internal object Log {
         emit(Reception.LogLevel.DEBUG, message)
     }
 
+    /**
+     * A line that reaches Logcat whatever [level] and [handler] say, for results a developer asked for explicitly
+     * (the setup check), as iOS gives them their own logger.
+     */
+    fun unconditional(failure: Boolean, message: String) {
+        if (failure) AndroidLog.e(TAG, "[Reception] $message") else AndroidLog.i(TAG, "[Reception] $message")
+    }
+
     fun redacted(secret: String): String = "<${secret.length} chars>"
 
     private fun emit(level: Reception.LogLevel, message: () -> String) {
