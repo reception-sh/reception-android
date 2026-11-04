@@ -53,4 +53,16 @@ class LinkPolicyTest {
         policy.isHostScheme("myapp://item/0")
         assertEquals(66, queries)
     }
+
+    @Test
+    fun mixedCaseSchemesAreQueriedInLowercase() {
+        val queried = mutableListOf<String>()
+        val policy = LinkPolicy("com.host") { url -> queried.add(url); if (url.startsWith("myapp:")) listOf("com.host") else emptyList() }
+        assertTrue(policy.isHostScheme("MyApp://Orders/7"))
+        assertTrue(policy.isHostScheme("myapp://Orders/7"))
+        assertEquals(listOf("myapp://Orders/7"), queried)
+        assertEquals("https://Example.com/A", LinkPolicy.normalizedScheme("HTTPS://Example.com/A"))
+        assertEquals("not a url", LinkPolicy.normalizedScheme("not a url"))
+        assertFalse(LinkPolicy.isAllowed("JAVASCRIPT:alert(1)"))
+    }
 }

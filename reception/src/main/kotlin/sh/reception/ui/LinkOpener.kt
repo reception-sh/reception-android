@@ -13,11 +13,12 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import sh.reception.Log
 import sh.reception.ReceptionLocalization
 import sh.reception.client.ApplicationLifecycle
+import sh.reception.client.LinkPolicy
 
 /**
  * Hands URLs to Android: an installed app that claims a web link, a Custom Tab, or the system. Each answers whether an
  * activity accepted the URL. They start from the resumed activity (the chat sheet, or the host after it closed), else
- * from the application in a new task.
+ * from the application in a new task. Android resolves schemes case-sensitively, so each lowercases the URL's scheme.
  */
 internal object LinkOpener {
     private const val PLAY_STORE = "com.android.vending"
@@ -25,11 +26,12 @@ internal object LinkOpener {
     val context: Context?
         get() = ApplicationLifecycle.currentActivity ?: ReceptionLocalization.context
 
-    /** An installed app other than a browser that claims [url], as Messages and Mail hand links to apps on iOS. */
+    /** An installed app other than a browser that claims [link], as Messages and Mail hand links to apps on iOS. */
     // resolveActivity(Intent, Int) is only reached below Android 11, where it is the current API.
     @Suppress("DEPRECATION")
-    fun openInClaimingApp(url: String): Boolean {
+    fun openInClaimingApp(link: String): Boolean {
         val context = context ?: return false
+        val url = LinkPolicy.normalizedScheme(link)
         val intent = Intent(Intent.ACTION_VIEW, url.toUri()).addCategory(Intent.CATEGORY_BROWSABLE)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             return start(context, intent.addFlags(Intent.FLAG_ACTIVITY_REQUIRE_NON_BROWSER))
@@ -44,8 +46,9 @@ internal object LinkOpener {
     }
 
     /** A Custom Tab over the chat, its toolbar in [toolbarColor]. */
-    fun openCustomTab(url: String, toolbarColor: Int): Boolean {
+    fun openCustomTab(link: String, toolbarColor: Int): Boolean {
         val context = context ?: return false
+        val url = LinkPolicy.normalizedScheme(link)
         return try {
             val intent = CustomTabsIntent.Builder()
                 .setDefaultColorSchemeParams(CustomTabColorSchemeParams.Builder().setToolbarColor(toolbarColor).build())
@@ -60,8 +63,9 @@ internal object LinkOpener {
     }
 
     /** The system's handling; a Google Play listing opens in the Play Store app when it is installed. */
-    fun openExternally(url: String): Boolean {
+    fun openExternally(link: String): Boolean {
         val context = context ?: return false
+        val url = LinkPolicy.normalizedScheme(link)
         val listing = playStoreListing(url)
         if (listing != null && start(context, Intent(Intent.ACTION_VIEW, listing.toUri()).setPackage(PLAY_STORE))) return true
         val opened = start(context, Intent(Intent.ACTION_VIEW, url.toUri()))

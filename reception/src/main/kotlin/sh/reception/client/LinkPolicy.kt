@@ -14,7 +14,7 @@ import java.util.Locale
  * Which link card URLs the chat opens, and which of them lead back into the host app. Android has no
  * `CFBundleURLTypes`: a URL is the host's own when one of its activities handles it ([handlers] lists the packages of
  * the activities that would open it). Intent filters match by path and compare schemes case-sensitively, so answers
- * are cached per complete URL, the most recent [cacheSize]. Main thread only.
+ * are cached per complete URL (its scheme in lowercase), the most recent [cacheSize]. Main thread only.
  */
 internal class LinkPolicy(private val packageName: String, private val handlers: (String) -> List<String>) {
     private val hostLinks = object : LinkedHashMap<String, Boolean>(cacheSize, 0.75f, true) {
@@ -24,7 +24,8 @@ internal class LinkPolicy(private val packageName: String, private val handlers:
     /** True when the host app itself opens [url], through a custom scheme or an app link. */
     fun isHostScheme(url: String): Boolean {
         if (scheme(url) == null) return false
-        return hostLinks.getOrPut(url) { packageName in handlers(url) }
+        val normalized = normalizedScheme(url)
+        return hostLinks.getOrPut(normalized) { packageName in handlers(normalized) }
     }
 
     companion object {
@@ -56,6 +57,16 @@ internal class LinkPolicy(private val packageName: String, private val handlers:
             if (scheme != "https" && scheme != "http") return false
             val host = url.toHttpUrlOrNull()?.host?.lowercase(Locale.ROOT)?.takeIf { it.isNotEmpty() } ?: return false
             return host != "play.google.com"
+        }
+
+        /**
+         * [url] with its scheme in lowercase, as `Uri.normalizeScheme` does: intent filters compare schemes
+         * case-sensitively, while the allowlist above accepts any case.
+         */
+        fun normalizedScheme(url: String): String {
+            val prefix = schemePrefix.find(url) ?: return url
+            val scheme = prefix.groupValues[1]
+            return scheme.lowercase(Locale.ROOT) + url.substring(scheme.length)
         }
 
         private fun scheme(url: String): String? = schemePrefix.find(url)?.groupValues?.get(1)?.lowercase(Locale.ROOT)

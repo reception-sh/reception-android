@@ -14,7 +14,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 
-/** The host's own handlers come from its intent filters: paths must match, schemes compare exactly, hosts ignore case. */
+/** The host's own handlers come from its intent filters: paths must match, schemes are queried in lowercase, hosts ignore case. */
 @RunWith(RobolectricTestRunner::class)
 class LinkPolicyHandlersTest {
     private val context: Context = RuntimeEnvironment.getApplication()
@@ -45,10 +45,10 @@ class LinkPolicyHandlersTest {
     }
 
     @Test
-    fun theSchemeCaseMustMatchTheFilter() {
+    fun aMixedCaseSchemeMatchesTheLowercaseFilter() {
         val policy = LinkPolicy.of(context)
         assertTrue(policy.isHostScheme("myapp://settings"))
-        assertFalse(policy.isHostScheme("MYAPP://settings"))
+        assertTrue(policy.isHostScheme("MYAPP://settings"))
         assertTrue(policy.isHostScheme("https://HOST.example/app/settings"))
         assertFalse(policy.isHostScheme("https://HOST.example/blog/settings"))
     }
