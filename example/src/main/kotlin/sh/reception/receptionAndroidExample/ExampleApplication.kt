@@ -17,6 +17,7 @@ class ExampleApplication : Application() {
             )
         }
         Reception.logLevel = Reception.LogLevel.DEBUG
+        Reception.onEvent = { event -> Log.i(TAG, "Event $event") }
         val appId = BuildConfig.RECEPTION_APP_ID
         if (appId.isEmpty()) {
             Log.w(TAG, "No App ID in .local/app-id.txt, Reception is not configured")
