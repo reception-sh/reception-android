@@ -13,7 +13,7 @@ import sh.reception.ReceptionInternalApi
  * `…PUSH --es reception <id> --es title … --es body … --es google.message_id <id>` hands the extras to
  * `handlePushMessage`; `…ROUTING --ez enabled false` is a plugin's `configure(handlesNotifications: false)`;
  * `…COVER` starts the second screen inside the chat sheet's task, above the sheet; `…LOGOUT` logs out (also in a
- * process the broadcast started).
+ * process the broadcast started); `…IDENTIFY --es token <JWT>` stages an identity token minted outside the app.
  */
 class VerificationReceiver : BroadcastReceiver() {
     @OptIn(ReceptionInternalApi::class)
@@ -32,6 +32,7 @@ class VerificationReceiver : BroadcastReceiver() {
                 Log.i(TAG, if (sheetTask == null) "No task with the chat on top" else "Second screen started above the chat")
             }
             ACTION_LOGOUT -> Reception.logout()
+            ACTION_IDENTIFY -> intent.getStringExtra("token")?.let(Reception::identifyWithToken)
         }
     }
 
@@ -41,6 +42,7 @@ class VerificationReceiver : BroadcastReceiver() {
         const val ACTION_ROUTING = "sh.reception.receptionAndroidExample.ROUTING"
         const val ACTION_COVER = "sh.reception.receptionAndroidExample.COVER"
         const val ACTION_LOGOUT = "sh.reception.receptionAndroidExample.LOGOUT"
+        const val ACTION_IDENTIFY = "sh.reception.receptionAndroidExample.IDENTIFY"
         const val SHEET = "sh.reception.ui.ReceptionChatActivity"
     }
 }
