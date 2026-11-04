@@ -35,6 +35,7 @@ import org.robolectric.RuntimeEnvironment
 import sh.reception.ReceptionState
 import sh.reception.model.EmptyResponse
 import java.util.Collections
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
@@ -116,13 +117,21 @@ class SessionAuthorizationTest {
     @Test
     fun aCancelledCallerLeavesTheRenewalToTheNextCaller() = runTest(dispatcher) {
         val issued = AtomicInteger()
-        respond = { json(200, """{"token":"token-${issued.incrementAndGet()}"}""").setBodyDelay(300, TimeUnit.MILLISECONDS) }
+        val answer = CountDownLatch(1)
+        respond = {
+            answer.await(5, TimeUnit.SECONDS)
+            json(200, """{"token":"token-${issued.incrementAndGet()}"}""")
+        }
         val session = registeredSession()
         val first = async { session.renewedToken(replacing = null) }
         withContext(Dispatchers.IO) { server.takeRequest(5, TimeUnit.SECONDS) }
         // Backgrounding cancels an unread refresh while its renewal is in flight.
         first.cancelAndJoin()
         val second = async { session.renewedToken(replacing = null) }
+        runCurrent()
+        // The server answers only once the second caller waits for the same renewal.
+        assertTrue(second.isActive && session.refresh != null)
+        answer.countDown()
         assertEquals("token-1", second.await())
         assertEquals(1, requests.count { it.path == "/v1/devices/me/token" })
         assertEquals("token-1", session.accessToken)
@@ -132,9 +141,11 @@ class SessionAuthorizationTest {
     @Test
     fun aCancelledCallerLeavesTheRegistrationToTheNextCaller() = runTest(dispatcher) {
         val issued = AtomicInteger()
+        val answer = CountDownLatch(1)
         respond = {
+            answer.await(5, TimeUnit.SECONDS)
             val number = issued.incrementAndGet()
-            json(201, """{"token":"token-$number","sessionSecret":"secret-$number"}""").setBodyDelay(300, TimeUnit.MILLISECONDS)
+            json(201, """{"token":"token-$number","sessionSecret":"secret-$number"}""")
         }
         val store = DeviceStore(context, "app_test${System.nanoTime()}", credentialStorage = storage)
         val session = DeviceSession(ReceptionAPI(APP_ID, server.url("/")), store, refreshSleep = {})
@@ -142,6 +153,10 @@ class SessionAuthorizationTest {
         withContext(Dispatchers.IO) { server.takeRequest(5, TimeUnit.SECONDS) }
         first.cancelAndJoin()
         val second = async { withContext(RequestContext(automation = true)) { session.token() } }
+        runCurrent()
+        // The server answers only once the second caller waits for the same registration.
+        assertTrue(second.isActive && session.registration != null)
+        answer.countDown()
         assertEquals("token-1", second.await())
         assertEquals(1, requests.count { it.path == "/v1/devices" })
         assertEquals(SessionCredentials("secret-1"), session.storedCredentials())
