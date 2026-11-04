@@ -84,9 +84,11 @@ class ChatPresentationTest {
         override fun getTaskId(): Int = 7
     }
 
-    @Test
-    fun aSheetCoveredInItsOwnTaskWhileAnotherTaskIsInFrontIsReorderedWithinItsTask() {
-        // Task A: host, sheet, then a cover above the sheet (all task 0 here); task B in front.
+    /**
+     * Task A: host, sheet, then a cover above the sheet (all task 0 here); task B in front. Opening the chat from B
+     * moves task A to the front; returns the sheet.
+     */
+    private fun openFromAnotherTask(): ReceptionChatActivity {
         val sheet = created(launch { ChatPresenter.open() })
         val sheetTask = ShadowAppTask.newInstance()
         shadowOf(sheetTask).setTaskInfo(ActivityManager.RecentTaskInfo().apply {
@@ -103,15 +105,50 @@ class ChatPresentationTest {
         // Task A comes to the front; a start from task B would only land in B.
         assertTrue(shadowOf(sheetTask).hasMovedToFront())
         assertNull(shadowOf(front).nextStartedActivity)
-        // The cover above the sheet resumes in task A and reorders the sheet above itself.
+        return sheet
+    }
+
+    /** The cover above the sheet resumes in task A; returns what it started. */
+    private fun coverResumed(): Intent? {
         val cover = Robolectric.buildActivity(Activity::class.java).setup().get()
         ApplicationLifecycle.onActivityResumed(cover)
-        val started = shadowOf(cover).nextStartedActivity
+        return shadowOf(cover).nextStartedActivity
+    }
+
+    private fun assertReordered(started: Intent?) {
         assertEquals(ReceptionChatActivity::class.java.name, started?.component?.className)
-        assertTrue(started.flags and Intent.FLAG_ACTIVITY_REORDER_TO_FRONT != 0)
+        assertTrue(requireNotNull(started).flags and Intent.FLAG_ACTIVITY_REORDER_TO_FRONT != 0)
         assertFalse(started.hasExtra(ChatPresenter.EXTRA_PRESENTATION))
+    }
+
+    @Test
+    fun aSheetCoveredInItsOwnTaskWhileAnotherTaskIsInFrontIsReorderedWithinItsTask() {
+        val sheet = openFromAnotherTask()
+        assertReordered(coverResumed())
         assertFalse(sheet.isFinishing)
         ChatPresenter.close()
+    }
+
+    @Test
+    fun anUnrelatedResumeBeforeTheSheetsTaskResumesKeepsTheReorder() {
+        val sheet = openFromAnotherTask()
+        // Another task's activity resumes first, or a plugin hands its activity over again.
+        val other = Robolectric.buildActivity(OtherTaskActivity::class.java).setup().get()
+        ApplicationLifecycle.onActivityResumed(other)
+        ApplicationLifecycle.noteCurrentActivity(other)
+        assertNull(shadowOf(other).nextStartedActivity)
+        assertReordered(coverResumed())
+        assertFalse(sheet.isFinishing)
+        // Done once the sheet's task resumed: a later resume there reorders nothing.
+        assertNull(coverResumed())
+        ChatPresenter.close()
+    }
+
+    @Test
+    fun aClosedSheetIsNotReorderedWhenItsTaskResumes() {
+        openFromAnotherTask()
+        ChatPresenter.close()
+        assertNull(coverResumed())
     }
 
     @Test

@@ -112,7 +112,8 @@ stopped), `openChat()` and a notification tap bring that sheet back instead of s
 `FLAG_ACTIVITY_REORDER_TO_FRONT` from an activity in the sheet's task, or by moving the sheet's task to the front
 (`ActivityManager.AppTask.moveToFront`, then the activity that resumes first in that task, the one covering the sheet,
 starts it with `FLAG_ACTIVITY_REORDER_TO_FRONT`; `AppTask.startActivity` ignores that flag and stacks a second sheet)
-when the covering activity runs in another task of the app. The sheet reports `isChatOpen` from its actual visibility
+when the covering activity runs in another task of the app. Resumes in other tasks before that (or a plugin's
+`noteCurrentActivity`) keep the request; it ends when the sheet's task resumes, or when the chat is dismissed or reset. The sheet reports `isChatOpen` from its actual visibility
 (`onStart`/`onStop`), not from the request.
 
 Each presentation gets a random token that its launch intent carries; a sheet whose token is not the current one (closed,

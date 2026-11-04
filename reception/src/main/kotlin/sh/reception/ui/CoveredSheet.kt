@@ -13,7 +13,11 @@ import sh.reception.client.AppTasks
  * thread only.
  */
 internal object CoveredSheet {
-    /** The task whose next resumed activity reorders the sheet; cleared by the next resume either way. */
+    /**
+     * The task whose next resumed activity reorders the sheet. Kept through resumes in other tasks (another task's
+     * activity, or a plugin handing its activity over again before the moved task resumes); cleared once the task
+     * resumed, or when the presentation ends.
+     */
     private var reorderingTask: Int? = null
 
     /** Answers whether the sheet was brought to the front or will be once its task resumes. */
@@ -34,12 +38,18 @@ internal object CoveredSheet {
     /** An activity resumed; in the task moved to the front for [sheet], it reorders the sheet above itself. */
     fun activityResumed(activity: Activity, sheet: ReceptionChatActivity?) {
         val task = reorderingTask ?: return
+        if (sheet?.taskId != task) {
+            reorderingTask = null
+            return
+        }
+        if (activity.taskId != task) return
         reorderingTask = null
-        if (activity is ReceptionChatActivity || activity.taskId != task || sheet?.taskId != task) return
+        // The sheet itself on top of its task needs no reorder.
+        if (activity is ReceptionChatActivity) return
         if (reorder(activity)) Log.debug { "Chat brought to the front within its task" }
     }
 
-    /** The moved task is no longer awaited: the chat was dismissed or reset. */
+    /** The moved task is no longer awaited: the chat was dismissed, reset or its sheet ended. */
     fun cancel() {
         reorderingTask = null
     }
