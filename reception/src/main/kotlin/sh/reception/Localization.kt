@@ -40,7 +40,7 @@ internal object ReceptionLocalization {
 
     /** The app's language as a canonical BCP 47 tag, before matching against the bundled languages. */
     val appLanguage: String
-        get() = canonical(languageOverride ?: context?.let(AppLocale::languageTag) ?: "en")
+        get() = canonical(languageOverride ?: AppLocale.languageTag(context) ?: "en")
 
     val language: String
         get() = resolveLanguage(appLanguage)
