@@ -66,6 +66,8 @@ internal object ReceptionState {
             Log.debug { "Configure ignored, same App ID already active" }
             return
         }
+        // A first configure has nothing presented to cancel, and keeps a sheet restored after the process died.
+        val reconfigured = this.namespace != null
         ReceptionLocalization.context = context
         (context as? Application)?.let(ApplicationLifecycle::start)
         unreadMonitor.setActive(false)
@@ -83,7 +85,7 @@ internal object ReceptionState {
         // No badge sync before the first server sync; the server value is the source of truth.
         ReceptionUnread.set(0, syncsNotifications = false)
         revision += 1
-        advancePresentationRevision()
+        advancePresentationRevision(dismissesChat = reconfigured)
         val revocations = logoutRevocations ?: LogoutRevocations(SecureStore.shared(context)).also { logoutRevocations = it }
         revocations.resumed(api)
         val active = ApplicationLifecycle.isActive
@@ -114,6 +116,7 @@ internal object ReceptionState {
         ReceptionIdentity.forget()
         ReceptionUnread.set(0, syncsNotifications = false)
         ReceptionAPI.serviceUrl = ReceptionAPI.defaultServiceUrl
+        ChatPresenter.resetForTests()
     }
 
     fun applicationBecameActive() {
@@ -200,8 +203,8 @@ internal object ReceptionState {
 
     fun chatModel(): ChatModel = chat ?: ChatModel(session).also { chat = it }
 
-    private fun advancePresentationRevision() {
+    private fun advancePresentationRevision(dismissesChat: Boolean = true) {
         presentationRevision += 1
-        ChatPresenter.dismiss()
+        if (dismissesChat) ChatPresenter.dismiss()
     }
 }

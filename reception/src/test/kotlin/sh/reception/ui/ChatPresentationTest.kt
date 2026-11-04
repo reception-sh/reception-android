@@ -3,6 +3,8 @@ package sh.reception.ui
 import android.app.Activity
 import android.app.ActivityManager
 import android.content.Intent
+import android.os.Bundle
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -17,6 +19,8 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowAppTask
 import sh.reception.ReceptionState
 import sh.reception.client.ApplicationLifecycle
+import sh.reception.client.ReceptionAPI
+import sh.reception.client.Storage
 import sh.reception.viewmodel.ChatHarness
 
 /** A sheet whose presentation was closed or superseded before it was created finishes at once. */
@@ -115,6 +119,60 @@ class ChatPresentationTest {
             ReceptionState.resetLocal()
         }
         assertTrue(created(intent).isFinishing)
+    }
+
+    /** The process dies with the sheet on screen and starts again; the app configures in `Application.onCreate`. */
+    private fun processRestarted() {
+        runBlocking { Storage.run {} }
+        ReceptionState.resetForTests()
+        ReceptionAPI.serviceUrl = harness.server.url("/")
+        ReceptionState.configure(RuntimeEnvironment.getApplication(), ChatHarness.APP_ID)
+    }
+
+    /** Android recreates the sheet from its saved state; answers it once the presenter decided. */
+    private fun restored(intent: Intent?): ReceptionChatActivity {
+        val sheet = Robolectric.buildActivity(ReceptionChatActivity::class.java, requireNotNull(intent)).create(Bundle()).get()
+        harness.mainLoopUntil { sheet.isFinishing || ChatPresenter.isPresented }
+        return sheet
+    }
+
+    @Test
+    fun aSheetOnScreenWhenTheProcessDiedIsRestored() {
+        val intent = launch { ChatPresenter.open() }
+        created(intent)
+        processRestarted()
+        val sheet = restored(intent)
+        assertFalse(sheet.isFinishing)
+        assertTrue(ChatPresenter.isPresented)
+        // Closing it forgets the record: the next process restores nothing.
+        ChatPresenter.close()
+        processRestarted()
+        assertTrue(restored(intent).isFinishing)
+    }
+
+    @Test
+    fun aSheetIsNotRestoredAfterALogoutInTheNewProcess() {
+        val intent = launch { ChatPresenter.open() }
+        created(intent)
+        processRestarted()
+        ReceptionState.resetLocal()
+        assertTrue(restored(intent).isFinishing)
+        assertFalse(ChatPresenter.isPresented)
+    }
+
+    @Test
+    fun aSupersededSheetIsNotRestored() {
+        val first = launch { ChatPresenter.open() }
+        ChatPresenter.close()
+        val host = Robolectric.buildActivity(Activity::class.java).setup().get()
+        ApplicationLifecycle.onActivityResumed(host)
+        ChatPresenter.open()
+        val second = shadowOf(host).nextStartedActivity
+        created(second)
+        processRestarted()
+        assertTrue(restored(first).isFinishing)
+        assertFalse(restored(second).isFinishing)
+        ChatPresenter.close()
     }
 
     @Test

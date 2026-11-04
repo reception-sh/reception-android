@@ -114,6 +114,15 @@ starts it with `FLAG_ACTIVITY_REORDER_TO_FRONT`; `AppTask.startActivity` ignores
 when the covering activity runs in another task of the app. The sheet reports `isChatOpen` from its actual visibility
 (`onStart`/`onStop`), not from the request.
 
+Each presentation gets a random token that its launch intent carries; a sheet whose token is not the current one (closed,
+cancelled by logout, `deleteData()` or reconfiguration, or superseded before it was created) finishes at once. The token
+and the configured storage namespace are also committed to SharedPreferences `sh.reception.presentation` on the storage
+thread, so when the process dies with the sheet on screen and Android restores it (Recents), the sheet reads the record
+and is shown again, with its saved state (an open lightbox included), if the record still names its token and the App
+ID configured in the new process; any dismissal, logout, deletion or reconfiguration clears the record first. The first
+`configure` in a process cancels nothing. The restored sheet needs the SDK configured before it is created (in
+`Application.onCreate`); a host that configures later (Flutter, React Native) gets the sheet finished instead.
+
 While the keyboard is open, the sheet closes only by a drag that starts on its header (drag handle and title bar,
 `Theme.sheetHandleHeight`); a drag over the messages dismisses the keyboard instead. With the keyboard closed, a drag
 anywhere closes the sheet. This matches the iOS sheet rule exactly.

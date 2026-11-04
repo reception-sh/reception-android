@@ -2,13 +2,18 @@ package sh.reception.ui
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
+import androidx.annotation.VisibleForTesting
 import sh.reception.Log
 import sh.reception.ReceptionAppearance
 import sh.reception.ReceptionState
 import sh.reception.client.ApplicationLifecycle
+import sh.reception.client.PresentationRecord
+import sh.reception.client.Storage
 import java.lang.ref.WeakReference
+import java.util.UUID
 
 /**
  * Presents the SDK's chat sheet ([ReceptionChatActivity]) over the resumed activity and dismisses it again. Main
@@ -23,10 +28,15 @@ internal object ChatPresenter {
     private var requestedAt: Long? = null
 
     /**
-     * Advanced by every presentation and every dismissal. A sheet whose launch carries an older value was closed,
-     * cancelled by logout or reconfiguration, or superseded before it was created, and finishes at once.
+     * The current presentation's random token, which its sheet's launch intent carries; null after a dismissal. A sheet
+     * with another token was closed, cancelled by logout, deletion or reconfiguration, or superseded, and finishes at
+     * once. The token is also recorded on disk ([PresentationRecord]), so the sheet Android restores after the process
+     * died is shown again.
      */
-    private var presentation = 0
+    private var presentation: String? = null
+
+    /** Advanced by every presentation and dismissal, so a restore that read the record before one is rejected. */
+    private var changes = 0
 
     /** Runs once the sheet a link closed is gone, so the host can navigate or present freely. */
     private var afterDismissal: (() -> Unit)? = null
@@ -62,9 +72,13 @@ internal object ChatPresenter {
         // The sheet exists but another of the app's activities covers it: bring that sheet back instead of a second one.
         sheet?.get()?.let { return CoveredSheet.bringToFront(host, it) }
         ReceptionAppearance.configuration.activate()
-        presentation += 1
+        val token = UUID.randomUUID().toString()
+        presentation = token
+        changes += 1
+        val entry = ReceptionState.namespace?.let { PresentationRecord.Entry(token, it) }
+        if (entry != null) record(host) { PresentationRecord.save(it, entry) }
         return try {
-            host.startActivity(Intent(host, ReceptionChatActivity::class.java).putExtra(EXTRA_PRESENTATION, presentation))
+            host.startActivity(Intent(host, ReceptionChatActivity::class.java).putExtra(EXTRA_PRESENTATION, token))
             requestedAt = SystemClock.uptimeMillis()
             true
         } catch (_: ActivityNotFoundException) {
@@ -80,21 +94,50 @@ internal object ChatPresenter {
      * A new sheet, or the same sheet recreated after a configuration change, which keeps its launch intent and so its
      * presentation. Answers false for a sheet of a cancelled or superseded presentation, which must finish.
      */
-    fun attached(activity: ReceptionChatActivity, presentation: Int, recreated: Boolean): Boolean {
-        if (presentation != this.presentation) {
-            Log.debug { "Chat presentation cancelled before it appeared" }
+    fun attached(activity: ReceptionChatActivity, presentation: String?, recreated: Boolean): Boolean {
+        if (presentation == null || presentation != this.presentation) {
+            // A recreated sheet may still be restored; ReceptionChatActivity asks [restored] next.
+            if (!recreated) Log.debug { "Chat presentation cancelled before it appeared" }
             return false
         }
-        sheet = WeakReference(activity)
-        requestedAt = null
+        accept(activity)
         if (!recreated) Log.debug { "Chat presented" }
         return true
+    }
+
+    /**
+     * A sheet Android restored in a new process (the old one died with the sheet on screen). It is shown again when it
+     * belongs to the recorded presentation of the configured App ID and nothing presented or dismissed the chat since.
+     */
+    suspend fun restored(activity: ReceptionChatActivity, presentation: String): Boolean {
+        val before = changes
+        val expected = ReceptionState.namespace?.let { PresentationRecord.Entry(presentation, it) }
+        val recorded = expected?.let { Storage.run { PresentationRecord.load(activity) } }
+        if (before != changes || this.presentation != null || expected == null || recorded != expected) {
+            Log.debug { "Chat presentation not restored, the chat was closed or reset since" }
+            return false
+        }
+        this.presentation = presentation
+        accept(activity)
+        Log.debug { "Chat presentation restored" }
+        return true
+    }
+
+    private fun accept(activity: ReceptionChatActivity) {
+        sheet = WeakReference(activity)
+        requestedAt = null
     }
 
     /** The sheet's activity ended; what waited for the dismissal runs now, with the host activity resumed. */
     fun destroyed(activity: ReceptionChatActivity) {
         detached(activity)
         if (activity.isChangingConfigurations) return
+        // The sheet is gone for good (not destroyed to be restored later): nothing of it is left to restore.
+        if (activity.isFinishing && activity.presentation != null && activity.presentation == presentation) {
+            presentation = null
+            changes += 1
+            record(activity, PresentationRecord::clear)
+        }
         val next = afterDismissal ?: return
         afterDismissal = null
         next()
@@ -114,8 +157,10 @@ internal object ChatPresenter {
     fun dismiss(then: (() -> Unit)? = null): Boolean {
         val requested = requestedAt != null
         requestedAt = null
-        presentation += 1
+        presentation = null
+        changes += 1
         CoveredSheet.cancel()
+        ReceptionState.session?.store?.context?.let { record(it, PresentationRecord::clear) }
         val activity = sheet?.get()
         if (activity == null) {
             if (requested) Log.debug { "Chat presentation cancelled" }
@@ -127,6 +172,21 @@ internal object ChatPresenter {
         activity.dismiss()
         Log.debug { "Chat dismissed" }
         return true
+    }
+
+    /** What a new process knows: nothing in memory; the record on disk stays. */
+    @VisibleForTesting(otherwise = VisibleForTesting.NONE)
+    fun resetForTests() {
+        sheet = null
+        requestedAt = null
+        presentation = null
+        afterDismissal = null
+    }
+
+    /** Writes the presentation record on the storage thread, in order with the other writes. */
+    private fun record(context: Context, write: (Context) -> Unit) {
+        val application = context.applicationContext
+        Storage.launch { write(application) }
     }
 
     /** Whether a touch on the sheet started on its header: the drag handle inset and the title bar. */
