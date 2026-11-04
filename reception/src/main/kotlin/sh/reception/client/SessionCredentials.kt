@@ -45,6 +45,7 @@ internal suspend fun DeviceSession.persistPendingCredentials() {
     val credentials = credentials
     if (!credentialsUnsaved || credentials == null) return
     Storage.run { store.save(credentials) }
+    if (invalidated) throw ReceptionAPIError("cancelled", 0)
     // A newer value that arrived during the write stays unsaved until its own write.
     if (this.credentials === credentials) credentialsUnsaved = false
 }

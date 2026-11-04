@@ -349,6 +349,66 @@ class SessionAuthorizationTest {
     }
 
     @Test
+    fun aLogoutDuringTheCredentialSaveHandsOutNoToken() = runTest(dispatcher) {
+        val saving = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val gated = DeviceStore.CredentialStorage(
+            read = storage.read,
+            save = { value, account ->
+                saving.countDown()
+                release.await(5, TimeUnit.SECONDS)
+                storage.save(value, account)
+            },
+            delete = storage.delete,
+        )
+        val store = DeviceStore(context, "app_test${System.nanoTime()}", credentialStorage = gated).apply { open() }
+        val session = DeviceSession(ReceptionAPI(APP_ID, server.url("/")), store, refreshSleep = {})
+        session.prepared()
+        session.credentials = SessionCredentials("secret")
+        session.credentialsUnsaved = true
+        session.accessToken = "t"
+        val caller = async { runCatching { session.token() } }
+        while (saving.count > 0) {
+            withContext(Dispatchers.IO) { Thread.sleep(10) }
+            runCurrent()
+        }
+        // The logout ends the session while the caller's save is on the storage thread.
+        session.deactivate()
+        release.countDown()
+        val error = caller.await().exceptionOrNull()
+        assertEquals("token handed out after the logout", "cancelled", (error as? ReceptionAPIError)?.code)
+    }
+
+    @Test
+    fun aRetryAfterTheRenewalIsAuthorizedAgain() = runTest(dispatcher) {
+        val renewing = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        respond = { request ->
+            when {
+                request.path == "/v1/devices/me/token" -> {
+                    renewing.countDown()
+                    release.await(5, TimeUnit.SECONDS)
+                    json(200, """{"token":"new"}""")
+                }
+                request.getHeader("Authorization") == "Bearer old" -> error(401, "unauthorized")
+                else -> json(200, "{}")
+            }
+        }
+        val session = registeredSession(accessToken = "old")
+        val caller = async { runCatching { session.api.request<EmptyResponse>("conversation/unread", authenticated = true) } }
+        while (renewing.count > 0) {
+            withContext(Dispatchers.IO) { Thread.sleep(10) }
+            runCurrent()
+        }
+        // Another request's answer blocked the device while the renewal was on the network.
+        session.halt = DeviceSession.HaltReason.BLOCKED
+        release.countDown()
+        val error = caller.await().exceptionOrNull()
+        assertEquals("session_halted", (error as? ReceptionAPIError)?.code)
+        assertEquals(listOf("GET /v1/conversation/unread Bearer old", "POST /v1/devices/me/token"), summary())
+    }
+
+    @Test
     fun anUnauthorizedRequestIsRetriedOnceWithARenewedToken() = runTest(dispatcher) {
         respond = { request ->
             when {

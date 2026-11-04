@@ -4,13 +4,16 @@ import sh.reception.Log
 
 /**
  * The last check before the network. A known cooldown is checked first, so it never spends the probe that lets
- * one user action through a halted session.
+ * one user action through a halted session. [probing]: the retry of a request that is the probe keeps its permission.
  */
-internal suspend fun DeviceSession.authorizeRequest(scopes: List<RetryScope> = emptyList()): Boolean {
+internal suspend fun DeviceSession.authorizeRequest(
+    scopes: List<RetryScope> = emptyList(),
+    probing: Boolean = false,
+): Boolean {
     if (invalidated) throw ReceptionAPIError("cancelled", 0)
     admit(scopes)
     val probe = RequestContext.current().probe
-    val permitted = probe?.available == true
+    val permitted = probing || probe?.available == true
     probe?.available = false
     if (halt != null && !permitted) {
         Log.debug { "Request skipped, session halted" }

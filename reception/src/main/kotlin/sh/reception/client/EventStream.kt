@@ -37,7 +37,8 @@ internal suspend fun ReceptionAPI.stream(path: String): EventStream {
         } catch (error: ReceptionAPIError) {
             if (!error.rejectsToken) throw error
             val renewed = session.renewedToken(replacing = token)
-            session.admit(scopes)
+            // The renewal may have outlasted a logout or a halt: the retry is authorized like the first open.
+            session.authorizeRequest(scopes, probing = probe)
             openStream(path, renewed)
         }
         session.requestSucceeded(probe)

@@ -56,7 +56,8 @@ internal class ReceptionAPI(
             } catch (error: ReceptionAPIError) {
                 if (token == null || !error.rejectsToken) throw error
                 val renewed = activeSession().renewedToken(replacing = token)
-                session?.admit(scopes)
+                // The renewal may have outlasted a logout or a halt: the retry is authorized like the first send.
+                session?.authorizeRequest(scopes, probing = probe)
                 send(path, response, method, renewed, body, expectedStatus)
             }
             session?.requestSucceeded(probe)

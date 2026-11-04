@@ -449,7 +449,10 @@ Session credentials: `SecureStore` keeps `{ sessionSecret, verifiedUserId }` enc
 Android Keystore (`KeyGenParameterSpec`, no user authentication, not backed up), stored in SharedPreferences. A
 Keystore failure is `secure_storage_unavailable`, never "no session"; an entry that cannot be decrypted after a
 backup restore counts as missing, which is the iOS "restored chat without its Keychain item" path. The access token
-stays in memory.
+stays in memory. Unlike the iOS actor, a token's gate suspends on the storage thread, so it checks after each
+suspension, and once more right before handing a token out, that the session has not ended (logout, deletion,
+reconfiguration: `cancelled`); the retry after a rejected token is authorized again (halt, cooldown, ended session)
+before it is sent, keeping the probe permission of the first send.
 
 Device info: `platform: "android"`, `osVersion: Build.VERSION.RELEASE`, `deviceModel: Build.MANUFACTURER + " " +
 Build.MODEL` (emulator reports `Google sdk_gphone64_arm64`, which the service recognizes as "Emulator"),
