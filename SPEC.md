@@ -218,8 +218,11 @@ Taps need no host code. The content intent targets `ReceptionNotificationActivit
 `excludeFromRecents`, because as the root of a cold start's task that flag stays in the task's base intent and hides
 the app's whole task from Recents). Its `onCreate` records the tap and finishes; it never draws. The tap already brought an existing task
 of the app forward (with its state, and recreated from saved state when the process had died), so finishing reveals
-whatever activity is on top. Only as the root of a new task (no task of the app existed) does it first start the
-host's launcher intent (`getLaunchIntentForPackage` with `FLAG_ACTIVITY_NEW_TASK`), so the app starts cold; inside an
+whatever activity is on top. Only as the root of a new task does it act first: when `ActivityManager.appTasks` holds another
+task of the app with activities (the process died with its card kept in Recents, and the launcher activity declares
+another task affinity, like Flutter's template with `taskAffinity=""`, so the tap could not join it), it moves that
+task to the front and finishes with `finishAndRemoveTask()`; when no such task exists it starts the host's launcher
+intent (`getLaunchIntentForPackage` with `FLAG_ACTIVITY_NEW_TASK`), so the app starts cold; inside an
 existing task that intent would stack another launcher activity whenever the task's root intent differs from it. Android 12+ blocks only service and receiver trampolines, not activity
 ones. Routing follows the Flutter plugin's `NotificationRouting` (keys are notification ids, last 64; a receipt
 records its id, so its later tap only opens): after configure, a tap that routes opens the chat over the next resumed

@@ -1,6 +1,7 @@
 package sh.reception.ui
 
 import android.app.Activity
+import android.app.ActivityManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.IntentFilter
@@ -16,6 +17,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.shadows.ShadowAppTask
 import sh.reception.Reception
 import sh.reception.ReceptionInternalApi
 import sh.reception.client.ApplicationLifecycle
@@ -75,6 +77,22 @@ class ReceptionNotificationActivityTest {
         assertNull(tap("n1"))
         val host = Robolectric.buildActivity(Activity::class.java).setup().get()
         assertEquals(ReceptionChatActivity::class.java.name, resume(host)?.component?.className)
+    }
+
+    @Test
+    fun aTaskWhoseProcessDiedIsBroughtBackInsteadOfASecondOne() {
+        // The launcher activity declares another affinity (Flutter's `taskAffinity=""`), so the tap got a new task.
+        val existing = ShadowAppTask.newInstance()
+        shadowOf(existing).setTaskInfo(ActivityManager.RecentTaskInfo().apply {
+            @Suppress("DEPRECATION")
+            persistentId = 42
+            taskId = 42
+            numActivities = 2
+        })
+        val manager = application.getSystemService(ActivityManager::class.java)
+        shadowOf(manager).setAppTasks(listOf(existing))
+        assertNull(tap("n4", taskRoot = true))
+        assertTrue(shadowOf(existing).hasMovedToFront())
     }
 
     @Test
