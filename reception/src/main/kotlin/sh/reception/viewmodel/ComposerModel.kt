@@ -27,8 +27,13 @@ internal class ComposerModel {
         get() = currentText
         set(value) {
             currentText = value
+            isEdited = true
             onTextChange?.invoke(value)
         }
+
+    /** Something was written here; the stored draft then no longer replaces the text. */
+    var isEdited: Boolean = false
+        private set
     var onTextChange: ((String) -> Unit)? = null
     var photos: List<Photo> by mutableStateOf(emptyList())
         private set
@@ -51,9 +56,9 @@ internal class ComposerModel {
     val remainingPhotos: Int
         get() = maxOf(0, MAXIMUM_PHOTOS - photos.size)
 
-    /** The stored draft, without reporting it as typing. */
+    /** The stored draft, without reporting it as typing; text written before it loaded wins. */
     fun restore(draft: String) {
-        currentText = draft
+        if (!isEdited) currentText = draft
     }
 
     /** Reads and prepares picked photos off the main thread; one that cannot be read shows the photo error. */
