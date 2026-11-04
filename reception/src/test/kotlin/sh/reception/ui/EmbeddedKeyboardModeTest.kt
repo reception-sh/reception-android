@@ -2,6 +2,7 @@ package sh.reception.ui
 
 import android.app.Activity
 import android.view.WindowManager.LayoutParams
+import android.widget.ScrollView
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -27,7 +28,24 @@ class EmbeddedKeyboardModeTest {
         EmbeddedKeyboardMode.release(window)
         assertEquals(LayoutParams.SOFT_INPUT_ADJUST_RESIZE, window.adjust)
         EmbeddedKeyboardMode.release(window)
-        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_UNSPECIFIED or LayoutParams.SOFT_INPUT_STATE_HIDDEN, window.attributes.softInputMode)
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_PAN or LayoutParams.SOFT_INPUT_STATE_HIDDEN, window.attributes.softInputMode)
+    }
+
+    @Test
+    fun anUnspecifiedModeComesBackAsTheModeAndroidWouldChoose() {
+        // No scroll container on screen: Android pans.
+        val window = Robolectric.buildActivity(Activity::class.java).setup().get().window
+        assertEquals(0, window.attributes.softInputMode)
+        EmbeddedKeyboardMode.acquire(window)
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_RESIZE, window.adjust)
+        EmbeddedKeyboardMode.release(window)
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_PAN, window.adjust)
+        // A shown ScrollView makes Android resize.
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        activity.setContentView(ScrollView(activity))
+        EmbeddedKeyboardMode.acquire(activity.window)
+        EmbeddedKeyboardMode.release(activity.window)
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_RESIZE, activity.window.adjust)
     }
 
     @Test

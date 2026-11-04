@@ -137,7 +137,9 @@ embeds the composable in a `ComposeView`; it needs a host that sets a `ViewTreeL
 Flutter/React Native platform view does). The embedded chat lifts its composer with the IME insets; a host window that pans for the
 keyboard (`adjustPan`, or `adjustUnspecified`, the default of an activity without `windowSoftInputMode`, as in Android
 Studio's Compose template) would move it a second time, so while a chat is embedded such a window is set to
-`adjustResize` and gets its own mode back when the last embedded chat in it leaves (`ui/EmbeddedKeyboardMode`). Neither calls `openChat()`. Every chat on screen shows the one chat model:
+`adjustResize` and gets its own mode back when the last embedded chat in it leaves (`ui/EmbeddedKeyboardMode`; an
+unspecified mode comes back as what Android resolves it to, resize with a shown scroll container, else pan, because
+Android keeps the last adjust mode when it is asked for "unspecified" again). Neither calls `openChat()`. Every chat on screen shows the one chat model:
 it stays visible (`isChatOpen`) while any of them is started and keeps loading and listening while any is resumed, so
 removing one of two embedded views leaves the other running; the app going to the background stops it for all.
 
