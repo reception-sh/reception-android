@@ -48,14 +48,11 @@ internal object ReceptionPush {
         val application = context.applicationContext
         val payload = data.toMap()
         if (messageId.isNullOrEmpty()) return true.also { MainThread.run { handleMessage(application, payload) } }
-        MainThread.run {
-            val namespace = ReceptionState.namespace
-            // One storage thread in submission order, so a repeat always sees the first delivery's record.
-            Storage.launch {
-                val first = PushMessageIds.record(application, namespace, messageId)
-                MainThread.run {
-                    if (first) handleMessage(application, payload) else Log.debug { "Push message ignored, handled already" }
-                }
+        // One storage thread in submission order, so a repeat always sees the first delivery's record.
+        Storage.launch {
+            val first = PushMessageIds.record(application, messageId)
+            MainThread.run {
+                if (first) handleMessage(application, payload) else Log.debug { "Push message ignored, handled already" }
             }
         }
         return true

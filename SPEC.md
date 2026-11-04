@@ -220,8 +220,8 @@ that does only this (and forwards `onNewToken` to `setPushToken`), for hosts wit
 SDK (Flutter and React Native configure from Dart/JS, which does not run for a background message); without one the
 notification could not be posted. It recognizes the payload synchronously, so it may be called from FCM's worker
 thread, and does the rest on the main thread. It is idempotent per FCM message: the last 64 FCM message IDs are kept
-(SharedPreferences `sh.reception.push`, outside the session namespace, under the App ID's storage namespace or, before
-configure, a global key; checked on the storage thread), and a repeat returns true without a second notification or
+(SharedPreferences `sh.reception.push`, one global list outside any App ID or session namespace, because FCM message
+IDs are globally unique and a repeat can arrive on either side of configure; checked on the storage thread), and a repeat returns true without a second notification or
 unread refresh. Firebase removes the reserved `google.*` keys from `RemoteMessage.data` and exposes the ID as
 `RemoteMessage.messageId`, so hosts with their own service pass `remoteMessage.messageId` (the SDK's service does). The
 two-argument form reads the ID from `google.message_id` in the map, for callers that hold the raw FCM extras (the
