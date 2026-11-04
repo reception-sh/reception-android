@@ -2,6 +2,16 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-04: Fixes 6 done (see verification/fixes-6.md), one commit each (P-1/P-2 together). Paid access: a failed
+  read makes it unknown, only the latest read publishes. Push: `reception_replies_unbadged` channel while the host
+  keeps the badge, tag `reception:<conversation>` + id 1 + per-conversation intent data, channel named in the host's
+  language before configure. Card: a dismissed dialog is not stored; `pushActive` is Compose state. API:
+  `add/removeUnreadCountListener`, `ReceptionColor` (color, light/dark pair, color resource) for every appearance
+  color, `WelcomeIcon.resource`, `Appearance.closeImageResource`. A covered sheet comes back (reorder in its task, or
+  its task moved to the front); the lightbox survives rotation; the trampoline brings back an existing app task instead
+  of starting the launcher (Flutter's `taskAffinity=""`, now in the example). Live: all except paid access and P-7.
+  Open: `Reception.kt` 432 lines, Java has no `ReceptionColor(Color)`. Next, Phase E: full verification matrix
+  (SPEC.md Verification), `tool/release_check.sh`, README, CONTRIBUTING, CHANGELOG, Maven Central dry run.
 - 2026-11-04: Fixes 5 done (see verification/fixes-5.md), one commit each. K-1 `ui/ChatLifecycle` (process stop
   deactivates unconditionally), K-2 `settled()` gate before every token hand-out, K-3 `onPaywall` Compose state, K-4
   `LinkPolicy.normalizedScheme` in host queries and every launch, K-5 text links share the card route (no event or
