@@ -26,6 +26,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import sh.reception.ContrastMonitor
 import sh.reception.ReceptionAppearance
@@ -70,7 +71,8 @@ internal fun ChatContent(showsSheetControls: Boolean, onClose: () -> Unit = {}) 
 /**
  * Visibility follows the hosting lifecycle: started is on screen (`Reception.isChatOpen`), resumed is the active
  * chat that loads and listens, as iOS follows its scene's activity. A configuration change keeps both, and so does
- * the system photo picker ([sh.reception.viewmodel.ComposerModel.isPicking]).
+ * the system photo picker ([sh.reception.viewmodel.ComposerModel.isPicking]), which only pauses the chat's activity.
+ * The app going to the background ends both even under the picker; the chat's next start and resume begin them again.
  */
 @Composable
 private fun ChatLifecycle(model: ChatModel) {
@@ -117,9 +119,17 @@ private fun ChatLifecycle(model: ChatModel) {
                 else -> Unit
             }
         }
+        // The picker leaves the app in the foreground; Home or the lock screen do not, picker or not. On return the
+        // chat's own start shows it again, and its resume (the picker closed) loads and listens again.
+        val application = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) disappear()
+        }
+        val process = ProcessLifecycleOwner.get().lifecycle
         owner.lifecycle.addObserver(observer)
+        process.addObserver(application)
         onDispose {
             owner.lifecycle.removeObserver(observer)
+            process.removeObserver(application)
             disappear()
         }
     }
