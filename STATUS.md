@@ -2,6 +2,19 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-04: Fixes 4 done (see verification/fixes-4.md), one commit each. G-1: `token()`/`renewedToken()` return a
+  token only through `settledToken` (no registration in flight, pending credentials saved; a failed save fails every
+  waiting caller with `secure_storage_unavailable`). G-2: `ChatLifecycle` also observes `ProcessLifecycleOwner`; its
+  stop (Home, lock) ends listening and visibility even under the photo picker, which only pauses the chat's activity;
+  the chat's own start/resume show and load it again. G-3: `ComposerModel.picker` (`PhotoPickerOwnership`), bound to
+  the launcher, released on disposal, handed over on recreation. G-4: C2's team fix holds (production-path test).
+  H-1: `Theme.symbolScale` 1.15 on built-in glyphs (cards, welcome, close, composer photo); side-by-side in
+  `verification/fixes-4/`. H-2: the flaky activation test's server contradicted itself (unread said "no conversation"
+  after the load); fixed in the test, stream assertion restored. H-3: nothing to move (paywall members already
+  delegate; `Reception.kt` stays 354 lines because of the nested public appearance types). Docs phase: the Android
+  guide must say that a host presenting its paywall from `onPaywall` as a dialog or activity calls
+  `Reception.closeChat()` first when it wants the paywall above the SDK's sheet (SPEC.md "Paywall cards, screens,
+  links"); iOS keeps the chat open underneath, Android cannot.
 - 2026-11-04: Phase C2 done (see verification/phase-c2.md). C1 audit C1-1..C1-5, one commit and failing-first test
   each: `ChatActivation.kt` (activation job + generation, cancelled on deactivation), presentation numbers in the
   launch intent (`ChatPresenter.EXTRA_PRESENTATION`; a cancelled or superseded sheet finishes in `onCreate`),
