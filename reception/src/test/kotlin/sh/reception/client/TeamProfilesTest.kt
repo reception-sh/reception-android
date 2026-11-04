@@ -4,10 +4,13 @@ import android.graphics.Bitmap
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import org.junit.After
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -117,5 +120,23 @@ class TeamProfilesTest {
         scope.testScheduler.advanceUntilIdle()
 
         assertTrue(profiles.images.value.isEmpty())
+    }
+
+    @Test
+    fun aCallerCancelledBeforeTheLoadDoesNotLetAWriteEraseTheCachedPhotos() {
+        holdStorage()
+        val caller = CoroutineScope(dispatcher + Job())
+        val profiles = profiles(cacheWithTwoPhotos(), scope = caller, storage = heldStorage)
+        // The load is queued behind the held block when the chat that owns the profiles goes away.
+        caller.cancel()
+        profiles.update(mapOf(
+            "a" to TeamMember("a", "Ann", photoId = "pa"),
+            "b" to TeamMember("b", "Ben", photoId = "pb"),
+        ))
+        releaseStorage()
+
+        val stored = TeamProfileCache(context, "team-test").load()
+        assertArrayEquals(byteArrayOf(1), stored["a"]?.data)
+        assertArrayEquals(byteArrayOf(2), stored["b"]?.data)
     }
 }

@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -50,10 +51,13 @@ internal class TeamProfiles(
     private var showsPhotos = true
     private var lastWrite: Job? = null
 
+    // On [storage], independent of [scope] like the writes: a cancelled caller must not leave a write without the
+    // entries it keeps.
+    private val loading: Deferred<Map<String, TeamProfileCache.Entry>>? =
+        cache?.let { cache -> scope.async(storage + NonCancellable) { cache.load() } }
+
     init {
-        if (cache != null) {
-            // Every later write waits for the load, so an early update cannot replace entries it has not read yet.
-            val loading = scope.async(storage) { cache.load() }
+        loading?.let { loading ->
             lastWrite = loading
             scope.launch { restore(loading.await()) }
         }
@@ -84,12 +88,16 @@ internal class TeamProfiles(
         }
     }
 
-    /** Cache writes run in order on [storage], independent of [scope], so a late write is never lost or reordered. */
+    /**
+     * Cache writes run in order on [storage], independent of [scope], so a late write is never lost or reordered. They
+     * need the loaded entries: without them a write would replace the index and delete the cached photos.
+     */
     private fun write(block: (TeamProfileCache) -> Unit) {
         val cache = cache ?: return
         val previous = lastWrite
         lastWrite = scope.launch(storage + NonCancellable) {
             previous?.join()
+            if (loading?.isCancelled == true) return@launch
             block(cache)
         }
     }
