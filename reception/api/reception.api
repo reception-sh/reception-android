@@ -301,8 +301,6 @@ public final class sh/reception/ReceptionMessagingService : com/google/firebase/
 
 public final class sh/reception/ReceptionPaywall {
 	public static final field $stable I
-	public static final field LIMIT I
-	public static final field PRODUCT_BUDGET I
 	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
 	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lsh/reception/ReceptionPaywall$Source;)V
 	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lsh/reception/ReceptionPaywall$Source;Ljava/util/List;)V

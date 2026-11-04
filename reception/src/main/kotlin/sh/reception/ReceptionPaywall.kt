@@ -4,6 +4,11 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
+// File-level, because a constant in the companion of a public class is a public static field in Java.
+/** Bounds what products add to device requests, so a large catalog never pushes registration past the size limit. */
+private const val PRODUCT_BUDGET = 40
+private const val LIMIT = 20
+
 /**
  * A paywall your app can show, listed in `Reception.paywalls`. Agents can send it as a card; a tap calls
  * `Reception.onPaywall` with its [id]. [presentable] false only lists it for your team (for example an offering without
@@ -56,9 +61,6 @@ public data class ReceptionPaywall @JvmOverloads constructor(
         })
 
     internal companion object {
-        /** Bounds what products add to device requests, so a large catalog never pushes registration past the size limit. */
-        const val PRODUCT_BUDGET = 40
-        const val LIMIT = 20
         private val validId = Regex("^[A-Za-z0-9_.-]+$")
         private val validSource = Regex("^[a-z0-9-]{1,32}$")
         private val isoPeriod = Regex("^P([0-9]{1,3}[DWMY]){1,3}$")
