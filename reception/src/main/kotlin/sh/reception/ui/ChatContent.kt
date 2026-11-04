@@ -37,6 +37,8 @@ import sh.reception.background
 import sh.reception.viewmodel.ChatModel
 import sh.reception.viewmodel.load
 import sh.reception.viewmodel.startMonitoring
+import sh.reception.viewmodel.startPolling
+import sh.reception.viewmodel.stopPolling
 
 /**
  * The chat screen: title bar, history and composer. [showsSheetControls] adds the sheet's top inset and, when the

@@ -13,14 +13,12 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import sh.reception.ReceptionAppearance
 import sh.reception.ReceptionState
-import sh.reception.ReceptionUnread
 import sh.reception.client.DeviceSession
 import sh.reception.client.NetworkMonitor
 import sh.reception.client.Storage
 import sh.reception.client.TeamProfiles
 import sh.reception.client.cursor
 import sh.reception.client.draftText
-import sh.reception.client.hasStartedChat
 import sh.reception.client.refreshUnread
 import sh.reception.model.Message
 import sh.reception.model.MessageStatus
@@ -75,8 +73,8 @@ internal class ChatModel(val session: DeviceSession?) {
     val sends: MutableMap<String, Job> = mutableMapOf()
     val pendingTimers: MutableMap<String, Job> = mutableMapOf()
     var fetching: Boolean = false
+    /** Loading and listening; set by `startPolling`/`stopPolling` in ChatPolling.kt. */
     var isChatActive: Boolean = false
-        private set
     var maxSeq: Long = 0
     var readCursor: ReadCursor? = null
     var reloadTask: Job? = null
@@ -168,35 +166,6 @@ internal class ChatModel(val session: DeviceSession?) {
         messages = messages.map { if (it.id == id) change(it) else it }
     }
 
-    fun startPolling() {
-        isChatActive = true
-        val session = session ?: return
-        if (!isRestored || !session.store.hasStartedChat) return
-        // Opening the chat or sending a message is a fresh start for a stream that gave up, as a foreground is.
-        session.retries["stream"]?.foreground()
-        startStream()
-        for (message in messages) if (message.status == MessageStatus.SENDING) submit(message.id)
-        startMonitoring()
-        retryFailedAutomatically()
-    }
-
-    fun stopPolling() {
-        isChatActive = false
-        reloadTask?.cancel()
-        reloadTask = null
-        if (current) ReceptionUnread.invalidateRead()
-        sendTyping(false)
-        cancelStream()
-        setTyping(false)
-        linkGrace?.cancel()
-        linkGrace = null
-        stopMonitoring()
-        cancelAutomaticRetry()
-        deferCooldownRetries()
-        connectionDismissal?.cancel()
-        if (connection != ConnectionState.OFFLINE) connection = ConnectionState.HIDDEN
-    }
-
     /** The unread refresh the facade runs; the session part lives in `UnreadRefresh.kt`. */
     suspend fun refreshUnread(updateDevice: Boolean, probe: Boolean) {
         if (!current) return
@@ -206,13 +175,6 @@ internal class ChatModel(val session: DeviceSession?) {
     /** A probe through a halted session succeeded, so the device may send again. */
     fun sendingResumed() {
         sendingDisabled = false
-    }
-
-    /** The team wrote first: a chat that is already open starts loading and listening now. */
-    fun conversationStarted() {
-        if (!isChatActive) return
-        startPolling()
-        scope.launch { load() }
     }
 
     /** Ends the polling, stream, sends and timers of a chat whose session ended. */

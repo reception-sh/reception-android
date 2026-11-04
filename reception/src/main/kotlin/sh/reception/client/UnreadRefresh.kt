@@ -1,5 +1,6 @@
 package sh.reception.client
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -9,7 +10,7 @@ import sh.reception.Log
 import sh.reception.ReceptionState
 import sh.reception.ReceptionUnread
 import sh.reception.model.Timestamp
-import kotlin.coroutines.cancellation.CancellationException
+import sh.reception.viewmodel.conversationStarted
 
 @Serializable
 private class UnreadResponse(
