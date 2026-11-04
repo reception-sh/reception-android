@@ -2,6 +2,28 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-04: Fixes 1 done (see verification/fixes-1.md): the client-core audit plus three decided items, one commit
+  each. Storage: `client/Storage.kt` is the single storage thread (`Dispatchers.IO.limitedParallelism(1)`); SecureStore
+  commits and returns the real result; a `DeviceSession` opens its `DeviceStore` there (`DeviceStore.open()`: generation,
+  preferences load, restored-chat check, `hasStartedChat` from the chat cache) after the previous session's deletion,
+  then loads credentials; `prepared()` is awaited by every `ReceptionAPI.request` and launch registration;
+  `afterPrepared {}` defers what needs the verified user (identifyWithToken's decision, action clicks);
+  `stage {}` changes `session.pending` (the identity sent with registration/updates) in memory and persists it
+  asynchronously. Logout: memory reset at once, the revocation job (`LogoutRevocations.enqueue` → Job) persists first,
+  then `store.reset()` deletes and rotates the generation; the next session opens after it. The appearance cache,
+  `AppLocale`'s declared locales (`AppLocale.prepare`) and TeamProfiles' cache load on the storage thread too. Renewal and
+  registration deferreds clear themselves only when they finish. Launch registration starts on a later main-looper turn.
+  Namespaces: `DeviceStore.namespace(appId, serviceUrl)` (bare App ID for the hosted service); revocations keep their
+  service address. `AppLocale.resolve`: no declared match → the first declared locale. Accent: `HostAccent` and
+  `LocalHostAccent` are gone; `Theme.accent` falls back to `MaterialTheme.colorScheme.primary`; the report sends the
+  accent only when set. Library manifest declares INTERNET; `-PreceptionExampleBare=true` builds the example without
+  Firebase/Billing/google-services. The example dies on main-thread disk access in debug builds (StrictMode) and has a
+  Log out button. `ReceptionState.resetForTests()` (`@VisibleForTesting(NONE)`). Phase C must: wrap the SDK's own
+  sheet in `MaterialTheme` with `dynamicLight/DarkColorScheme` on 31+ and #007AFF/#0A84FF below; provide
+  `LocalAppearance` at the chat root; call ChatCache/TeamProfileCache only through `Storage`; read `session.pending`,
+  not `store.pending`; wait for `session.prepared()` (or `afterPrepared`) before touching `session.store` values.
+  Open: `DeviceStore.kt` is ~270 lines and `DeviceSession.kt` ~230 (over the ~200 guideline); `isRegistered` is false
+  while secure storage is unreadable (iOS re-reads the Keychain there; Android re-reads only in suspend paths).
 - 2026-11-04: Phase B2 done (see verification/phase-b2.md). `Reception.identify(token)` is now `identifyWithToken`.
   Public appearance: `Reception.Appearance` (Compose-state-backed properties, so changes reach an open chat; title
   texts track whether the host set them), `CloseIcon`, `WelcomeIcon` (`symbol`/`image(Painter)`/`hidden`), `FontDesign`,
