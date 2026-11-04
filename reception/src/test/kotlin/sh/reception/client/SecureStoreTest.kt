@@ -1,6 +1,7 @@
 package sh.reception.client
 
 import android.content.Context
+import android.content.SharedPreferences
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -35,6 +36,20 @@ class SecureStoreTest {
         assertFalse(preferences.getString("session", null).orEmpty().contains("s3cret"))
         assertTrue(store.delete("session"))
         assertEquals(SecureStore.ReadResult.Missing, store.read("session"))
+    }
+
+    @Test
+    fun aWriteThatDoesNotReachTheDiskReportsFailure() {
+        val store = SecureStore(FailingCommits(preferences), SoftwareKey())
+        assertFalse(store.save("secret", "unsaved"))
+        assertFalse(store.delete("unsaved"))
+    }
+
+    /** Preferences whose commits fail, like a full disk. */
+    private class FailingCommits(private val real: SharedPreferences) : SharedPreferences by real {
+        override fun edit(): SharedPreferences.Editor = object : SharedPreferences.Editor by real.edit() {
+            override fun commit(): Boolean = false
+        }
     }
 
     @Test

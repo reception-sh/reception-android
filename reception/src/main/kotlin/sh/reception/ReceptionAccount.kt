@@ -28,14 +28,16 @@ internal object ReceptionAccount {
     /** Dismisses chat, resets locally immediately, and retries revoking the old session while the app is active. */
     fun logout() {
         val session = ReceptionState.session ?: return Log.error { "logout called before configure, ignored" }
-        try {
+        val queued = try {
             session.storedCredentials()?.sessionSecret?.let { ReceptionState.logoutRevocations?.enqueue(session.api, it) }
         } catch (_: ReceptionAPIError) {
             Log.error { "Session revocation skipped, secure storage unavailable" }
+            null
         }
         ReceptionIdentity.forget()
         Log.info { "Logged out, session revocation queued" }
-        ReceptionState.resetLocal()
+        // The old session's credentials are deleted only after its revocation is stored.
+        ReceptionState.resetLocal(after = queued)
     }
 
     /**

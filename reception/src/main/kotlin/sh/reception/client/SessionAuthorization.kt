@@ -74,13 +74,17 @@ internal suspend fun DeviceSession.renewedToken(replacing: String?): String {
     return task.awaitShared()
 }
 
-/** Keeps registrations and identity changes retryable until their credentials are safely stored. */
-internal fun DeviceSession.persistPendingCredentials() {
+/**
+ * Keeps registrations and identity changes retryable until their credentials are on disk: a failed write leaves them
+ * unsaved, so the next token use tries again and fails with `secure_storage_unavailable` instead of using them.
+ */
+internal suspend fun DeviceSession.persistPendingCredentials() {
     if (invalidated) throw ReceptionAPIError("cancelled", 0)
     val credentials = credentials
     if (!credentialsUnsaved || credentials == null) return
-    store.save(credentials)
-    credentialsUnsaved = false
+    Storage.run { store.save(credentials) }
+    // A newer value that arrived during the write stays unsaved until its own write.
+    if (this.credentials === credentials) credentialsUnsaved = false
 }
 
 @Serializable

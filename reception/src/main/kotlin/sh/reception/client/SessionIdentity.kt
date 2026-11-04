@@ -13,7 +13,7 @@ internal val DeviceSession.unsentIdentityToken: IdentityToken?
     get() = stagedIdentityToken?.takeIf { !it.sent }
 
 /** The service's value replaces the stored one after every registration and device update. */
-internal fun DeviceSession.storeVerifiedUserId(userId: String?) {
+internal suspend fun DeviceSession.storeVerifiedUserId(userId: String?) {
     val current = credentials ?: return
     if (UserIdentity.matches(current.verifiedUserId, userId) && !credentialsUnsaved) return
     credentials = current.copy(verifiedUserId = userId)

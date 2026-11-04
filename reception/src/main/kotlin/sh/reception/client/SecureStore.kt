@@ -5,7 +5,6 @@ import android.content.SharedPreferences
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
-import androidx.core.content.edit
 import sh.reception.Log
 import java.io.IOException
 import java.security.GeneralSecurityException
@@ -16,7 +15,8 @@ import javax.crypto.SecretKey
 
 /**
  * Small secrets (the session secret, queued logout revocations) encrypted with an AES-GCM key in the Android
- * Keystore and stored in SharedPreferences. Replaces the iOS Keychain items.
+ * Keystore and stored in SharedPreferences. Replaces the iOS Keychain items. Every method blocks on the Keystore or the
+ * disk, so callers run them on [Storage]; writes are committed, and their result says whether they reached the disk.
  */
 internal class SecureStore(private val preferences: SharedPreferences, private val keys: KeySource = KeystoreKey) {
     /** `Unavailable` (the Keystore failed) must never be treated as "no item". */
@@ -59,13 +59,17 @@ internal class SecureStore(private val preferences: SharedPreferences, private v
             Log.error { "Secure storage update failed, ${error.javaClass.simpleName}" }
             return false
         }
-        preferences.edit { putString(account, Base64.encodeToString(sealed, Base64.NO_WRAP)) }
-        return true
+        return committed { putString(account, Base64.encodeToString(sealed, Base64.NO_WRAP)) }
     }
 
-    fun delete(account: String): Boolean {
-        preferences.edit { remove(account) }
-        return true
+    fun delete(account: String): Boolean = committed { remove(account) }
+
+    private fun committed(change: SharedPreferences.Editor.() -> Unit): Boolean {
+        val editor = preferences.edit()
+        editor.change()
+        if (editor.commit()) return true
+        Log.error { "Secure storage write failed, the change did not reach the disk" }
+        return false
     }
 
     private fun decode(stored: String): ByteArray? = try {

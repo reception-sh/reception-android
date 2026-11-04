@@ -28,33 +28,48 @@ internal class LogoutRevocations(private val secureStore: SecureStore) {
     private var task: Job? = null
     private val retries = mutableMapOf<Entry, RetryState>()
 
+    private var loading: Job? = null
+
     init {
         load()
     }
 
-    /** A queue that cannot be read yet is merged later, never overwritten. */
+    /** Reads the stored queue on the storage thread. A queue that cannot be read yet is merged later, never overwritten. */
     private fun load() {
-        if (loaded) return
-        when (val result = secureStore.read(ACCOUNT)) {
-            SecureStore.ReadResult.Unavailable -> return
-            SecureStore.ReadResult.Missing -> loaded = true
-            is SecureStore.ReadResult.Value -> {
-                val saved = try {
-                    ReceptionAPI.json.decodeFromString(serializer, result.value)
-                } catch (_: SerializationException) {
-                    emptyList()
-                } catch (_: IllegalArgumentException) {
-                    emptyList()
+        if (loaded || loading != null) return
+        lateinit var job: Job
+        job = scope.launch(start = CoroutineStart.LAZY) {
+            try {
+                when (val result = Storage.run { secureStore.read(ACCOUNT) }) {
+                    SecureStore.ReadResult.Unavailable -> return@launch
+                    SecureStore.ReadResult.Missing -> loaded = true
+                    is SecureStore.ReadResult.Value -> {
+                        val saved = try {
+                            ReceptionAPI.json.decodeFromString(serializer, result.value)
+                        } catch (_: SerializationException) {
+                            emptyList()
+                        } catch (_: IllegalArgumentException) {
+                            emptyList()
+                        }
+                        entries = saved + entries.filter { it !in saved }
+                        loaded = true
+                    }
                 }
-                entries = saved + entries.filter { it !in saved }
-                loaded = true
+                if (entries.isNotEmpty()) persist()
+            } finally {
+                if (loading === job) loading = null
             }
+            resume()
         }
-        if (entries.isNotEmpty()) persist()
+        loading = job
+        job.start()
     }
 
-    fun enqueue(api: ReceptionAPI, sessionSecret: String) {
-        load()
+    /**
+     * Queues the revocation of [sessionSecret]. The returned job ends once the queue is on disk (or, when secure
+     * storage cannot be read yet, held in memory), so the caller's local reset never outruns it.
+     */
+    fun enqueue(api: ReceptionAPI, sessionSecret: String): Job = scope.launch {
         val entry = Entry(api.appId, sessionSecret)
         if (entry !in entries) {
             entries = entries + entry
@@ -135,10 +150,11 @@ internal class LogoutRevocations(private val secureStore: SecureStore) {
     @Serializable
     private class SecretInput(val sessionSecret: String)
 
-    private fun persist() {
+    private suspend fun persist() {
         if (!loaded) return
         // Retain in-memory work if secure storage is temporarily unavailable.
-        secureStore.save(ReceptionAPI.json.encodeToString(serializer, entries), ACCOUNT)
+        val value = ReceptionAPI.json.encodeToString(serializer, entries)
+        if (!Storage.run { secureStore.save(value, ACCOUNT) }) Log.error { "Session revocation queue not stored, kept in memory" }
     }
 
     private companion object {

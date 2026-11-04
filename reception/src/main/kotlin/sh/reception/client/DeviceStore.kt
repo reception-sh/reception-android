@@ -31,6 +31,7 @@ internal class DeviceStore(
     }
 
     private val defaults: SharedPreferences = preferences(context)
+    @Volatile
     private var acceptsDrafts = true
     val chatCache: ChatCache = ChatCache(context, scope)
     val teamProfileCache: TeamProfileCache = TeamProfileCache(context, scope)
@@ -139,6 +140,11 @@ internal class DeviceStore(
     fun save(credentials: SessionCredentials) {
         val value = ReceptionAPI.json.encodeToString(SessionCredentials.serializer(), credentials)
         if (!credentialStorage.save(value, key("session"))) throw ReceptionAPIError("secure_storage_unavailable", 0)
+    }
+
+    /** Late writes from a discarded chat are dropped from now on. */
+    fun close() {
+        acceptsDrafts = false
     }
 
     fun clear() {

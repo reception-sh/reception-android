@@ -46,10 +46,11 @@ class SessionAuthorizationTest {
     private val dispatcher = StandardTestDispatcher()
     private val requests = Collections.synchronizedList(mutableListOf<RecordedRequest>())
     private var respond: (RecordedRequest) -> MockResponse = { MockResponse().setResponseCode(404) }
-    private val credentials = mutableMapOf<String, String>()
+    private val credentials = Collections.synchronizedMap(mutableMapOf<String, String>())
+    @Volatile private var savesFail = false
     private val storage = DeviceStore.CredentialStorage(
         read = { account -> credentials[account]?.let { SecureStore.ReadResult.Value(it) } ?: SecureStore.ReadResult.Missing },
-        save = { value, account -> credentials[account] = value; true },
+        save = { value, account -> if (savesFail) false else { credentials[account] = value; true } },
         delete = { account -> credentials.remove(account); true },
     )
 
@@ -139,6 +140,32 @@ class SessionAuthorizationTest {
         assertEquals(1, requests.count { it.path == "/v1/devices" })
         assertEquals(SessionCredentials("secret-1"), session.storedCredentials())
         assertNull(session.registration)
+    }
+
+    @Test
+    fun aRegistrationThatCannotBeStoredIsRetriedFromMemoryBeforeUse() = runTest(dispatcher) {
+        respond = { json(201, """{"token":"t","sessionSecret":"s"}""") }
+        val store = DeviceStore(context, "app_test${System.nanoTime()}", credentialStorage = storage)
+        val session = DeviceSession(ReceptionAPI(APP_ID, server.url("/")), store, refreshSleep = {})
+        savesFail = true
+        try {
+            withContext(RequestContext(launch = true)) { session.token() }
+            fail("expected secure_storage_unavailable")
+        } catch (error: ReceptionAPIError) {
+            assertEquals("secure_storage_unavailable", error.code)
+        }
+        assertTrue(session.credentialsUnsaved)
+        try {
+            withContext(RequestContext(launch = true)) { session.token() }
+            fail("expected secure_storage_unavailable")
+        } catch (error: ReceptionAPIError) {
+            assertEquals("secure_storage_unavailable", error.code)
+        }
+        savesFail = false
+        assertEquals("t", withContext(RequestContext(launch = true)) { session.token() })
+        assertFalse(session.credentialsUnsaved)
+        assertEquals(SessionCredentials("s"), store.loadCredentials())
+        assertEquals(1, requests.count { it.path == "/v1/devices" })
     }
 
     @Test

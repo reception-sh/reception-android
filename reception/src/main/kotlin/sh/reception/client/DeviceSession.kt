@@ -139,6 +139,7 @@ internal class DeviceSession(
     fun deactivate() {
         invalidated = true
         credentialsUnsaved = false
+        store.close()
         attachmentImages.invalidate()
         cooldowns.invalidate()
         scope.cancel()
@@ -150,8 +151,9 @@ internal class DeviceSession(
         actionClickTask = null
     }
 
-    fun invalidate() {
+    /** Ends the session and deletes its stored values once [after] has finished. */
+    fun invalidate(after: Job? = null): Job {
         deactivate()
-        store.clear()
+        return Storage.launch(after) { store.clear() }
     }
 }

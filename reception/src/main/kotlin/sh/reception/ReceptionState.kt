@@ -104,13 +104,14 @@ internal object ReceptionState {
         logoutRevocations?.suspend()
     }
 
-    fun resetLocal(dismissChat: Boolean = true) {
+    /** Ends the session in memory at once; its stored values are deleted on the storage thread after [after]. */
+    fun resetLocal(dismissChat: Boolean = true, after: Job? = null) {
         unreadMonitor.setActive(false)
         cancelUnreadRefresh()
         val session = session ?: return
         val appId = appId ?: return
         val context = session.store.context
-        session.invalidate()
+        session.invalidate(after)
         chat?.stop()
         chat = null
         this.session = DeviceSession(session.api,
