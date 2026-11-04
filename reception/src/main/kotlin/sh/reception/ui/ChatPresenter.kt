@@ -22,6 +22,8 @@ import java.util.UUID
 internal object ChatPresenter {
     /** A started sheet that has not been created yet counts as presented for this long. */
     private const val START_WINDOW_MILLIS = 2_000L
+    /** How long a sheet restored after process death waits for a host that configures late. */
+    private const val RESTORE_WAIT_MILLIS = 3_000L
     /** The launch intent's extra that names the presentation a sheet belongs to. */
     const val EXTRA_PRESENTATION = "sh.reception.presentation"
     private var sheet: WeakReference<ReceptionChatActivity>? = null
@@ -108,12 +110,18 @@ internal object ChatPresenter {
     /**
      * A sheet Android restored in a new process (the old one died with the sheet on screen). It is shown again when it
      * belongs to the recorded presentation of the configured App ID and nothing presented or dismissed the chat since.
+     * Flutter and React Native configure from Dart/JS after Android recreated the sheet, so the sheet waits a moment.
      */
     suspend fun restored(activity: ReceptionChatActivity, presentation: String): Boolean {
         val before = changes
-        val expected = ReceptionState.namespace?.let { PresentationRecord.Entry(presentation, it) }
-        val recorded = expected?.let { Storage.run { PresentationRecord.load(activity) } }
-        if (before != changes || this.presentation != null || expected == null || recorded != expected) {
+        val namespace = ReceptionState.namespace ?: ReceptionState.configuredNamespace(RESTORE_WAIT_MILLIS)
+        if (namespace == null) {
+            Log.debug { "Chat presentation not restored, Reception was not configured in time" }
+            return false
+        }
+        val expected = PresentationRecord.Entry(presentation, namespace)
+        val recorded = Storage.run { PresentationRecord.load(activity) }
+        if (before != changes || this.presentation != null || recorded != expected) {
             Log.debug { "Chat presentation not restored, the chat was closed or reset since" }
             return false
         }

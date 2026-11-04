@@ -120,8 +120,9 @@ and the configured storage namespace are also committed to SharedPreferences `sh
 thread, so when the process dies with the sheet on screen and Android restores it (Recents), the sheet reads the record
 and is shown again, with its saved state (an open lightbox included), if the record still names its token and the App
 ID configured in the new process; any dismissal, logout, deletion or reconfiguration clears the record first. The first
-`configure` in a process cancels nothing. The restored sheet needs the SDK configured before it is created (in
-`Application.onCreate`); a host that configures later (Flutter, React Native) gets the sheet finished instead.
+`configure` in a process cancels nothing. A restored sheet created before the SDK is configured (Flutter and React
+Native configure from Dart/JS after Android recreated it) waits up to 3 s for `configure`, drawing nothing, and finishes
+when none comes; the same checks then apply, so a logout, reconfiguration or newer presentation still finishes it.
 
 While the keyboard is open, the sheet closes only by a drag that starts on its header (drag handle and title bar,
 `Theme.sheetHandleHeight`); a drag over the messages dismisses the keyboard instead. With the keyboard closed, a drag

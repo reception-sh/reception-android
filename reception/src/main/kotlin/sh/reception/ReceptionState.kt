@@ -8,6 +8,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import sh.reception.client.ApplicationLifecycle
 import sh.reception.client.DeviceSession
 import sh.reception.client.DeviceStore
@@ -29,9 +31,18 @@ internal object ReceptionState {
     var session: DeviceSession? = null
         private set
 
+    private val configuredNamespace = MutableStateFlow<String?>(null)
+
     /** The configured App ID's storage namespace, which includes the service address of a test service. */
-    var namespace: String? = null
-        private set
+    var namespace: String?
+        get() = configuredNamespace.value
+        private set(value) {
+            configuredNamespace.value = value
+        }
+
+    /** The namespace once an App ID is configured, waiting up to [timeoutMillis]; null when none came in time. */
+    suspend fun configuredNamespace(timeoutMillis: Long): String? =
+        withTimeoutOrNull(timeoutMillis) { configuredNamespace.first { it != null } }
     /** The chat model of the current session, created on first use and replaced on every reset. */
     var chat: ChatModel? = null
         private set

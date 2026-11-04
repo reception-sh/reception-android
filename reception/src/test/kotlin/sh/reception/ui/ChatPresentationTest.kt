@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.ActivityManager
 import android.content.Intent
 import android.os.Bundle
+import android.os.Looper
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -22,6 +23,7 @@ import sh.reception.client.ApplicationLifecycle
 import sh.reception.client.ReceptionAPI
 import sh.reception.client.Storage
 import sh.reception.viewmodel.ChatHarness
+import java.time.Duration
 
 /** A sheet whose presentation was closed or superseded before it was created finishes at once. */
 @RunWith(RobolectricTestRunner::class)
@@ -173,6 +175,59 @@ class ChatPresentationTest {
         assertTrue(restored(first).isFinishing)
         assertFalse(restored(second).isFinishing)
         ChatPresenter.close()
+    }
+
+    /** Flutter and React Native configure from Dart/JS, after Android recreated the sheet. */
+    private fun processRestartedWithoutConfigure() {
+        runBlocking { Storage.run {} }
+        ReceptionState.resetForTests()
+        ReceptionAPI.serviceUrl = harness.server.url("/")
+    }
+
+    private fun recreated(intent: Intent?): ReceptionChatActivity =
+        Robolectric.buildActivity(ReceptionChatActivity::class.java, requireNotNull(intent)).create(Bundle()).get()
+
+    @Test
+    fun aRestoredSheetWaitsForAConfigureThatComesLate() {
+        val intent = launch { ChatPresenter.open() }
+        created(intent)
+        processRestartedWithoutConfigure()
+        val sheet = recreated(intent)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
+        assertFalse(sheet.isFinishing)
+        assertFalse(ChatPresenter.isPresented)
+        ReceptionState.configure(RuntimeEnvironment.getApplication(), ChatHarness.APP_ID)
+        harness.mainLoopUntil { sheet.isFinishing || ChatPresenter.isPresented }
+        assertFalse(sheet.isFinishing)
+        ChatPresenter.close()
+    }
+
+    @Test
+    fun aRestoredSheetFinishesWhenNoConfigureComes() {
+        val intent = launch { ChatPresenter.open() }
+        created(intent)
+        processRestartedWithoutConfigure()
+        val sheet = recreated(intent)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(2_900))
+        assertFalse(sheet.isFinishing)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(200))
+        assertTrue(sheet.isFinishing)
+        // A configure after the wait ended restores nothing.
+        ReceptionState.configure(RuntimeEnvironment.getApplication(), ChatHarness.APP_ID)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertFalse(ChatPresenter.isPresented)
+    }
+
+    @Test
+    fun aLateConfigureFollowedByALogoutDoesNotRestore() {
+        val intent = launch { ChatPresenter.open() }
+        created(intent)
+        processRestartedWithoutConfigure()
+        val sheet = recreated(intent)
+        ReceptionState.configure(RuntimeEnvironment.getApplication(), ChatHarness.APP_ID)
+        ReceptionState.resetLocal()
+        harness.mainLoopUntil { sheet.isFinishing || ChatPresenter.isPresented }
+        assertTrue(sheet.isFinishing)
     }
 
     @Test
