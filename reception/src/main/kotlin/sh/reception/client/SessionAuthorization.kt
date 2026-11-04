@@ -70,6 +70,8 @@ internal suspend fun DeviceSession.token(): String {
     registration?.let { return it.awaitShared() }
     if (context.probe != null) registrationAllowed = true
     if (!registrationAllowed && !context.automation && !context.launch) throw ReceptionAPIError("chat_not_started", 0)
+    // Launch registration belongs to the foreground; the reads above may have outlasted it.
+    if (context.launch && !ApplicationLifecycle.isActive) throw ReceptionAPIError("cancelled", 0)
     return register()
 }
 

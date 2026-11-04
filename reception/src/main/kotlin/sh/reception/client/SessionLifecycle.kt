@@ -51,7 +51,9 @@ internal fun DeviceSession.recordFailure(error: Throwable) {
 
 /**
  * Registers a device the team cannot reach yet, once per launch or foreground; a failure waits for the next one.
- * Registration carries no push token, so the unread refresh that follows sends it with the device update.
+ * Registration carries no push token, so the unread refresh that follows sends it with the device update. The task
+ * only owns the single flight: whether the app is still in the foreground is checked again after every suspension,
+ * here and in `token()` right before the registration starts, so a backgrounded app never registers.
  */
 internal fun DeviceSession.registerIfNeeded() {
     if (invalidated || halt != null || isRegistered || launchRegistration != null) return
@@ -61,7 +63,7 @@ internal fun DeviceSession.registerIfNeeded() {
         try {
             prepared()
             // A stored session needs no registration; preparing it refreshes unread instead.
-            if (isRegistered) return@launch
+            if (isRegistered || !ApplicationLifecycle.isActive) return@launch
             token()
             if (isCurrent) ReceptionUnread.refresh(updateDevice = true)
         } catch (cancellation: CancellationException) {

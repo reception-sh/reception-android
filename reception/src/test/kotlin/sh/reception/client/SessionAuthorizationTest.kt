@@ -138,10 +138,10 @@ class SessionAuthorizationTest {
         }
         val store = DeviceStore(context, "app_test${System.nanoTime()}", credentialStorage = storage)
         val session = DeviceSession(ReceptionAPI(APP_ID, server.url("/")), store, refreshSleep = {})
-        val first = async { withContext(RequestContext(launch = true)) { session.token() } }
+        val first = async { withContext(RequestContext(automation = true)) { session.token() } }
         withContext(Dispatchers.IO) { server.takeRequest(5, TimeUnit.SECONDS) }
         first.cancelAndJoin()
-        val second = async { withContext(RequestContext(launch = true)) { session.token() } }
+        val second = async { withContext(RequestContext(automation = true)) { session.token() } }
         assertEquals("token-1", second.await())
         assertEquals(1, requests.count { it.path == "/v1/devices" })
         assertEquals(SessionCredentials("secret-1"), session.storedCredentials())
@@ -164,7 +164,7 @@ class SessionAuthorizationTest {
         answers.put(SecureStore.ReadResult.Unavailable)
         session.prepared()
         assertTrue(session.credentialsUnreadable)
-        val callers = List(2) { async { withContext(RequestContext(launch = true)) { session.token() } } }
+        val callers = List(2) { async { withContext(RequestContext(automation = true)) { session.token() } } }
         runCurrent()
         // The first reads of both callers fail again, so both go on to read once more before registering.
         answers.put(SecureStore.ReadResult.Unavailable)
@@ -185,20 +185,20 @@ class SessionAuthorizationTest {
         val session = DeviceSession(ReceptionAPI(APP_ID, server.url("/")), store, refreshSleep = {})
         savesFail = true
         try {
-            withContext(RequestContext(launch = true)) { session.token() }
+            withContext(RequestContext(automation = true)) { session.token() }
             fail("expected secure_storage_unavailable")
         } catch (error: ReceptionAPIError) {
             assertEquals("secure_storage_unavailable", error.code)
         }
         assertTrue(session.credentialsUnsaved)
         try {
-            withContext(RequestContext(launch = true)) { session.token() }
+            withContext(RequestContext(automation = true)) { session.token() }
             fail("expected secure_storage_unavailable")
         } catch (error: ReceptionAPIError) {
             assertEquals("secure_storage_unavailable", error.code)
         }
         savesFail = false
-        assertEquals("t", withContext(RequestContext(launch = true)) { session.token() })
+        assertEquals("t", withContext(RequestContext(automation = true)) { session.token() })
         assertFalse(session.credentialsUnsaved)
         assertEquals(SessionCredentials("s"), Storage.run { store.loadCredentials() })
         assertEquals(1, requests.count { it.path == "/v1/devices" })
@@ -282,7 +282,7 @@ class SessionAuthorizationTest {
             DeviceIdentity(externalUserId = "user-1", metadata = mapOf("plan" to "pro"), pushToken = "fcm:token_1",
                 pushEnvironment = "PRODUCTION")
         }
-        withContext(RequestContext(launch = true)) { session.token() }
+        withContext(RequestContext(automation = true)) { session.token() }
         session.update()
 
         val registration = Json.parseToJsonElement(requests[0].body.readUtf8()).jsonObject
