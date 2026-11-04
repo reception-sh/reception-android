@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
@@ -20,9 +21,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import sh.reception.Theme
 
 /**
- * Draws [icon] in a [size] square: symbols in [tint], images in their own colors, fitted and clipped at their actual
+ * Draws [icon] in a [size] square: symbols in [tint] at [Theme.symbolScale], images in their own colors, fitted and clipped at their actual
  * bounds with [imageCornerRadius] (capped at half the shorter edge). A symbol the SDK cannot draw shows [builtIn].
  */
 @Composable
@@ -37,7 +39,8 @@ internal fun AppearanceIconView(
     when (icon) {
         is AppearanceIcon.Symbol -> {
             val drawable = AppearanceSymbols.drawable(icon.name) ?: AppearanceSymbols.drawable(builtIn) ?: return
-            Icon(painterResource(drawable), contentDescription = null, modifier = modifier.size(size), tint = tint)
+            Icon(painterResource(drawable), contentDescription = null, tint = tint,
+                modifier = modifier.size(size).scale(Theme.symbolScale))
         }
         is AppearanceIcon.Remote -> {
             val context = LocalContext.current

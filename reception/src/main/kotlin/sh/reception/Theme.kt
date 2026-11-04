@@ -156,6 +156,13 @@ internal object Theme {
     val control = 48.dp
     val avatarSize = 28.dp
     val cardIconSize = 12.dp
+
+    /**
+     * Material Symbols sit in a padded 24-unit box and draw about 15 % smaller than SF Symbols at the same size, so
+     * the built-in glyphs of cards, the welcome icon, the close button and the composer's photo button draw this much
+     * larger inside their unchanged layout box. Host and remote images keep their size.
+     */
+    val symbolScale = 1.15f
     val dismissImageSize = 18.dp
     val authorNameSpacing = 4.dp
     const val IMAGE_WIDTH_FRACTION = 0.7f

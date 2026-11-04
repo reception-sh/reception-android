@@ -33,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
@@ -122,7 +123,7 @@ private fun PhotoButton(chat: ChatModel, sizes: ComposerDimensions, multiline: B
         contentAlignment = Alignment.Center,
     ) {
         Icon(painterResource(R.drawable.reception_symbol_add_photo_alternate), contentDescription = null,
-            tint = if (chat.photosPaused || !enabled) Theme.muted else Theme.foreground, modifier = Modifier.size(sizes.photoIcon))
+            tint = if (chat.photosPaused || !enabled) Theme.muted else Theme.foreground, modifier = Modifier.size(sizes.photoIcon).scale(Theme.symbolScale))
     }
 }
 
