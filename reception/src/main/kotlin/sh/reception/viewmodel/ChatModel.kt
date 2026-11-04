@@ -54,6 +54,10 @@ internal class ChatModel(val session: DeviceSession?) {
     var isLoading: Boolean by mutableStateOf(false)
     var uploadProgress: Double? by mutableStateOf(null)
     var polling: Job? = null
+
+    /** The opening work of the current activation (`ChatActivation.kt`) and its generation. */
+    var activation: Job? = null
+    var activationGeneration: Int = 0
     var streamId: Any? = null
     var streamConnected: Boolean = false
 

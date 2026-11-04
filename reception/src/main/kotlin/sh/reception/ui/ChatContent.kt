@@ -25,7 +25,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.currentStateAsState
-import kotlinx.coroutines.launch
 import sh.reception.ContrastMonitor
 import sh.reception.ReceptionAppearance
 import sh.reception.ReceptionEvent
@@ -35,10 +34,8 @@ import sh.reception.Theme
 import sh.reception.appearance
 import sh.reception.background
 import sh.reception.viewmodel.ChatModel
-import sh.reception.viewmodel.load
-import sh.reception.viewmodel.startMonitoring
-import sh.reception.viewmodel.startPolling
-import sh.reception.viewmodel.stopPolling
+import sh.reception.viewmodel.activate
+import sh.reception.viewmodel.deactivate
 
 /**
  * The chat screen: title bar, history and composer. [showsSheetControls] adds the sheet's top inset and, when the
@@ -85,18 +82,12 @@ private fun ChatLifecycle(model: ChatModel) {
         fun activate() {
             if (resumed) return
             resumed = true
-            // Watch the network before loading so an offline banner does not wait for the request.
-            model.scope.launch {
-                model.restored()
-                model.startMonitoring()
-                model.load(recheckLimits = true)
-                if (resumed) model.startPolling()
-            }
+            model.activate()
         }
         fun deactivate() {
             if (!resumed) return
             resumed = false
-            if (!context.isChangingConfigurations()) model.stopPolling()
+            model.deactivate(keepsPolling = context.isChangingConfigurations())
         }
         fun disappear() {
             deactivate()
