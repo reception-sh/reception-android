@@ -32,7 +32,7 @@ internal object ReceptionIdentity {
         Log.debug { "Identity staged" }
     }
 
-    fun identify(token: String) {
+    fun identifyWithToken(token: String) {
         val session = ReceptionState.session ?: return Log.error { "identifyWithToken called before configure, ignored" }
         if (token == lastToken) return Log.debug { "Identity token unchanged, ignored" }
         lastToken = token
