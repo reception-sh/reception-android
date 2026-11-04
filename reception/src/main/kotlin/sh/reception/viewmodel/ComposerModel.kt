@@ -35,6 +35,12 @@ internal class ComposerModel {
     var loading: Boolean by mutableStateOf(false)
         private set
     var hasPhotoError: Boolean by mutableStateOf(false)
+
+    /**
+     * The system photo picker is open over the chat, from its launch until its result. The chat counts as visible
+     * meanwhile, as under the iOS in-app picker sheet, so the hosting activity's stop and start change nothing.
+     */
+    var isPicking: Boolean = false
     val error: String?
         get() = if (hasPhotoError) ReceptionLocalization.string(Strings.couldNotLoadThisPhoto) else null
     val canSend: Boolean

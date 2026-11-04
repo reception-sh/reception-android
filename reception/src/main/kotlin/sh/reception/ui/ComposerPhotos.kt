@@ -75,12 +75,17 @@ internal fun rememberPhotoPicker(model: ComposerModel): (() -> Unit)? {
     val scope = rememberCoroutineScope()
     val remaining = model.remainingPhotos
     val several = remember(remaining) { PickMultipleVisualMedia(maxOf(2, remaining)) }
-    val many = rememberLauncherForActivityResult(several) { uris -> scope.launch { model.load(context, uris) } }
+    val many = rememberLauncherForActivityResult(several) { uris ->
+        model.isPicking = false
+        scope.launch { model.load(context, uris) }
+    }
     val one = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
+        model.isPicking = false
         if (uri != null) scope.launch { model.load(context, listOf(uri)) }
     }
     val request = PickVisualMediaRequest(PickVisualMedia.ImageOnly)
     return {
+        if (remaining > 0) model.isPicking = true
         if (remaining > 1) many.launch(request) else if (remaining == 1) one.launch(request)
     }
 }

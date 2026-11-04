@@ -63,7 +63,8 @@ internal fun ChatContent(showsSheetControls: Boolean, onClose: () -> Unit = {}) 
 
 /**
  * Visibility follows the hosting lifecycle: started is on screen (`Reception.isChatOpen`), resumed is the active
- * chat that loads and listens, as iOS follows its scene's activity. A configuration change keeps both.
+ * chat that loads and listens, as iOS follows its scene's activity. A configuration change keeps both, and so does
+ * the system photo picker ([sh.reception.viewmodel.ComposerModel.isPicking]).
  */
 @Composable
 private fun ChatLifecycle(model: ChatModel) {
@@ -105,11 +106,13 @@ private fun ChatLifecycle(model: ChatModel) {
             ReceptionUnread.refresh()
         }
         val observer = LifecycleEventObserver { _, event ->
+            // The photo picker covers the chat like a sheet: no reload on return, the stream stays, the chat stays open.
+            val covered = model.composer.isPicking
             when (event) {
                 Lifecycle.Event.ON_START -> appear()
                 Lifecycle.Event.ON_RESUME -> activate()
-                Lifecycle.Event.ON_PAUSE -> deactivate()
-                Lifecycle.Event.ON_STOP -> disappear()
+                Lifecycle.Event.ON_PAUSE -> if (!covered) deactivate()
+                Lifecycle.Event.ON_STOP -> if (!covered) disappear()
                 else -> Unit
             }
         }
