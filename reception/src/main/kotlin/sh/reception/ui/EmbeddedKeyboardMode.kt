@@ -1,5 +1,6 @@
 package sh.reception.ui
 
+import android.os.Build
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager.LayoutParams
@@ -23,7 +24,8 @@ internal fun EmbeddedKeyboardAdjustment() {
 /**
  * An embedded chat lifts its composer above the keyboard with the IME insets. A host window that pans for the keyboard
  * (`adjustPan`, or `adjustUnspecified`, the default of an activity without `windowSoftInputMode`, as in Android Studio's
- * Compose template) moves it a second time, a keyboard height too far, and pushes the host's top bar off screen. While a
+ * Compose template) moves it a second time, a keyboard height too far, and pushes the host's top bar off screen. Before
+ * Android 11 a window that adjusts nothing gets no IME insets at all, so the composer stays behind the keyboard. While a
  * chat is embedded in such a window, the window resizes instead, counted per window (the activity's, a dialog's); when
  * the last embedded chat in it leaves, the host's adjust mode comes back, unless the host changed the mode since. Main
  * thread only.
@@ -58,13 +60,16 @@ internal object EmbeddedKeyboardMode {
         window.softInputMode = (current and LayoutParams.SOFT_INPUT_MASK_ADJUST.inv()) or restoredAdjust(window, hold.original)
     }
 
-    // Deprecated since API 30 for apps that handle insets themselves; here it only stops the pan, and every window of an
-    // edge-to-edge activity (the chat's case) gets the IME insets instead of a resize.
+    // Deprecated since API 30 for apps that handle insets themselves; here it only stops the pan (or, before API 30,
+    // turns on the IME insets), and every window of an edge-to-edge activity (the chat's case) gets the insets instead.
     @Suppress("DEPRECATION")
     private const val RESIZE = LayoutParams.SOFT_INPUT_ADJUST_RESIZE
 
-    private fun adjusts(adjust: Int): Boolean =
-        adjust == LayoutParams.SOFT_INPUT_ADJUST_UNSPECIFIED || adjust == LayoutParams.SOFT_INPUT_ADJUST_PAN
+    private fun adjusts(adjust: Int): Boolean = when (adjust) {
+        LayoutParams.SOFT_INPUT_ADJUST_UNSPECIFIED, LayoutParams.SOFT_INPUT_ADJUST_PAN -> true
+        LayoutParams.SOFT_INPUT_ADJUST_NOTHING -> Build.VERSION.SDK_INT < Build.VERSION_CODES.R
+        else -> false
+    }
 
     /**
      * Android keeps the last adjust mode when a window asks for "unspecified" again, so an unspecified original comes

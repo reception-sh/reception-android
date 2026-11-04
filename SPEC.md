@@ -143,7 +143,8 @@ reconfiguration and successful `deleteData()` finish the SDK's activity.
 embeds the composable in a `ComposeView`; it needs a host that sets a `ViewTreeLifecycleOwner` (every activity and
 Flutter/React Native platform view does). The embedded chat lifts its composer with the IME insets; a host window that pans for the
 keyboard (`adjustPan`, or `adjustUnspecified`, the default of an activity without `windowSoftInputMode`, as in Android
-Studio's Compose template) would move it a second time, so while a chat is embedded such a window is set to
+Studio's Compose template) would move it a second time, and before Android 11 a window with `adjustNothing` gets no IME
+insets at all, so the composer would stay behind the keyboard; while a chat is embedded such a window is set to
 `adjustResize` and gets its own mode back when the last embedded chat in it leaves (`ui/EmbeddedKeyboardMode`, counted
 per window: the window is the one that shows the composition, so a chat in a Compose `Dialog` or a platform dialog
 adjusts that dialog's window and never the activity's, `ui/KeyboardWindow`; only the adjust bits go back, and only while

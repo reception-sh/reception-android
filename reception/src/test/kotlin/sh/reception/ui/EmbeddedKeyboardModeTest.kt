@@ -9,6 +9,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 /** A window that would pan for the keyboard resizes while a chat is embedded in it, and gets its mode back after. */
 @Suppress("DEPRECATION")
@@ -62,7 +63,19 @@ class EmbeddedKeyboardModeTest {
     }
 
     @Test
-    fun aWindowThatDoesNotPanKeepsItsMode() {
+    @Config(sdk = [29])
+    fun aWindowThatAdjustsNothingResizesBeforeAndroid11() {
+        // Android 10 and older send no IME insets to such a window: the composer would stay behind the keyboard.
+        val window = window(LayoutParams.SOFT_INPUT_ADJUST_NOTHING or LayoutParams.SOFT_INPUT_STATE_HIDDEN)
+        EmbeddedKeyboardMode.acquire(window.keyboard)
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_RESIZE or LayoutParams.SOFT_INPUT_STATE_HIDDEN, window.attributes.softInputMode)
+        EmbeddedKeyboardMode.release(window.keyboard)
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_NOTHING or LayoutParams.SOFT_INPUT_STATE_HIDDEN, window.attributes.softInputMode)
+    }
+
+    @Test
+    @Config(sdk = [30])
+    fun aWindowThatAdjustsNothingKeepsItsModeFromAndroid11() {
         val window = window(LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
         EmbeddedKeyboardMode.acquire(window.keyboard)
         assertEquals(LayoutParams.SOFT_INPUT_ADJUST_NOTHING, window.adjust)
