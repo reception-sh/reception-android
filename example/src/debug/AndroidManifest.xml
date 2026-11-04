@@ -11,7 +11,7 @@
             android:name=".SecondActivity"
             android:exported="true"
             tools:replace="android:exported" />
-        <!-- Verification only: `adb shell am broadcast -n …/.VerificationReceiver -a …PUSH|…ROUTING|…COVER|…LOGOUT|…IDENTIFY` (see the class). -->
+        <!-- Verification only: `adb shell am broadcast -n …/.VerificationReceiver -a …PUSH|…ROUTING|…COVER|…LOGOUT|…IDENTIFY|…TRACK` (see the class). -->
         <receiver
             android:name=".VerificationReceiver"
             android:exported="true"
@@ -22,6 +22,7 @@
                 <action android:name="sh.reception.receptionAndroidExample.COVER" />
                 <action android:name="sh.reception.receptionAndroidExample.LOGOUT" />
                 <action android:name="sh.reception.receptionAndroidExample.IDENTIFY" />
+                <action android:name="sh.reception.receptionAndroidExample.TRACK" />
             </intent-filter>
         </receiver>
     </application>

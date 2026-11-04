@@ -4,6 +4,8 @@ import android.app.ActivityManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import sh.reception.Reception
 import sh.reception.ReceptionInternalApi
@@ -33,6 +35,14 @@ class VerificationReceiver : BroadcastReceiver() {
             }
             ACTION_LOGOUT -> Reception.logout()
             ACTION_IDENTIFY -> intent.getStringExtra("token")?.let(Reception::identifyWithToken)
+            ACTION_TRACK -> {
+                ExampleActions.track()
+                val after = intent.getLongExtra("secondAfter", -1)
+                if (after < 0) return
+                val application = context.applicationContext
+                val second = Intent(application, SecondActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                Handler(Looper.getMainLooper()).postDelayed({ application.startActivity(second) }, after)
+            }
         }
     }
 
@@ -43,6 +53,7 @@ class VerificationReceiver : BroadcastReceiver() {
         const val ACTION_COVER = "sh.reception.receptionAndroidExample.COVER"
         const val ACTION_LOGOUT = "sh.reception.receptionAndroidExample.LOGOUT"
         const val ACTION_IDENTIFY = "sh.reception.receptionAndroidExample.IDENTIFY"
+        const val ACTION_TRACK = "sh.reception.receptionAndroidExample.TRACK"
         const val SHEET = "sh.reception.ui.ReceptionChatActivity"
     }
 }
