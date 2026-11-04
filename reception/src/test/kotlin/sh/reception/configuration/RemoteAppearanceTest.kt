@@ -111,7 +111,15 @@ class RemoteAppearanceTest {
         assertNull(symbol.closeImage)
         val unknown = resolve("""{"closeIcon":"bell"}""", local)
         assertEquals(Reception.CloseIcon.XMARK, unknown.closeIcon)
-        assertSame(painter, unknown.closeImage)
+        assertSame(painter, (unknown.closeImage as AppearanceIcon.Local).painter)
+        val resource = Reception.Appearance().apply { closeImageResource = 7 }
+        assertEquals(AppearanceIcon.LocalResource(7), resolve("{}", resource).closeImage)
+        // One close image: setting the painter or the resource replaces the other.
+        resource.closeImage = painter
+        assertNull(resource.closeImageResource)
+        resource.closeImageResource = 8
+        assertNull(resource.closeImage)
+        assertEquals(8, resource.closeImageResource)
         assertNotNull(resolve("""{"closeImage":"$uuid","closeIcon":"xmark"}""", local).remoteCloseImage)
         assertNull(resolve("""{"closeImage":"../../v1/devices"}""", local).remoteCloseImage)
         assertNull(resolve("""{"closeImage":"1-1-1-1-1"}""", local).remoteCloseImage)

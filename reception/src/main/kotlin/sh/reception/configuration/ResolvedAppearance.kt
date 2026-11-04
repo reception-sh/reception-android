@@ -1,6 +1,5 @@
 package sh.reception.configuration
 
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
@@ -25,7 +24,8 @@ internal class ResolvedAppearance(
     val showsCloseButton: Boolean,
     val preferredColorScheme: Reception.ColorScheme?,
     val closeIcon: Reception.CloseIcon,
-    val closeImage: Painter?,
+    /** The app's close image, a painter or a drawable resource. */
+    val closeImage: AppearanceIcon?,
     /** An uploaded close image; it takes precedence over [closeImage] and [closeIcon]. */
     val remoteCloseImage: String?,
     val fontDesign: Reception.FontDesign?,
@@ -74,7 +74,7 @@ internal class ResolvedAppearance(
             showsCloseButton = appearance.showsCloseButton,
             preferredColorScheme = appearance.preferredColorScheme,
             closeIcon = appearance.closeIcon,
-            closeImage = appearance.closeImage,
+            closeImage = appearance.closeImageIcon,
             remoteCloseImage = null,
             fontDesign = appearance.fontDesign,
             fontFamily = appearance.fontFamily,

@@ -44,7 +44,7 @@ internal fun DismissButton(action: () -> Unit, modifier: Modifier = Modifier, li
         val tint = if (lightbox) Theme.lightboxForeground else Theme.foreground
         when {
             !lightbox && remote != null -> AppearanceIconView(AppearanceIcon.Remote(remote), Theme.dismissImageSize, tint, symbol)
-            !lightbox && local != null -> AppearanceIconView(AppearanceIcon.Local(local), Theme.dismissImageSize, tint, symbol)
+            !lightbox && local != null -> AppearanceIconView(local, Theme.dismissImageSize, tint, symbol)
             else -> AppearanceIconView(AppearanceIcon.Symbol(symbol), Theme.dismissImageSize, tint, symbol)
         }
     }

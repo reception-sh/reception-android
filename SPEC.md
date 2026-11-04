@@ -333,11 +333,13 @@ them at platform defaults. The host appearance report sends the accent only when
 having no host theme: it follows the system dark mode and uses the sheet's default accent, so hosts wrap it in their
 theme or set `accentColor`), `onAccentColor`, `title`, `welcomeTitle`, `welcomeText`, `showsCloseButton`,
 `chatBackground`, `incomingBackground`, `incomingForeground`, `preferredColorScheme: ColorScheme?` (`LIGHT`, `DARK`),
-`closeIcon: CloseIcon` (`XMARK`, `CHEVRON_DOWN`, `ARROW_DOWN`), `closeImage: Painter?`, `fontDesign: FontDesign?`
+`closeIcon: CloseIcon` (`XMARK`, `CHEVRON_DOWN`, `ARROW_DOWN`), `closeImage: Painter?` and `closeImageResource: Int?`
+(`@DrawableRes`, for hosts without Compose; there is one close image, so setting either replaces the other), `fontDesign: FontDesign?`
 (`DEFAULT`, `ROUNDED`, `SERIF`, `MONOSPACED`; Android has no rounded system face, so `ROUNDED` draws the default
 face and is still reported as `rounded`), `fontFamily: FontFamily?` (a Compose font family the host built from its
 bundled fonts; reported to the dashboard as "custom"), `fadesOlderMessages`, `welcomeIcon: WelcomeIcon?`
-(`symbol(name)`, `image(Painter)`, `hidden`), `welcomeIconColor`, `welcomeIconSize: Dp?`, `welcomeIconCornerRadius:
+(`symbol(name)`, `image(Painter)`, `resource(@DrawableRes id)`, `hidden`; resources are drawn with `painterResource`, so
+vector and bitmap drawables), `welcomeIconColor`, `welcomeIconSize: Dp?`, `welcomeIconCornerRadius:
 Dp`, `welcomeIconOffset: DpOffset`, `hidesTitle`, `hidesWelcomeTitle`, `hidesWelcomeText`, `hidesPushStatus`.
 
 Symbols: the dashboard and the host name SF Symbols. The SDK ships one Material Symbols vector drawable per name the

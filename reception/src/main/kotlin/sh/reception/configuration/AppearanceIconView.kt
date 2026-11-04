@@ -49,6 +49,7 @@ internal fun AppearanceIconView(
             FittedImage(painter, size, imageCornerRadius, modifier)
         }
         is AppearanceIcon.Local -> FittedImage(icon.painter, size, imageCornerRadius, modifier)
+        is AppearanceIcon.LocalResource -> FittedImage(painterResource(icon.id), size, imageCornerRadius, modifier)
         AppearanceIcon.Hidden -> Unit
     }
 }

@@ -144,8 +144,22 @@ public object Reception {
         /** Defaults to [CloseIcon.XMARK]. */
         public var closeIcon: CloseIcon by mutableStateOf(CloseIcon.XMARK)
 
-        /** Defaults to null, using [closeIcon]. An image such as `painterResource(R.drawable.close)`, in its own colors. */
-        public var closeImage: Painter? by mutableStateOf(null)
+        /**
+         * Defaults to null, using [closeIcon]. An image such as `painterResource(R.drawable.close)`, in its own colors.
+         * Setting it replaces [closeImageResource].
+         */
+        public var closeImage: Painter?
+            get() = (closeImageIcon as? AppearanceIcon.Local)?.painter
+            set(value) { closeImageIcon = value?.let(AppearanceIcon::Local) }
+
+        /**
+         * Defaults to null, using [closeIcon]. A drawable resource such as `R.drawable.close` (vector or bitmap), in its
+         * own colors; for hosts without Compose. Setting it replaces [closeImage].
+         */
+        @get:DrawableRes
+        public var closeImageResource: Int?
+            get() = (closeImageIcon as? AppearanceIcon.LocalResource)?.id
+            set(value) { closeImageIcon = value?.let(AppearanceIcon::LocalResource) }
 
         /** Defaults to null, using the default system font. [FontDesign.ROUNDED] draws the default font on Android. */
         public var fontDesign: FontDesign? by mutableStateOf(null)
@@ -189,6 +203,10 @@ public object Reception {
          */
         public var hidesPushStatus: Boolean by mutableStateOf(false)
 
+        // One close image: assigning the painter or the resource replaces the other.
+        internal var closeImageIcon: AppearanceIcon? by mutableStateOf(null)
+            private set
+
         // Only text the app set itself is reported to the dashboard and kept over the built-in localized copy.
         internal var titleOverride: String? by mutableStateOf(null)
             private set
@@ -222,6 +240,10 @@ public object Reception {
             /** An image such as `painterResource(R.drawable.logo)`, drawn in its own colors. */
             @JvmStatic
             public fun image(painter: Painter): WelcomeIcon = WelcomeIcon(AppearanceIcon.Local(painter))
+
+            /** A drawable resource such as `R.drawable.logo` (vector or bitmap), drawn in its own colors. */
+            @JvmStatic
+            public fun resource(@DrawableRes id: Int): WelcomeIcon = WelcomeIcon(AppearanceIcon.LocalResource(id))
 
             /** No icon. */
             @JvmStatic

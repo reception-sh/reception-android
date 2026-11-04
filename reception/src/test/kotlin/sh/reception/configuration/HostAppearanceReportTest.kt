@@ -94,6 +94,12 @@ class HostAppearanceReportTest {
         assertEquals("""{"welcomeIcon":false}""", hidden.getValue("visibility").toString())
         val image = Reception.Appearance().apply { welcomeIcon = Reception.WelcomeIcon.image(ColorPainter(Color.Blue)) }
         assertEquals("""{"image":true}""", HostAppearanceReport.payload(image, true).getValue("welcomeIcon").toString())
+        val resource = Reception.Appearance().apply {
+            welcomeIcon = Reception.WelcomeIcon.resource(1)
+            closeImageResource = 2
+        }
+        assertEquals("""{"image":true}""", HostAppearanceReport.payload(resource, true).getValue("welcomeIcon").toString())
+        assertEquals("true", HostAppearanceReport.payload(resource, true).getValue("closeImage").toString())
     }
 
     @Test

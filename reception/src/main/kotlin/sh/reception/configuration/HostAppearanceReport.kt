@@ -43,7 +43,7 @@ internal object HostAppearanceReport {
         }
         if (appearance.showsCloseButton) put("showsCloseButton", true)
         if (appearance.closeIcon != Reception.CloseIcon.XMARK) put("closeIcon", appearance.closeIcon.symbol)
-        if (appearance.closeImage != null) put("closeImage", true)
+        if (appearance.closeImageIcon != null) put("closeImage", true)
         appearance.fontDesign?.let { put("fontDesign", it.raw) }
         // A Compose FontFamily has no name the dashboard could preview.
         if (appearance.fontFamily != null) put("fontFamily", "custom")
@@ -63,7 +63,7 @@ internal object HostAppearanceReport {
     private fun welcomeIcon(appearance: Reception.Appearance): JsonObject = buildJsonObject {
         when (val icon = appearance.welcomeIcon?.icon) {
             is AppearanceIcon.Symbol -> put("symbol", icon.name)
-            is AppearanceIcon.Local, is AppearanceIcon.Remote -> put("image", true)
+            is AppearanceIcon.Local, is AppearanceIcon.LocalResource, is AppearanceIcon.Remote -> put("image", true)
             AppearanceIcon.Hidden, null -> Unit
         }
         pair(appearance.welcomeIconColor)?.let { put("color", it) }
