@@ -2,6 +2,17 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-05: Fixes 13 done (see verification/fixes-13.md), one commit each; 1.0.0 is a release candidate, with no
+  open audit findings. AC-1 `Reception.closeChat()` advances `ReceptionState.closeRevision`, which an automation's open
+  rule captures, so a presentation it cancels during the record save is not retried (a screen change still retries;
+  `presentationRevision` stays deleteData's generation). AC-2 `ui/PendingPresentation`: a request made while a
+  presentation saves its record joins it; it starts while any joined request wants it, so a host `openChat()` or
+  `handlePushNotification(openChat = true)` during a tap's save survives a routing disable, and one sheet starts.
+  AC-3 `ComposeDialogModeGuard` is installed for every Compose `Dialog` below API 31, also when the window already had
+  the chat's mode. AC-4 the same-callback open/close test holds the storage thread; no other test relies on a pending
+  save. Five `:reception:test --rerun-tasks` runs green (520 tests each); `tool/release_check.sh` passes on the clean
+  tree. Not run live this round (unit tests only, no emulator). Publishing still waits for Andi's steps in the Phase E
+  entry.
 - 2026-11-05: Fixes 12 done (see verification/fixes-12.md), one commit each. AA-1 `KeyboardWindow` only finds the
   window and its `DialogWindowProvider`; `EmbeddedKeyboardMode` applies the Compose `Dialog` rule only to
   `androidx.compose.ui.window.DialogLayout` (name kept by `consumer-rules.pro`), so a Material 3 `ModalBottomSheet` and
