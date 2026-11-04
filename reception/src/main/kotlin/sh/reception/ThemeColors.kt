@@ -81,13 +81,11 @@ internal val Theme.lightboxForeground: Color
 internal val Theme.jumpToLatestShadow: Color
     get() = Color.Black.copy(alpha = 0.06f)
 
-/**
- * The fill of an outgoing bubble with [olderBy] newer outgoing text messages. iOS skips the fade under Increase
- * Contrast; Android has no system-wide contrast switch apps can read reliably, so the fade always follows the setting.
- */
+/** The fill of an outgoing bubble with [olderBy] newer outgoing text messages; no fade under increased contrast. */
 @Composable
 @ReadOnlyComposable
-internal fun Theme.outgoingBackground(olderBy: Int): Color = outgoingBackground(accent, olderBy, appearance.fadesOlderMessages)
+internal fun Theme.outgoingBackground(olderBy: Int): Color =
+    outgoingBackground(accent, olderBy, fadesOutgoing(appearance.fadesOlderMessages, LocalReceptionIncreasedContrast.current))
 
 /** Older outgoing bubbles soften toward white; only the fill is tinted, never their text or photos. */
 internal fun Theme.outgoingBackground(accent: Color, olderBy: Int, fades: Boolean): Color {

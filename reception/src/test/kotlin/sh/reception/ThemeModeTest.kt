@@ -27,4 +27,12 @@ class ThemeModeTest {
         assertTrue(resolveDarkMode(null, hostBackground = null, systemDark = true))
         assertFalse(resolveDarkMode(null, hostBackground = null, systemDark = false))
     }
+
+    @Test
+    fun olderOutgoingMessagesFadeOnlyWithoutIncreasedContrast() {
+        assertTrue(fadesOutgoing(fadesOlderMessages = true, increasedContrast = false))
+        assertFalse(fadesOutgoing(fadesOlderMessages = true, increasedContrast = true))
+        assertFalse(fadesOutgoing(fadesOlderMessages = false, increasedContrast = false))
+        assertFalse(fadesOutgoing(fadesOlderMessages = false, increasedContrast = true))
+    }
 }

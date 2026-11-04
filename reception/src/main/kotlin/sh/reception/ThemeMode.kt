@@ -14,6 +14,9 @@ import androidx.compose.ui.graphics.luminance
  */
 internal val LocalReceptionDarkMode = compositionLocalOf<Boolean?> { null }
 
+/** Whether the system asks for increased contrast; the chat root provides `ContrastMonitor.increasedContrast`. */
+internal val LocalReceptionIncreasedContrast = compositionLocalOf { false }
+
 /**
  * The chat's mode: the appearance's color scheme when set (a remote "system" clears only that override), else the
  * enclosing host `MaterialTheme` for an embedded chat (its background decides, because Material 3 color schemes carry
@@ -38,3 +41,6 @@ internal fun receptionDarkMode(embedded: Boolean): Boolean = resolveDarkMode(
 internal val Theme.isDark: Boolean
     @Composable @ReadOnlyComposable get() = LocalReceptionDarkMode.current ?: receptionDarkMode(embedded = true)
 
+/** iOS skips the fade of older outgoing bubbles under Increase Contrast; Android 14+ reports the same preference. */
+internal fun fadesOutgoing(fadesOlderMessages: Boolean, increasedContrast: Boolean): Boolean =
+    fadesOlderMessages && !increasedContrast
