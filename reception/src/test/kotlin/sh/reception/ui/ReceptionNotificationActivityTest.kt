@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.os.Looper
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -85,20 +86,46 @@ class ReceptionNotificationActivityTest {
         assertEquals(ReceptionChatActivity::class.java.name, resume(host)?.component?.className)
     }
 
+    /** A task of the app in Recents, rooted at [root], with [records] activity records. */
+    private fun appTask(id: Int, root: String, records: Int): ActivityManager.AppTask {
+        val task = ShadowAppTask.newInstance()
+        shadowOf(task).setTaskInfo(ActivityManager.RecentTaskInfo().apply {
+            @Suppress("DEPRECATION")
+            persistentId = id
+            taskId = id
+            numActivities = records
+            baseIntent = Intent().setComponent(ComponentName(application.packageName, root))
+        })
+        return task
+    }
+
+    private fun recents(vararg tasks: ActivityManager.AppTask) {
+        val manager = application.getSystemService(ActivityManager::class.java)
+        shadowOf(manager).setAppTasks(tasks.toList())
+    }
+
     @Test
     fun aTaskWhoseProcessDiedIsBroughtBackInsteadOfASecondOne() {
         // The launcher activity declares another affinity (Flutter's `taskAffinity=""`), so the tap got a new task.
-        val existing = ShadowAppTask.newInstance()
-        shadowOf(existing).setTaskInfo(ActivityManager.RecentTaskInfo().apply {
-            @Suppress("DEPRECATION")
-            persistentId = 42
-            taskId = 42
-            numActivities = 2
-        })
-        val manager = application.getSystemService(ActivityManager::class.java)
-        shadowOf(manager).setAppTasks(listOf(existing))
-        assertNull(tap("n4", taskRoot = true))
-        assertTrue(shadowOf(existing).hasMovedToFront())
+        for (records in listOf(0, 2)) {
+            // A card restored from disk has no activity records until it is brought back.
+            val existing = appTask(42, "Launcher", records)
+            recents(existing)
+            assertNull(tap("r$records", taskRoot = true))
+            assertTrue(shadowOf(existing).hasMovedToFront())
+        }
+    }
+
+    @Test
+    fun aLeftoverTrampolineTaskIsNotRestoredAndTheAppStarts() {
+        val leftover = appTask(43, ReceptionNotificationActivity::class.java.name, 0)
+        val other = appTask(44, "sh.reception.Other", 1)
+        recents(leftover)
+        assertEquals("Launcher", tap("t1", taskRoot = true)?.component?.className)
+        assertFalse(shadowOf(leftover).hasMovedToFront())
+        recents(leftover, other)
+        assertNull(tap("t2", taskRoot = true))
+        assertTrue(shadowOf(other).hasMovedToFront())
     }
 
     @Test

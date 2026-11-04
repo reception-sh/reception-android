@@ -77,7 +77,7 @@ internal object ChatPresenter {
     private fun bringToFront(host: Activity, covered: ReceptionChatActivity): Boolean {
         // Reordering works inside the starting activity's task; a sheet in another task of the app moves with that task.
         if (covered.taskId != host.taskId) {
-            val task = AppTasks.find(host) { it == covered.taskId } ?: return false
+            val task = AppTasks.withId(host, covered.taskId) ?: return false
             task.moveToFront()
             Log.debug { "Chat brought to the front with its task" }
             return true

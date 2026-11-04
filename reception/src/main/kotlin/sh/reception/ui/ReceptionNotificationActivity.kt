@@ -25,10 +25,10 @@ internal class ReceptionNotificationActivity : Activity() {
         // Starting the launcher intent inside an existing task would add another launcher activity when the task's root
         // intent differs from it, for example after the app was started by a deep link.
         if (!isTaskRoot) return finish()
-        // A task of the app outlived its process (its card is still in Recents) but the tap started a new one: the
-        // launcher activity declares another task affinity, like Flutter's `taskAffinity=""`. Starting the launcher
-        // intent would open a second card; bringing that task back restores it.
-        AppTasks.find(this) { it != taskId }?.let { task ->
+        // A task of the app outlived its process (its card is still in Recents, possibly without activity records) but
+        // the tap started a new one: the launcher activity declares another task affinity, like Flutter's
+        // `taskAffinity=""`. Starting the launcher intent would open a second card; bringing that task back restores it.
+        AppTasks.restorable(this, excluding = taskId, trampoline = javaClass.name)?.let { task ->
             task.moveToFront()
             return finishAndRemoveTask()
         }
