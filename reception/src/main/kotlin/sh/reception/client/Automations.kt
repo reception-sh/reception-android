@@ -17,11 +17,12 @@ import sh.reception.ReceptionUnread
 /**
  * Sends tracked events that a dashboard automation listens for, and opens the chat when the service sent its message.
  * Every failure ends quietly: an automation is optional and must never disturb the host app. Main thread only.
+ * [SubscriptionEvents] reports store subscription changes through it.
  */
 internal class Automations(
     private val presenter: AutomationPresenter = AutomationPresenter.Chat,
     private val paidAccess: PaidAccess? = null,
-    private val clock: () -> Long = SystemClock::elapsedRealtime,
+    val clock: () -> Long = SystemClock::elapsedRealtime,
 ) {
     private class Listened(val appId: String, val events: Set<String>, val until: Long)
 
@@ -45,12 +46,10 @@ internal class Automations(
         data class Handled(val openChat: Boolean) : Delivery
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var listened: Listened? = null
     private var listing: Pair<String, Deferred<Listened>>? = null
     private val running = mutableSetOf<String>()
-    private var checkingSubscriptions = false
-    private var subscriptionsCheckedAt: Long? = null
     private var openedChatAt: Long? = null
 
     fun track(event: String, opensChat: Boolean, session: DeviceSession) {
@@ -70,7 +69,7 @@ internal class Automations(
     }
 
     /** Sends [event] when an automation listens for it. Retry only when it should be sent again later. */
-    private suspend fun deliver(event: String, session: DeviceSession): Delivery {
+    suspend fun deliver(event: String, session: DeviceSession): Delivery {
         if (session.halt != null) return Delivery.Retry
         if (!listens(setOf(event), session)) return Delivery.Unheard
         if (!running.add(event)) return Delivery.Retry
@@ -118,65 +117,8 @@ internal class Automations(
         return clock() - at < OPEN_WINDOW_MILLIS
     }
 
-    /**
-     * Reports a cancelled or expired subscription Play shows since the last check. Runs when the app opens, at most
-     * once a minute, and only while an automation listens.
-     */
-    fun checkSubscriptions(session: DeviceSession, purchases: suspend () -> List<PlayBillingBridge.Purchase>?) {
-        subscriptionsCheckedAt?.let { if (clock() - it < CHECK_INTERVAL_MILLIS) return }
-        if (session.halt != null || checkingSubscriptions) return
-        checkingSubscriptions = true
-        subscriptionsCheckedAt = clock()
-        scope.launch {
-            try {
-                if (!listens(StoreSubscriptions.events, session)) return@launch
-                val current = purchases() ?: return@launch
-                try {
-                    session.prepared()
-                } catch (_: ReceptionAPIError) {
-                    return@launch
-                }
-                if (session !== ReceptionState.session) return@launch
-                val known = session.store.subscriptionStates.toMutableMap()
-                for ((group, state) in StoreSubscriptions.states(known, current)) {
-                    val event = StoreSubscriptions.event(SubscriptionState.from(known[group]), state)
-                    if (event != null) {
-                        val start = clock()
-                        val presentation = ReceptionState.presentationRevision
-                        val delivery = deliver(event, session)
-                        // An undelivered change keeps the old state, so the next check reports it again.
-                        if (delivery == Delivery.Retry) continue
-                        Log.debug { "Subscription change reported as $event" }
-                        if (delivery == Delivery.Received(openChat = true) && session.halt == null) {
-                            openChatWhenSettled(start, presentation, arriving = true)
-                        }
-                    }
-                    known[group] = state.raw
-                }
-                if (session === ReceptionState.session) session.store.subscriptionStates = known
-            } finally {
-                checkingSubscriptions = false
-            }
-        }
-    }
-
-    /**
-     * A purchase must reach the service before a delayed automation offers a discount, so a registered device sends
-     * a change of paid access or `subscription_status` at once instead of with its next update.
-     */
-    fun subscriptionChanged(session: DeviceSession) {
-        if (session.halt != null || !session.isPrepared || !session.isRegistered) return
-        scope.launch {
-            try {
-                withContext(RequestContext(automation = true)) { session.update() }
-            } catch (_: ReceptionAPIError) {
-                Log.debug { "Subscription change not delivered, it follows with the next update" }
-            }
-        }
-    }
-
     /** Whether an enabled automation listens for one of [events]. Other events never leave the device. */
-    private suspend fun listens(events: Set<String>, session: DeviceSession): Boolean {
+    suspend fun listens(events: Set<String>, session: DeviceSession): Boolean {
         val appId = session.api.appId
         listened?.let { if (it.appId == appId && clock() < it.until) return it.events.any(events::contains) }
         // Events often arrive together, like a closed paywall and the purchase it ended; one request answers them all.
@@ -214,7 +156,6 @@ internal class Automations(
         /** The chat opens only this soon after `track`, so a slow response never surprises the user later. */
         const val OPEN_WINDOW_MILLIS: Long = 5_000
         private const val SETTLE_POLL_MILLIS = 50L
-        private const val CHECK_INTERVAL_MILLIS = 60_000L
         private const val LISTENED_MILLIS = 300_000L
         private const val UNAVAILABLE_MILLIS = 60_000L
         private val eventName = Regex("^[A-Za-z0-9_.-]{1,64}$")

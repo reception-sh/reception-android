@@ -66,7 +66,7 @@ internal object ReceptionIdentity {
         val previousStatus = session.pending.metadata["subscription_status"]
         session.stage { it.copy(metadata = checked) }
         Log.debug { "Metadata staged" }
-        if (checked["subscription_status"] != previousStatus) ReceptionAutomations.automations.subscriptionChanged(session)
+        if (checked["subscription_status"] != previousStatus) ReceptionAutomations.subscriptions.changed(session)
     }
 
     /**

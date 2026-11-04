@@ -34,17 +34,13 @@ public object Reception {
     @JvmStatic
     public var logLevel: LogLevel
         get() = Log.level
-        set(value) {
-            Log.level = value
-        }
+        set(value) { Log.level = value }
 
     /** Receives every emitted line instead of Logcat. `null` (default) logs with the tag "Reception". */
     @JvmStatic
     public var logHandler: ((LogLevel, String) -> Unit)?
         get() = Log.handler
-        set(value) {
-            Log.handler = value
-        }
+        set(value) { Log.handler = value }
 
     /** True once a valid App ID has been accepted for this process. */
     @JvmStatic
@@ -105,23 +101,17 @@ public object Reception {
         /** Defaults to the localized "Support" title. */
         public var title: String
             get() = titleOverride ?: ReceptionLocalization.string(Strings.support)
-            set(value) {
-                titleOverride = value
-            }
+            set(value) { titleOverride = value }
 
         /** Defaults to the localized "Questions, feedback, or a bug?" headline. */
         public var welcomeTitle: String
             get() = welcomeTitleOverride ?: ReceptionLocalization.string(Strings.questionsFeedbackOrABug)
-            set(value) {
-                welcomeTitleOverride = value
-            }
+            set(value) { welcomeTitleOverride = value }
 
         /** Defaults to the localized "You're chatting directly with our team." text. */
         public var welcomeText: String
             get() = welcomeTextOverride ?: ReceptionLocalization.string(Strings.youreChattingDirectlyWithOurTeam)
-            set(value) {
-                welcomeTextOverride = value
-            }
+            set(value) { welcomeTextOverride = value }
 
         /** Defaults to false; the sheet shows its drag handle. */
         public var showsCloseButton: Boolean by mutableStateOf(false)
@@ -388,9 +378,7 @@ public object Reception {
      */
     @JvmStatic
     @JvmOverloads
-    public fun track(event: String, opensChat: Boolean = false): Unit = MainThread.run {
-        ReceptionAutomations.track(event, opensChat)
-    }
+    public fun track(event: String, opensChat: Boolean = false): Unit = MainThread.run { ReceptionAutomations.track(event, opensChat) }
 
     /** Dismisses chat, resets locally immediately, and revokes the old session in the background. */
     @JvmStatic

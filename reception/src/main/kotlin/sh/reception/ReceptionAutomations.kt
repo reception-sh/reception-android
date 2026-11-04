@@ -2,14 +2,16 @@ package sh.reception
 
 import sh.reception.client.Automations
 import sh.reception.client.PaidAccess
+import sh.reception.client.SubscriptionEvents
 
 /** `track`, paid access and store subscription events behind the facade. Main thread only. */
 internal object ReceptionAutomations {
     val paidAccess: PaidAccess = PaidAccess()
     val automations: Automations = Automations(paidAccess = paidAccess)
+    val subscriptions: SubscriptionEvents = SubscriptionEvents(automations)
 
     init {
-        paidAccess.onChange = { ReceptionState.session?.let(automations::subscriptionChanged) }
+        paidAccess.onChange = { ReceptionState.session?.let(subscriptions::changed) }
     }
 
     fun track(event: String, opensChat: Boolean) {
@@ -28,6 +30,6 @@ internal object ReceptionAutomations {
         val session = ReceptionState.session ?: return
         val context = session.store.context
         paidAccess.refresh(context)
-        automations.checkSubscriptions(session) { paidAccess.refreshNow(context) }
+        subscriptions.check(session) { paidAccess.refreshNow(context) }
     }
 }
