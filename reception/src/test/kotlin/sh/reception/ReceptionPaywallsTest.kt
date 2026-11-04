@@ -1,9 +1,11 @@
 package sh.reception
 
 import android.os.Looper
+import androidx.compose.runtime.derivedStateOf
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -67,5 +69,21 @@ class ReceptionPaywallsTest {
         assertTrue(ReceptionPaywalls.canOpen("pro"))
         assertTrue(!ReceptionPaywalls.canOpen("info"))
         assertTrue(!ReceptionPaywalls.canOpen("missing"))
+    }
+
+    @Test
+    fun cardsFollowTheHandlerAndTheAvailablePaywalls() {
+        // A derived state recomputes only when Compose state it read changes, as a card in an open chat does.
+        val openable = derivedStateOf { ReceptionPaywalls.canOpen("pro") }
+        ReceptionPaywalls.register(listOf(pro))
+        assertFalse(openable.value)
+        ReceptionPaywalls.onPaywall = {}
+        assertTrue(openable.value)
+        ReceptionPaywalls.register(emptyList())
+        assertFalse(openable.value)
+        ReceptionPaywalls.register(listOf(pro))
+        assertTrue(openable.value)
+        ReceptionPaywalls.onPaywall = null
+        assertFalse(openable.value)
     }
 }

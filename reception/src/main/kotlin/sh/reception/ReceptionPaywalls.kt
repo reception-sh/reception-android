@@ -28,7 +28,9 @@ internal object ReceptionPaywalls {
             field = value
             refresh(invalidate = true)
         }
-    var onPaywall: ((String) -> Unit)? = null
+
+    /** Compose state too: assigning or removing the handler enables or disables the visible cards. */
+    var onPaywall: ((String) -> Unit)? by mutableStateOf(null)
     private var check: Job? = null
     private var generation = 0
 
