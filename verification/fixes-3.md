@@ -70,3 +70,25 @@ relaunch.
 To check D-1, the backend's request log (`/private/tmp/reception-dev-3123.log`, one line per request, no
 timestamps) shows whether a `GET /v1/conversation/messages` follows the picker. The SDK does not log its loads to
 logcat.
+
+## Live run (orchestrator, after closing the orphaned device session of the Phase C1 delegate)
+
+Relaunch with an existing conversation, StrictMode `penaltyDeath` on:
+
+```
+16:08:18.168 I Configured, SDK 1.0.0
+16:08:18.567 D Remote appearance unchanged
+16:08:18.568 D Access token refreshed
+16:08:18.681 D Device updated
+16:08:18.779 D Unread refresh, 0 unread
+(open chat, type "Fixes 3 live check", send)
+16:08:50.099 D Device updated
+16:08:50.389 D Unread refresh, 0 unread
+16:08:50.471 D Message sent            → bubble shows Sent (verification/fixes-3-live.png)
+(relaunch)
+16:09:13.636 I Configured, SDK 1.0.0 … Unread refresh, 0 unread
+StrictMode lines: 0
+```
+
+The logout step and the photo-picker reload check were not repeated here (logout was verified live in fixes-1; the
+picker check needs the backend request log and is part of the Phase C2 run).
