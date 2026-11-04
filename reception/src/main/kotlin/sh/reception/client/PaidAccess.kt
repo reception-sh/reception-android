@@ -51,15 +51,20 @@ internal class PaidAccess(
     }
 
     private fun start(context: Context): Deferred<List<PlayBillingBridge.Purchase>?> {
-        reading?.cancel()
+        val previous = reading
         generation += 1
         val started = generation
-        return scope.async {
+        val task = scope.async {
             val purchases = read(context)
             // A read that ignores cancellation can still finish after a newer one; only the latest publishes.
             if (started == generation) publish(purchases)
             purchases
-        }.also { reading = it }
+        }
+        // Installed before the cancel: a caller waiting on the previous read resumes inside cancel() on the main
+        // thread and must find this one.
+        reading = task
+        previous?.cancel()
+        return task
     }
 
     /** Internal for tests: a read's answer; null (a failure) makes paid access unknown. */

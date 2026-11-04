@@ -2,6 +2,7 @@ package sh.reception.client
 
 import android.os.Looper
 import org.robolectric.RuntimeEnvironment
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -86,6 +87,31 @@ class PaidAccessTest {
         first.complete(emptyList())
         idle()
         assertEquals(true, access.current)
+        assertEquals(listOf("pro"), waited?.flatMap { it.products })
+    }
+
+    @Test
+    fun aCallerWaitingOnTheMainThreadFollowsAReadThatCancelsItsOwn() {
+        val first = CompletableDeferred<List<PlayBillingBridge.Purchase>?>()
+        val second = CompletableDeferred<List<PlayBillingBridge.Purchase>?>()
+        val answers = ArrayDeque(listOf(first, second))
+        // Billing honours cancellation here, and the waiting automation resumes immediately inside the cancel.
+        val access = PaidAccess { answers.removeFirst().await() }
+        var waited: List<PlayBillingBridge.Purchase>? = null
+        var failed: Throwable? = null
+        CoroutineScope(Dispatchers.Main.immediate).launch {
+            try {
+                waited = access.refreshNow(context)
+            } catch (error: CancellationException) {
+                failed = error
+            }
+        }
+        idle()
+        access.refresh(context)
+        idle()
+        second.complete(listOf(purchase("pro")))
+        idle()
+        assertNull(failed)
         assertEquals(listOf("pro"), waited?.flatMap { it.products })
     }
 
