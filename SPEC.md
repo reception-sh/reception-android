@@ -158,7 +158,10 @@ the window still carries the SDK's `adjustResize`, so a mode or state flags the 
 unspecified mode comes back as what Android resolves it to, resize with a shown scroll container, else pan, because
 Android keeps the last adjust mode when it is asked for "unspecified" again). On a Compose `Dialog` window this
 temporarily overrides any soft-input mode the host set, an explicit `adjustResize` included, while a chat is in it, and
-restores it afterwards. Known limit: on Android 10 and older a chat in a Compose `Dialog` pans to the cursor line, so
+restores it afterwards. Below Android 12 Compose UI writes the dialog window's whole soft-input mode again after each
+recomposition of the `Dialog` call (`adjustResize` without `decorFitsSystemWindows`, else its theme's adjust mode), so
+while a chat is in it the SDK checks the mode before each frame and puts its own adjust mode back when the mode is
+exactly one of those two values (`ui/ComposeDialogModeGuard`); a different mode the host sets meanwhile stays. Known limit: on Android 10 and older a chat in a Compose `Dialog` pans to the cursor line, so
 the keyboard may clip the composer's bottom edge. Neither calls `openChat()`. Every chat on screen shows the one chat model:
 it stays visible (`isChatOpen`) while any of them is started and keeps loading and listening while any is resumed, so
 removing one of two embedded views leaves the other running; the app going to the background stops it for all.

@@ -64,7 +64,7 @@ private class WindowAdjustment(private val view: View) : View.OnAttachStateChang
  */
 internal object EmbeddedKeyboardMode {
     /** [installed] is the adjust mode the SDK set, null when it left the window alone. */
-    private class Hold(val original: Int, val installed: Int?, var count: Int)
+    private class Hold(val original: Int, val installed: Int?, var count: Int, val guard: ComposeDialogModeGuard?)
 
     private val holds = WeakHashMap<View, Hold>()
 
@@ -77,7 +77,10 @@ internal object EmbeddedKeyboardMode {
         val adjust = original and LayoutParams.SOFT_INPUT_MASK_ADJUST
         val installed = target(window, adjust)?.takeIf { it != adjust }
         installed?.let { window.softInputMode = (original and LayoutParams.SOFT_INPUT_MASK_ADJUST.inv()) or it }
-        holds[window.root] = Hold(original, installed, 1)
+        // Compose rewrites a Dialog's mode on its own recompositions below Android 12.
+        val guard = installed?.takeIf { window.isComposeDialog && Build.VERSION.SDK_INT < Build.VERSION_CODES.S }
+            ?.let { ComposeDialogModeGuard(window, it) }
+        holds[window.root] = Hold(original, installed, 1, guard)
     }
 
     fun release(window: KeyboardWindow) {
@@ -85,6 +88,7 @@ internal object EmbeddedKeyboardMode {
         hold.count -= 1
         if (hold.count > 0) return
         holds.remove(window.root)
+        hold.guard?.stop()
         val installed = hold.installed ?: return
         val current = window.softInputMode
         // The host set its own adjust mode while the chat was shown: that one stays.
