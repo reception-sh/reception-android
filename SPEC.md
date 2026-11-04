@@ -44,13 +44,14 @@ reception/                         library module (the SDK), published artifact
     viewmodel/                     ChatModel and its delivery, recovery, connection, stream, read, cooldown parts
     ui/                            ReceptionChatView (composable), ReceptionChatActivity (sheet), bubbles, composer,
                                    cards, banners, lightbox, presenter
-  src/main/res/                    strings (48 languages, generated from the iOS String Catalog), vector icons
+  src/main/res/                    vector icons (Material Symbols), the sheet's theme
   src/test/                        focused unit tests (JUnit 4, MockWebServer, Robolectric only where Android
                                    classes are unavoidable)
 example/                           verification app against a local backend (Compose), with Firebase and Play Billing
-tool/                              release_check.sh, sync_strings.py (xcstrings → values-*/strings.xml), publish helpers
+  api/reception.api                the public API dump (binary-compatibility-validator; apiCheck, apiDump)
+tool/                              release_check.sh, sync_strings.py (xcstrings → sh.reception.strings Kotlin objects)
 verification/                      evidence of the last verification round
-SPEC.md, AGENTS.md, STATUS.md, CHANGELOG.md, README.md, CONTRIBUTING.md, LICENSE (MIT)
+SPEC.md, AGENTS.md, STATUS.md, CHANGELOG.md, README.md, CONTRIBUTING.md, LICENSE (MIT), THIRD_PARTY_NOTICES.md
 ```
 
 One file, one responsibility, nothing over ~200 lines; see AGENTS.md.
