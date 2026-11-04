@@ -197,7 +197,10 @@ that does only this (and forwards `onNewToken` to `setPushToken`), for hosts wit
 `handlePushMessage` takes a `Context` because FCM can start the process for a message before anything configured the
 SDK (Flutter and React Native configure from Dart/JS, which does not run for a background message); without one the
 notification could not be posted. It recognizes the payload synchronously, so it may be called from FCM's worker
-thread, and does the rest on the main thread. The library manifest declares the service `exported="false"` without an
+thread, and does the rest on the main thread. It is idempotent per FCM message: the last 64 `google.message_id`
+values are kept (SharedPreferences `sh.reception.push`, outside the session namespace, under the App ID's storage
+namespace or, before configure, a global key; checked on the storage thread), and a repeat returns true without a
+second notification or unread refresh. A message without that field is always handled. The library manifest declares the service `exported="false"` without an
 intent filter, so it receives nothing until the host adds the filter:
 
 ```xml

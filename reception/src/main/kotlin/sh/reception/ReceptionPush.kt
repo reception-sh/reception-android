@@ -13,7 +13,9 @@ import kotlinx.coroutines.launch
 import sh.reception.client.ApplicationLifecycle
 import sh.reception.client.FirebaseBridge
 import sh.reception.client.NotificationRouting
+import sh.reception.client.PushMessageIds
 import sh.reception.client.PushNotifications
+import sh.reception.client.Storage
 import sh.reception.client.hasConversation
 import sh.reception.ui.ChatPresenter
 import java.util.UUID
@@ -38,7 +40,18 @@ internal object ReceptionPush {
         if (PushNotifications.payload(data) == null) return false
         val application = context.applicationContext
         val payload = data.toMap()
-        MainThread.run { handleMessage(application, payload) }
+        val messageId = payload[PushMessageIds.DATA_KEY]?.takeIf { it.isNotEmpty() }
+            ?: return true.also { MainThread.run { handleMessage(application, payload) } }
+        MainThread.run {
+            val namespace = ReceptionState.namespace
+            // One storage thread in submission order, so a repeat always sees the first delivery's record.
+            Storage.launch {
+                val first = PushMessageIds.record(application, namespace, messageId)
+                MainThread.run {
+                    if (first) handleMessage(application, payload) else Log.debug { "Push message ignored, handled already" }
+                }
+            }
+        }
         return true
     }
 

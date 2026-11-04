@@ -30,7 +30,8 @@ internal object ReceptionState {
         private set
 
     /** The configured App ID's storage namespace, which includes the service address of a test service. */
-    private var namespace: String? = null
+    var namespace: String? = null
+        private set
     /** The chat model of the current session, created on first use and replaced on every reset. */
     var chat: ChatModel? = null
         private set
