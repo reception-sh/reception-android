@@ -26,12 +26,4 @@
     <issue id="GradleDependency" severity="ignore" />
     <issue id="NewerVersionAvailable" severity="ignore" />
     <issue id="AndroidGradlePluginVersion" severity="ignore" />
-    <!-- Strings are generated from the iOS String Catalog, whose translations are reviewed there. -->
-    <issue id="Typos" severity="ignore" />
-    <!-- SPEC.md ships Hebrew and Indonesian twice: iw/in for the Java codes and b+he/b+id for Android 14+, which
-         keeps the modern codes. Lint only knows the legacy rule. -->
-    <issue id="LocaleFolder" severity="ignore" />
-    <!-- Splitting by language is the host's bundle configuration; SPEC.md's languageOverride needs the host to keep
-         the SDK's languages in its base APK (see STATUS.md). -->
-    <issue id="AppBundleLocaleChanges" severity="ignore" />
 </lint>

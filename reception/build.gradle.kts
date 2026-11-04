@@ -46,7 +46,6 @@ android {
 
     testOptions {
         targetSdk = 36
-        unitTests.isIncludeAndroidResources = true
     }
 }
 

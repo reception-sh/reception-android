@@ -1,5 +1,6 @@
 package sh.reception
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.icu.text.PluralRules
 import androidx.compose.ui.unit.LayoutDirection
@@ -12,6 +13,8 @@ import java.util.Locale
  * generated tables in `sh.reception.strings`, so neither the host's locale configuration nor App Bundle language splits
  * change what the chat shows.
  */
+// Holds only the application context, which lives as long as the process.
+@SuppressLint("StaticFieldLeak")
 internal object ReceptionLocalization {
     val supportedLanguages: List<String> = listOf(
         "en", "de", "fr", "fr-CA", "es", "es-419", "it", "pt-BR", "pt-PT", "ca", "ro", "nl",
@@ -37,7 +40,7 @@ internal object ReceptionLocalization {
 
     /** The app's language as a canonical BCP 47 tag, before matching against the bundled languages. */
     val appLanguage: String
-        get() = canonical(languageOverride ?: AppLocale.languageTag(context) ?: "en")
+        get() = canonical(languageOverride ?: context?.let(AppLocale::languageTag) ?: "en")
 
     val language: String
         get() = resolveLanguage(appLanguage)
