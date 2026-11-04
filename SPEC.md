@@ -401,8 +401,9 @@ parameterless call (removed in 8). A Play Store without a signed-in account answ
 ### Setup check
 
 On a debuggable host, an activity started with the string extra `ReceptionSetupCheck=<App ID>` (read in the
-activity-lifecycle callback, so `configure` must run before that activity is created, as in `Application.onCreate`)
-sends "Hello from setup" once after the app is active and logs `Setup check passed` or `Setup check failed:
+activity-lifecycle callback when the SDK was configured before that activity was created, as in
+`Application.onCreate`, and from the activity a plugin hands to `Reception.noteCurrentActivity`, so Flutter and React
+Native hosts that configure later run the same command) sends "Hello from setup" once after the app is active and logs `Setup check passed` or `Setup check failed:
 app_id_mismatch|send_not_allowed|not_delivered|timeout|app_not_active` with the iOS rules, at every log level and past
 `logHandler`, tag `Reception`:
 

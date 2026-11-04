@@ -49,10 +49,12 @@ internal object ApplicationLifecycle : DefaultLifecycleObserver, Application.Act
 
     /**
      * A host that configures after its activity resumed (the Flutter and React Native plugins) hands that activity
-     * over, so the chat and a pending tap have an activity before the next resume.
+     * over, so the chat and a pending tap have an activity before the next resume. That activity was created before
+     * the lifecycle callbacks were registered, so its setup-check extra is read here.
      */
     fun noteCurrentActivity(activity: Activity) {
         if (activity.isFinishing || activity.isDestroyed) return
+        SetupCheck.activityCreated(activity)
         onActivityResumed(activity)
     }
 

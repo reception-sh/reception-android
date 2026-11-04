@@ -117,6 +117,7 @@ internal object ReceptionState {
         ReceptionUnread.set(0, syncsNotifications = false)
         ReceptionAPI.serviceUrl = ReceptionAPI.defaultServiceUrl
         ChatPresenter.resetForTests()
+        SetupCheck.resetForTests()
     }
 
     fun applicationBecameActive() {

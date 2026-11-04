@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.os.BadParcelableException
 import android.os.SystemClock
+import androidx.annotation.VisibleForTesting
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -18,7 +19,9 @@ import sh.reception.viewmodel.send
 /**
  * Lets a coding agent prove a new integration without tapping the UI. Started with the intent extra
  * `ReceptionSetupCheck=<App ID>` on an activity of a debuggable app (SPEC.md, Setup check), it sends "Hello from setup"
- * once through the normal send path and logs whether Reception accepted it. Release builds ignore the extra.
+ * once through the normal send path and logs whether Reception accepted it. Release builds ignore the extra. The extra
+ * is read from each created activity and from the activity a plugin hands over (`Reception.noteCurrentActivity`), so
+ * hosts that configure after their activity exists run the same one-step check.
  */
 internal object SetupCheck {
     const val EXTRA: String = "ReceptionSetupCheck"
@@ -98,6 +101,13 @@ internal object SetupCheck {
         } else {
             Log.unconditional(failure = true, "Setup check failed: ${outcome.reason}")
         }
+    }
+
+    @VisibleForTesting(otherwise = VisibleForTesting.NONE)
+    fun resetForTests() {
+        requested = null
+        configuredAppId = null
+        started = false
     }
 
     private fun isDebuggable(context: Context): Boolean =
