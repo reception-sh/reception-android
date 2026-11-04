@@ -8,7 +8,7 @@ public sealed class ReceptionEvent {
     /** A message the person wrote reached the service, including a photo-only message. */
     public data object MessageSent : ReceptionEvent()
 
-    /** The confirmed message contains photos; [MessageSent] follows too. */
+    /** The confirmed message contains photos; [MessageSent] for the same message precedes it. */
     public data object ImageSent : ReceptionEvent()
 
     /** The person opened the review link; this does not prove a review was submitted. */
