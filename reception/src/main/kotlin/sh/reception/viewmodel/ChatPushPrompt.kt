@@ -40,10 +40,22 @@ internal fun ChatModel.continuePushPrompt(request: () -> Unit) {
     request()
 }
 
-/** The system dialog closed: the answer is kept, so the card never asks again, and a granted device registers. */
+/**
+ * The system dialog closed. A grant or a denial is kept, so the card never asks again, and a granted device registers.
+ * A dismissal without a choice is not an answer: the card stays hidden while this chat model lives and asks again after
+ * the next launch.
+ */
 internal fun ChatModel.notificationPermissionAnswered(granted: Boolean, activity: Activity?) {
-    session?.afterPrepared { session.store.notificationPermissionAnswered = true }
-    Log.debug { if (granted) "Notification prompt answered, granted" else "Notification prompt answered, denied" }
+    val session = session ?: return
+    val established = NotificationPermission.isEstablished(session.store.context, activity, granted)
+    if (established) session.afterPrepared { session.store.notificationPermissionAnswered = true }
+    Log.debug {
+        when {
+            granted -> "Notification prompt answered, granted"
+            established -> "Notification prompt answered, denied"
+            else -> "Notification prompt dismissed"
+        }
+    }
     refreshNotificationAuthorization(activity, canRequest = true)
     ReceptionPush.registerIfAuthorized()
 }

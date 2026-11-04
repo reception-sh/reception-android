@@ -251,7 +251,9 @@ Android 13+ and `POST_NOTIFICATIONS` has never been answered (`shouldShowRequest
 stored answer), or below 13: never (the card does not show, because the only way to enable is the system settings).
 Continue requests `POST_NOTIFICATIONS` through the chat activity's `ActivityResultLauncher` (an embedded
 `ReceptionChatView` uses the host activity when it is a `ComponentActivity`, otherwise the card does not show), then
-runs `registerForPushIfAuthorized()`. No thanks stores the per-device flag under the App ID in SharedPreferences.
+runs `registerForPushIfAuthorized()`. Only an answer the system keeps is stored: after the result the SDK re-reads
+`areNotificationsEnabled()` and `shouldShowRequestPermissionRationale` (true after a denial); a dialog dismissed
+without a choice changes neither, stays "not determined", and the card stays hidden only until the next launch. No thanks stores the per-device flag under the App ID in SharedPreferences.
 The status line "You'll get a notification when we reply." follows the iOS rule with `areNotificationsEnabled()`.
 The stored answer (`<namespace>.notificationPermissionAnswered`) sits beside `pushPromptDeclined`, outside the session.
 

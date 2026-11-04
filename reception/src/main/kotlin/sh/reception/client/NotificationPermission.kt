@@ -37,6 +37,20 @@ internal object NotificationPermission {
         else -> NotificationAuthorization.NOT_DETERMINED
     }
 
+    /**
+     * Whether the dialog's result is an answer the system keeps: a grant, or a denial (the rationale flag turns on with
+     * the first one). Dismissing the dialog without a choice keeps "not determined", so the card may ask again later.
+     */
+    fun isEstablished(granted: Boolean, enabled: Boolean, rationale: Boolean): Boolean = granted || enabled || rationale
+
+    /** [isEstablished] for the dialog [activity] just closed. */
+    fun isEstablished(context: Context, activity: Activity?, granted: Boolean): Boolean {
+        val enabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
+        val rationale = Build.VERSION.SDK_INT >= 33 && activity != null &&
+            ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.POST_NOTIFICATIONS)
+        return isEstablished(granted, enabled, rationale)
+    }
+
     /** [activity] asks; without one (or without a result registry, [canRequest] false) the card cannot. */
     fun read(context: Context, activity: Activity?, canRequest: Boolean, answered: Boolean): NotificationAuthorization {
         val enabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
