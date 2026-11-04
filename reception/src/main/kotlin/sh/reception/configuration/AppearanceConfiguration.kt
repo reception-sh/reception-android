@@ -83,8 +83,11 @@ internal class AppearanceConfiguration(private val now: () -> Long = System::cur
     /** At most one request at a time and one per five minutes, sooner only when a retry is due. */
     suspend fun refresh() {
         task?.let { return it.join() }
-        if (ReceptionState.session?.halt != null || retry.stopped) return
-        val api = ReceptionState.session?.api ?: api ?: return
+        val configured = api ?: return
+        // The session's API reports halts and cooldowns to that session; only a session of this App ID qualifies.
+        val session = ReceptionState.session?.takeIf { it.api.appId == configured.appId }
+        if (session?.halt != null || retry.stopped) return
+        val api = session?.api ?: configured
         val time = now()
         val next = retry.nextAttempt
         val last = lastAttempt

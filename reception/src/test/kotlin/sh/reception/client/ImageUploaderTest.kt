@@ -29,6 +29,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.GraphicsMode
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 /** Photo preparation bounds and the reservation and storage PUT contract. */
@@ -103,12 +104,12 @@ class ImageUploaderTest {
         val progress = mutableListOf<Double>()
         val id = ImageUploader.upload(noise(300, 200), "MESSAGE", 1, session) { progress.add(it) }
         assertEquals("att_1", id)
-        val reservation = server.takeRequest()
+        val reservation = requireNotNull(server.takeRequest(5, TimeUnit.SECONDS))
         assertEquals("POST /v1/uploads", "${reservation.method} ${reservation.path}")
         val input = Json.parseToJsonElement(reservation.body.readUtf8()).jsonObject
         assertEquals(setOf("requestId", "contentType", "bytes", "width", "height", "checksum"), input.keys)
         assertEquals("image/jpeg", input.getValue("contentType").jsonPrimitive.content)
-        val put = server.takeRequest()
+        val put = requireNotNull(server.takeRequest(5, TimeUnit.SECONDS))
         val body = put.body.readByteArray()
         assertEquals("PUT /storage/put?sig=1", "${put.method} ${put.path}")
         assertEquals("image/jpeg", put.getHeader("Content-Type"))

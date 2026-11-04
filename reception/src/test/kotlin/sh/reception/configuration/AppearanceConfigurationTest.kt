@@ -17,6 +17,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import sh.reception.client.ReceptionAPI
+import java.util.concurrent.TimeUnit
 
 /** Fetch, ETag, cache and activation against a local HTTP server. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -49,7 +50,7 @@ class AppearanceConfigurationTest {
         server.enqueue(MockResponse().setBody(body).setHeader("ETag", "\"a\""))
         val configuration = configuration("scope-1")
         configuration.refresh()
-        assertEquals("/v1/appearance?platform=android", server.takeRequest().path)
+        assertEquals("/v1/appearance?platform=android", server.takeRequest(5, TimeUnit.SECONDS)?.path)
         assertNull(configuration.active)
         configuration.activate()
         assertEquals(true, configuration.active?.showsCloseButton)
@@ -60,7 +61,7 @@ class AppearanceConfigurationTest {
         val restarted = configuration("scope-1")
         assertEquals(true, restarted.active?.showsCloseButton)
         restarted.refresh()
-        assertEquals("\"a\"", server.takeRequest().getHeader("If-None-Match"))
+        assertEquals("\"a\"", server.takeRequest(5, TimeUnit.SECONDS)?.getHeader("If-None-Match"))
         restarted.activate()
         assertEquals(true, restarted.active?.showsCloseButton)
     }

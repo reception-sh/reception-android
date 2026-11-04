@@ -32,6 +32,8 @@ class AttachmentImageLoaderTest {
     private val server = MockWebServer()
     private val dispatcher = StandardTestDispatcher()
     private val requests = Collections.synchronizedList(mutableListOf<String>())
+    // Read on the server's thread.
+    @Volatile
     private var storage: (String) -> MockResponse = { MockResponse().setResponseCode(403) }
     private val image = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
 
@@ -59,27 +61,34 @@ class AttachmentImageLoaderTest {
         Dispatchers.resetMain()
     }
 
+    // The loader holds its session weakly, as the app's current session is held elsewhere.
+    private val sessions = mutableListOf<DeviceSession>()
+
     private fun loader(): AttachmentImageLoader {
         val store = DeviceStore(context, "app_test${System.nanoTime()}")
         store.save(SessionCredentials("secret"))
         val session = DeviceSession(ReceptionAPI("app_0123456789abcdefghijkl", server.url("/")), store, refreshSleep = {})
         session.accessToken = "token"
+        sessions.add(session)
         val attachment = Attachment("att-1", server.url("/storage/old").toString(), "image/jpeg")
         return AttachmentImageLoader(attachment, session, decode = { image }, isCurrent = { !it.invalidated })
     }
+
+    private suspend fun AttachmentImageLoader.settled() =
+        state.first { it is AttachmentImageState.Loaded || it == AttachmentImageState.Failed }
 
     @Test
     fun aSecond403AfterOneResolveFailsAndRetryResolvesFirst() = runTest(dispatcher) {
         val loader = loader()
         loader.appear()
-        assertSame(AttachmentImageState.Failed, loader.state.first { it == AttachmentImageState.Failed })
+        assertSame(AttachmentImageState.Failed, loader.settled())
         assertEquals(listOf("GET /storage/old", "GET /v1/attachments/att-1 Bearer token", "GET /storage/fresh"), requests)
 
         requests.clear()
         storage = { MockResponse().setBody("jpeg") }
         loader.retry()
-        val loaded = loader.state.first { it is AttachmentImageState.Loaded }
-        assertSame(image, (loaded as AttachmentImageState.Loaded).bitmap)
+        val loaded = loader.settled()
+        assertSame(image, (loaded as? AttachmentImageState.Loaded)?.bitmap)
         assertEquals(listOf("GET /v1/attachments/att-1 Bearer token", "GET /storage/fresh"), requests)
     }
 
@@ -88,7 +97,7 @@ class AttachmentImageLoaderTest {
         storage = { MockResponse().setResponseCode(404) }
         val loader = loader()
         loader.appear()
-        loader.state.first { it == AttachmentImageState.Failed }
+        assertSame(AttachmentImageState.Failed, loader.settled())
         assertEquals(listOf("GET /storage/old"), requests)
     }
 
@@ -99,7 +108,7 @@ class AttachmentImageLoaderTest {
         loader.appear()
         loader.appear()
         loader.disappear()
-        loader.state.first { it is AttachmentImageState.Loaded }
+        assertTrue(loader.settled() is AttachmentImageState.Loaded)
         loader.disappear()
         // A loaded photo stays when its last view disappears; session invalidation clears it.
         assertTrue(loader.state.value is AttachmentImageState.Loaded)
