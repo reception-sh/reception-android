@@ -1,6 +1,5 @@
 package sh.reception
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
@@ -8,14 +7,6 @@ import androidx.compose.ui.graphics.Color
 import sh.reception.configuration.AdaptiveColor
 
 // The iOS system colors (elevated sheet variants in dark mode) and the appearance colors, in the chat's color scheme.
-
-/** Dark when the appearance asks for it, otherwise when the system (or the app's night mode) is dark. */
-internal val Theme.isDark: Boolean
-    @Composable @ReadOnlyComposable get() = when (appearance.preferredColorScheme) {
-        Reception.ColorScheme.LIGHT -> false
-        Reception.ColorScheme.DARK -> true
-        null -> isSystemInDarkTheme()
-    }
 
 @Composable
 @ReadOnlyComposable
