@@ -1,13 +1,12 @@
 package sh.reception.ui
 
 import android.app.Activity
-import android.app.ActivityManager
 import android.content.Intent
 import android.os.BadParcelableException
-import android.os.Build
 import android.os.Bundle
 import sh.reception.Log
 import sh.reception.ReceptionPush
+import sh.reception.client.AppTasks
 import sh.reception.client.PushNotifications
 
 /**
@@ -29,7 +28,7 @@ internal class ReceptionNotificationActivity : Activity() {
         // A task of the app outlived its process (its card is still in Recents) but the tap started a new one: the
         // launcher activity declares another task affinity, like Flutter's `taskAffinity=""`. Starting the launcher
         // intent would open a second card; bringing that task back restores it.
-        existingTask()?.let { task ->
+        AppTasks.find(this) { it != taskId }?.let { task ->
             task.moveToFront()
             return finishAndRemoveTask()
         }
@@ -41,23 +40,6 @@ internal class ReceptionNotificationActivity : Activity() {
         }
         finish()
     }
-
-    /** Another task of the app with activities to restore. */
-    private fun existingTask(): ActivityManager.AppTask? {
-        val manager = getSystemService(ActivityManager::class.java) ?: return null
-        return manager.appTasks.firstOrNull { task ->
-            try {
-                val info = task.taskInfo
-                id(info) != taskId && info.numActivities > 0
-            } catch (_: IllegalArgumentException) {
-                // The task was removed since the list was read.
-                false
-            }
-        }
-    }
-
-    private fun id(info: ActivityManager.RecentTaskInfo): Int =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) info.taskId else @Suppress("DEPRECATION") info.persistentId
 
     /** The notification's key and conversation. */
     private fun tap(): Pair<String, String>? = try {

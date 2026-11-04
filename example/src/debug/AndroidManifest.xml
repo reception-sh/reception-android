@@ -5,6 +5,12 @@
 
     <application
         android:usesCleartextTraffic="true"
-        tools:ignore="UnusedAttribute" />
+        tools:ignore="UnusedAttribute">
+        <!-- Exported in debug builds only, so verification can start it over the open chat with `adb shell am start`. -->
+        <activity
+            android:name=".SecondActivity"
+            android:exported="true"
+            tools:replace="android:exported" />
+    </application>
 
 </manifest>
