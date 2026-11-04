@@ -63,7 +63,7 @@ internal object ReceptionPush {
             return false
         }
         val payload = data.toMap()
-        MainThread.run { handleNotification(payload, openChat) }
+        MainThread.run { handleNotification(payload, openChat, PendingChatOpen.Source.HOST) }
         return true
     }
 
@@ -87,12 +87,12 @@ internal object ReceptionPush {
     }
 
     /** `Reception.handlePushNotification`, the iOS routing call; it never posts a notification. */
-    private fun handleNotification(data: Map<String, String>, openChat: Boolean): Boolean {
+    private fun handleNotification(data: Map<String, String>, openChat: Boolean, source: PendingChatOpen.Source): Boolean {
         val id = data[PushNotifications.PAYLOAD_KEY]?.takeIf { it.isNotEmpty() }
             ?: return false.also { Log.debug { "Push payload ignored, no conversation id" } }
         Log.debug { "Push payload recognized, conversation $id" }
         received(id)
-        if (openChat) requestOpen()
+        if (openChat) requestOpen(source)
         return true
     }
 
@@ -104,9 +104,9 @@ internal object ReceptionPush {
     }
 
     /** Opens the chat over the resumed activity, or over the next one when the app is still starting. */
-    private fun requestOpen() {
+    private fun requestOpen(source: PendingChatOpen.Source) {
         if (ReceptionState.session == null) return Log.error { "openChat called before configure, ignored" }
-        if (ApplicationLifecycle.currentActivity == null) return PendingChatOpen.request()
+        if (ApplicationLifecycle.currentActivity == null) return PendingChatOpen.request(source)
         ChatPresenter.open()
     }
 
@@ -144,7 +144,7 @@ internal object ReceptionPush {
         drain = scope.launch {
             delay(DRAIN_DELAY_MILLIS)
             val conversationId = routing.drainPendingTap() ?: return@launch
-            handleNotification(mapOf(PushNotifications.PAYLOAD_KEY to conversationId), openChat = true)
+            handleNotification(mapOf(PushNotifications.PAYLOAD_KEY to conversationId), openChat = true, PendingChatOpen.Source.NOTIFICATION_TAP)
         }
     }
 
@@ -158,9 +158,9 @@ internal object ReceptionPush {
         when (routing.action(key, openChat = true)) {
             NotificationRouting.Action.RECEIVE_AND_OPEN -> {
                 received(conversationId)
-                PendingChatOpen.request()
+                PendingChatOpen.request(PendingChatOpen.Source.NOTIFICATION_TAP)
             }
-            NotificationRouting.Action.OPEN -> PendingChatOpen.request()
+            NotificationRouting.Action.OPEN -> PendingChatOpen.request(PendingChatOpen.Source.NOTIFICATION_TAP)
             NotificationRouting.Action.RECEIVE, NotificationRouting.Action.IGNORE -> Log.debug { "Notification tap ignored, handled already" }
         }
     }

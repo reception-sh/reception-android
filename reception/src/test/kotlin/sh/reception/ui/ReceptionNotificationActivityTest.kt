@@ -197,4 +197,25 @@ class ReceptionNotificationActivityTest {
             Reception.setNotificationRoutingEnabled(true)
         }
     }
+
+    @OptIn(ReceptionInternalApi::class)
+    @Test
+    fun turningRoutingOffKeepsTheHostsOwnRequestToOpenTheChat() {
+        val host = Robolectric.buildActivity(Activity::class.java).setup().get()
+        for (offAfterResume in listOf(false, true)) {
+            // In the background (the callbacks of this test's application are not registered): the host's own call
+            // waits for the next resume.
+            ApplicationLifecycle.currentActivity?.let { ApplicationLifecycle.onActivityPaused(it) }
+            assertTrue(Reception.handlePushNotification(mapOf(PushNotifications.PAYLOAD_KEY to "c1"), openChat = true))
+            shadowOf(Looper.getMainLooper()).idle()
+            if (!offAfterResume) Reception.setNotificationRoutingEnabled(false)
+            ApplicationLifecycle.noteCurrentActivity(host)
+            if (offAfterResume) Reception.setNotificationRoutingEnabled(false)
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(ReceptionChatActivity::class.java.name, shadowOf(host).nextStartedActivity?.component?.className)
+            ChatPresenter.dismiss()
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(3))
+            Reception.setNotificationRoutingEnabled(true)
+        }
+    }
 }

@@ -275,7 +275,8 @@ The plugins' `configure(handlesNotifications: false)` calls the internal
 pending tap and cancels the post-configure drain and a tap's chat that waits for the next resume, also one whose
 activity already resumed but whose open has not run yet (a routing generation captured when the open is queued), and `ReceptionNotificationActivity` then only brings the app forward
 (restores its task or starts the launcher) without opening the chat. `true` (the default) routes taps again. The app's
-own `handlePushNotification(data, openChat)` calls are unaffected. Plugins that let the host own notifications call
+own `handlePushNotification(data, openChat)` calls are unaffected, also one that waits for the next resume: a waiting
+open remembers whether a tap or the host asked for it, and only a tap's is cancelled (a tap never replaces the host's). Plugins that let the host own notifications call
 `setNotificationRoutingEnabled(false)` before `configure`, because the flag lives in memory and a tap that arrived
 before configure would otherwise open the chat.
 
