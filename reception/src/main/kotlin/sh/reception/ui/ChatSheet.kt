@@ -44,7 +44,7 @@ import sh.reception.tertiary
 
 /**
  * The chat in a full-height Material bottom sheet. With the keyboard up only a drag from the header may close it;
- * each touch decides that where it begins ([ChatPresenter.locksSheet]), and the decision holds until the sheet settles.
+ * each touch decides that where it begins ([SheetGestures.locksSheet]), and the decision holds until the sheet settles.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -80,8 +80,8 @@ internal fun ChatSheet(dismissRequested: Boolean, onDismissed: () -> Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                     release?.cancel()
-                    val onHeader = ChatPresenter.isSheetHandle(down.position.y, header)
-                    locked = ChatPresenter.locksSheet(keyboardVisible, onHeader)
+                    val onHeader = SheetGestures.isSheetHandle(down.position.y, header)
+                    locked = SheetGestures.locksSheet(keyboardVisible, onHeader)
                     // With the keyboard up, the first drag would only put it away; closing it here lets one drag close.
                     if (keyboardVisible && onHeader) {
                         focus.clearFocus()
