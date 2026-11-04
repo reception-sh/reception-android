@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Reception Example</string>
+    <string name="support">Support</string>
+    <string name="sdk_version">Reception SDK %1$s</string>
+</resources>

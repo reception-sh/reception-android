@@ -10,3 +10,6 @@ build/
 *.iml
 .kotlin/
 .DS_Store
+
+# Firebase configuration of the test app, copied from .local/
+example/google-services.json
