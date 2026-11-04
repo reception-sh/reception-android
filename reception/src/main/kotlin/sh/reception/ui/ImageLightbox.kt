@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import android.view.WindowManager
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -27,9 +29,11 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import kotlinx.coroutines.launch
 import sh.reception.Theme
 import sh.reception.lightboxBackground
@@ -44,6 +48,9 @@ import kotlin.math.abs
 internal fun ImageLightbox(attachment: Attachment, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        // A dialog window stops at the status bar; the photo's black backdrop covers the whole screen like iOS.
+        val window = (LocalView.current.parent as? DialogWindowProvider)?.window
+        SideEffect { window?.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS) }
         var scale by remember { mutableFloatStateOf(Theme.MINIMUM_ZOOM) }
         var offset by remember { mutableStateOf(Offset.Zero) }
         var size by remember { mutableStateOf(IntSize.Zero) }
