@@ -16,8 +16,16 @@ import java.lang.ref.WeakReference
 internal object ChatPresenter {
     /** A started sheet that has not been created yet counts as presented for this long. */
     private const val START_WINDOW_MILLIS = 2_000L
+    /** The launch intent's extra that names the presentation a sheet belongs to. */
+    const val EXTRA_PRESENTATION = "sh.reception.presentation"
     private var sheet: WeakReference<ReceptionChatActivity>? = null
     private var requestedAt: Long? = null
+
+    /**
+     * Advanced by every presentation and every dismissal. A sheet whose launch carries an older value was closed,
+     * cancelled by logout or reconfiguration, or superseded before it was created, and finishes at once.
+     */
+    private var presentation = 0
 
     /** `Reception.openChat()`. */
     fun open() {
@@ -47,19 +55,28 @@ internal object ChatPresenter {
             return
         }
         ReceptionAppearance.configuration.activate()
+        presentation += 1
         try {
-            host.startActivity(Intent(host, ReceptionChatActivity::class.java))
+            host.startActivity(Intent(host, ReceptionChatActivity::class.java).putExtra(EXTRA_PRESENTATION, presentation))
             requestedAt = SystemClock.uptimeMillis()
         } catch (_: ActivityNotFoundException) {
             Log.error { "Chat presentation failed, ReceptionChatActivity missing from the merged manifest" }
         }
     }
 
-    /** A new sheet, or the same sheet recreated after a configuration change. */
-    fun attached(activity: ReceptionChatActivity, recreated: Boolean) {
+    /**
+     * A new sheet, or the same sheet recreated after a configuration change, which keeps its launch intent and so its
+     * presentation. Answers false for a sheet of a cancelled or superseded presentation, which must finish.
+     */
+    fun attached(activity: ReceptionChatActivity, presentation: Int, recreated: Boolean): Boolean {
+        if (presentation != this.presentation) {
+            Log.debug { "Chat presentation cancelled before it appeared" }
+            return false
+        }
         sheet = WeakReference(activity)
         requestedAt = null
         if (!recreated) Log.debug { "Chat presented" }
+        return true
     }
 
     /** The sheet closed by drag, scrim tap or Back, or its activity ended. */
@@ -69,10 +86,12 @@ internal object ChatPresenter {
         if (!activity.isChangingConfigurations) Log.debug { "Chat dismissed" }
     }
 
-    /** Answers false when the SDK has not presented the chat. */
+    /** Also cancels a requested sheet that has not been created yet. Answers false when the SDK has not presented the chat. */
     fun dismiss(): Boolean {
+        val requested = requestedAt != null
         requestedAt = null
-        val activity = sheet?.get() ?: return false
+        presentation += 1
+        val activity = sheet?.get() ?: return requested.also { if (it) Log.debug { "Chat presentation cancelled" } }
         sheet = null
         activity.dismiss()
         Log.debug { "Chat dismissed" }

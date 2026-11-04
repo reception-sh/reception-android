@@ -18,7 +18,11 @@ internal class ReceptionChatActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        ChatPresenter.attached(this, recreated = savedInstanceState != null)
+        val presentation = intent.getIntExtra(ChatPresenter.EXTRA_PRESENTATION, -1)
+        if (!ChatPresenter.attached(this, presentation, recreated = savedInstanceState != null)) {
+            finish()
+            return
+        }
         setContent {
             ChatSheet(dismissRequested = dismissRequested, onDismissed = ::finishSheet)
         }
