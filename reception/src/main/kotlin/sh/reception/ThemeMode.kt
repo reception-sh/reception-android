@@ -1,7 +1,9 @@
 package sh.reception
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.compositionLocalOf
@@ -20,7 +22,7 @@ internal val LocalReceptionIncreasedContrast = compositionLocalOf { false }
 /**
  * The chat's mode: the appearance's color scheme when set (a remote "system" clears only that override), else the
  * enclosing host `MaterialTheme` for an embedded chat (its background decides, because Material 3 color schemes carry
- * no dark flag), else the system setting for the SDK's own sheet.
+ * no dark flag), else the system setting: for the SDK's own sheet and for an embedded chat without a host theme.
  */
 internal fun resolveDarkMode(preferred: Reception.ColorScheme?, hostBackground: Color?, systemDark: Boolean): Boolean =
     when (preferred) {
@@ -34,9 +36,32 @@ internal fun resolveDarkMode(preferred: Reception.ColorScheme?, hostBackground: 
 @ReadOnlyComposable
 internal fun receptionDarkMode(embedded: Boolean): Boolean = resolveDarkMode(
     Theme.appearance.preferredColorScheme,
-    if (embedded) MaterialTheme.colorScheme.background else null,
+    hostBackground(embedded, MaterialTheme.colorScheme),
     isSystemInDarkTheme(),
 )
+
+/**
+ * The background of the host theme an embedded chat follows; null for the SDK's sheet and for an embedded chat under
+ * Material 3's baseline scheme, which is what a host without a theme of its own gets (SPEC.md, Appearance).
+ */
+internal fun hostBackground(embedded: Boolean, scheme: ColorScheme): Color? =
+    scheme.background.takeIf { embedded && !scheme.isBaseline() }
+
+private val baselineScheme = lightColorScheme()
+
+/** Equal to `lightColorScheme()` in every color role; Material 3's `ColorScheme` has no `equals` of its own. */
+internal fun ColorScheme.isBaseline(): Boolean = roles(this) == roles(baselineScheme)
+
+private fun roles(scheme: ColorScheme): List<Color> = with(scheme) {
+    listOf(
+        primary, onPrimary, primaryContainer, onPrimaryContainer, inversePrimary, secondary, onSecondary,
+        secondaryContainer, onSecondaryContainer, tertiary, onTertiary, tertiaryContainer, onTertiaryContainer,
+        background, onBackground, surface, onSurface, surfaceVariant, onSurfaceVariant, surfaceTint, inverseSurface,
+        inverseOnSurface, error, onError, errorContainer, onErrorContainer, outline, outlineVariant, scrim,
+        surfaceBright, surfaceDim, surfaceContainer, surfaceContainerHigh, surfaceContainerHighest, surfaceContainerLow,
+        surfaceContainerLowest,
+    )
+}
 
 internal val Theme.isDark: Boolean
     @Composable @ReadOnlyComposable get() = LocalReceptionDarkMode.current ?: receptionDarkMode(embedded = true)

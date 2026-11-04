@@ -21,6 +21,7 @@ import sh.reception.LocalReceptionIncreasedContrast
 import sh.reception.ReceptionAppearance
 import sh.reception.ReceptionLocalization
 import sh.reception.Theme
+import sh.reception.hostBackground
 import sh.reception.resolveDarkMode
 import sh.reception.systemBlueDark
 import sh.reception.systemBlueLight
@@ -33,9 +34,8 @@ import sh.reception.systemBlueLight
 @Composable
 internal fun ChatRoot(embedded: Boolean, content: @Composable () -> Unit) {
     val appearance = ReceptionAppearance.resolved
-    val hostThemed = embedded && !MaterialTheme.colorScheme.isBaseline()
-    val dark = resolveDarkMode(appearance.preferredColorScheme,
-        if (hostThemed) MaterialTheme.colorScheme.background else null, isSystemInDarkTheme())
+    val hostBackground = hostBackground(embedded, MaterialTheme.colorScheme)
+    val dark = resolveDarkMode(appearance.preferredColorScheme, hostBackground, isSystemInDarkTheme())
     val increasedContrast by ContrastMonitor.increasedContrast.collectAsState()
     val provided: @Composable () -> Unit = {
         CompositionLocalProvider(
@@ -46,7 +46,8 @@ internal fun ChatRoot(embedded: Boolean, content: @Composable () -> Unit) {
             content = content,
         )
     }
-    if (hostThemed) provided() else MaterialTheme(colorScheme = sdkColorScheme(dark), content = provided)
+    // The host's own theme keeps its accent; otherwise the SDK's scheme supplies the sheet's default accent.
+    if (hostBackground != null) provided() else MaterialTheme(colorScheme = sdkColorScheme(dark), content = provided)
 }
 
 @Composable
@@ -56,11 +57,4 @@ private fun sdkColorScheme(dark: Boolean): ColorScheme {
         return if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     }
     return if (dark) darkColorScheme(primary = Theme.systemBlueDark) else lightColorScheme(primary = Theme.systemBlueLight)
-}
-
-/** Material 3's baseline scheme is what a host gets without a theme of its own; it counts as no host theme. */
-private fun ColorScheme.isBaseline(): Boolean {
-    val baseline = lightColorScheme()
-    return primary == baseline.primary && background == baseline.background && surface == baseline.surface &&
-        secondary == baseline.secondary
 }
