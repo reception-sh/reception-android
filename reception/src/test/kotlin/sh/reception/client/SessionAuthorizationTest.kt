@@ -7,6 +7,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withContext
@@ -34,6 +35,8 @@ import org.robolectric.RuntimeEnvironment
 import sh.reception.ReceptionState
 import sh.reception.model.EmptyResponse
 import java.util.Collections
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -143,6 +146,36 @@ class SessionAuthorizationTest {
         assertEquals(1, requests.count { it.path == "/v1/devices" })
         assertEquals(SessionCredentials("secret-1"), session.storedCredentials())
         assertNull(session.registration)
+    }
+
+    @Test
+    fun callersThatReadMissingCredentialsAfterAnUnreadableStoreRegisterOnce() = runTest(dispatcher) {
+        respond = { json(201, """{"token":"t","sessionSecret":"s"}""") }
+        // Every read waits for the test's answer; the storage thread runs them one at a time in order.
+        val answers = LinkedBlockingQueue<SecureStore.ReadResult>()
+        val reads = Semaphore(0)
+        val gated = DeviceStore.CredentialStorage(
+            read = { reads.release(); answers.take() },
+            save = storage.save,
+            delete = storage.delete,
+        )
+        val store = DeviceStore(context, "app_test${System.nanoTime()}", credentialStorage = gated)
+        val session = DeviceSession(ReceptionAPI(APP_ID, server.url("/")), store, refreshSleep = {})
+        answers.put(SecureStore.ReadResult.Unavailable)
+        session.prepared()
+        assertTrue(session.credentialsUnreadable)
+        val callers = List(2) { async { withContext(RequestContext(launch = true)) { session.token() } } }
+        runCurrent()
+        // The first reads of both callers fail again, so both go on to read once more before registering.
+        answers.put(SecureStore.ReadResult.Unavailable)
+        answers.put(SecureStore.ReadResult.Unavailable)
+        // Both second reads are queued: the first one is on the storage thread, the other caller has caught up.
+        withContext(Dispatchers.IO) { assertTrue(reads.tryAcquire(4, 5, TimeUnit.SECONDS)) }
+        runCurrent()
+        answers.put(SecureStore.ReadResult.Missing)
+        answers.put(SecureStore.ReadResult.Missing)
+        assertEquals(listOf("t", "t"), callers.awaitAll())
+        assertEquals(1, requests.count { it.path == "/v1/devices" })
     }
 
     @Test

@@ -65,6 +65,9 @@ internal suspend fun DeviceSession.token(): String {
     accessToken?.let { return it }
     registration?.let { return it.awaitShared() }
     if (storedCredentials() != null) return renewedToken(replacing = null)
+    // The read may suspend: a caller that read at the same time can have started the registration meanwhile.
+    accessToken?.let { return it }
+    registration?.let { return it.awaitShared() }
     if (context.probe != null) registrationAllowed = true
     if (!registrationAllowed && !context.automation && !context.launch) throw ReceptionAPIError("chat_not_started", 0)
     return register()
@@ -76,6 +79,9 @@ internal suspend fun DeviceSession.renewedToken(replacing: String?): String {
     accessToken?.takeIf { it != replacing }?.let { return it }
     refresh?.let { return it.awaitShared() }
     val secret = storedCredentials()?.sessionSecret ?: throw ReceptionAPIError("session_revoked", 401)
+    // The read may suspend: a concurrent caller can have started the renewal meanwhile.
+    accessToken?.takeIf { it != replacing }?.let { return it }
+    refresh?.let { return it.awaitShared() }
     // A renewal limit fails callers at once instead of holding their requests for the whole wait.
     admit(listOf(RetryScope.SESSION))
     // The renewal belongs to the session: only its own end clears it, so a cancelled caller never lets a second
