@@ -1,9 +1,13 @@
 package sh.reception.client
 
 import android.graphics.Bitmap
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -11,6 +15,9 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import sh.reception.model.TeamMember
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /** The cache restore reads, decodes and publishes without holding up the thread that created the profiles. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -21,9 +28,31 @@ class TeamProfilesTest {
     private val scope = TestScope(dispatcher)
     private val photos = mapOf(1 to Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888), 2 to Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888))
 
-    private fun profiles(cache: TeamProfileCache, download: suspend (String) -> ByteArray? = { null }) = TeamProfiles(
-        scope, cache, download, decode = { photos[it.first().toInt()] }, storage = dispatcher, decoding = dispatcher,
-    )
+    // A storage thread the test can hold: a block queued first keeps everything after it waiting until [releaseStorage].
+    private val storageThread = Executors.newSingleThreadExecutor()
+    private val heldStorage = storageThread.asCoroutineDispatcher()
+    private val storageHeld = CountDownLatch(1)
+
+    private fun profiles(
+        cache: TeamProfileCache,
+        scope: CoroutineScope = this.scope,
+        storage: CoroutineDispatcher = dispatcher,
+        download: suspend (String) -> ByteArray? = { null },
+    ) = TeamProfiles(scope, cache, download, decode = { photos[it.first().toInt()] }, storage = storage, decoding = dispatcher)
+
+    private fun holdStorage() = storageThread.execute { storageHeld.await() }
+
+    /** Lets the held storage thread run and waits until everything queued on it has finished. */
+    private fun releaseStorage() {
+        storageHeld.countDown()
+        storageThread.submit {}.get(5, TimeUnit.SECONDS)
+    }
+
+    @After
+    fun tearDown() {
+        storageHeld.countDown()
+        storageThread.shutdown()
+    }
 
     private fun cacheWithTwoPhotos(): TeamProfileCache {
         TeamProfileCache(context, "team-test").apply {
@@ -50,7 +79,7 @@ class TeamProfilesTest {
     @Test
     fun teamDetailsBeforeTheRestoreKeepTheirNamesAndUseOnlyTheMatchingCachedPhoto() {
         val downloads = mutableListOf<String>()
-        val profiles = profiles(cacheWithTwoPhotos()) { downloads.add(it); null }
+        val profiles = profiles(cacheWithTwoPhotos(), download = { downloads.add(it); null })
         profiles.update(mapOf(
             "a" to TeamMember("a", "Ann B.", photoUrl = "https://photos/pa", photoId = "pa"),
             "b" to TeamMember("b", "Ben", photoUrl = "https://photos/pb2", photoId = "pb2"),
@@ -61,5 +90,32 @@ class TeamProfilesTest {
         assertEquals(mapOf("a" to photos[1]), profiles.images.value)
         assertEquals("Ann B.", profiles.members.value["a"]?.name)
         assertTrue("https://photos/pb2" in downloads)
+    }
+
+    @Test
+    fun aCachedPhotoRestoredAfterItsDownloadFailedIsStillUsed() {
+        holdStorage()
+        val profiles = profiles(cacheWithTwoPhotos(), storage = heldStorage, download = { null })
+        profiles.update(mapOf("a" to TeamMember("a", "Ann", photoUrl = "https://photos/pa", photoId = "pa")))
+        // The download fails before the cache has loaded.
+        scope.testScheduler.advanceUntilIdle()
+        assertTrue(profiles.images.value.isEmpty())
+
+        releaseStorage()
+        scope.testScheduler.advanceUntilIdle()
+
+        assertEquals(mapOf("a" to photos[1]), profiles.images.value)
+    }
+
+    @Test
+    fun aCachedPhotoIsNotRestoredWhenTheTeamHidesPhotos() {
+        holdStorage()
+        val profiles = profiles(cacheWithTwoPhotos(), storage = heldStorage)
+        profiles.update(mapOf("a" to TeamMember("a", "Ann", photoUrl = "https://photos/pa", photoId = "pa")),
+            showsPhotos = false)
+        releaseStorage()
+        scope.testScheduler.advanceUntilIdle()
+
+        assertTrue(profiles.images.value.isEmpty())
     }
 }

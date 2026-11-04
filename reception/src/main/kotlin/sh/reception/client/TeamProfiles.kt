@@ -47,6 +47,7 @@ internal class TeamProfiles(
     private val pending = mutableMapOf<String, Pending>()
     private var attempts = 0
     private var updated = false
+    private var showsPhotos = true
     private var lastWrite: Job? = null
 
     init {
@@ -62,8 +63,8 @@ internal class TeamProfiles(
         val images = withContext(decoding) {
             entries.mapNotNull { (id, entry) -> entry.data?.let(decode)?.let { id to it } }.toMap()
         }
-        // Team details that arrived meanwhile are newer: they keep their names, and a cached photo is used only when
-        // it is exactly the one they are downloading.
+        // Team details that arrived meanwhile are newer: they keep their names, and a cached photo is used only when it
+        // is the photo they name, whatever happened to its download.
         if (!updated) {
             mutableMembers.value = entries.mapNotNull { (id, entry) ->
                 entry.name?.let { id to TeamMember(id, it, photoId = entry.photoId) }
@@ -71,7 +72,11 @@ internal class TeamProfiles(
         }
         for ((id, image) in images) {
             val photoId = entries[id]?.photoId
-            val wanted = if (updated) photoId != null && pending[id]?.key == photoId else id !in mutableImages.value
+            val wanted = if (updated) {
+                showsPhotos && photoId != null && mutableMembers.value[id]?.photoId == photoId && loadedKeys[id] != photoId
+            } else {
+                id !in mutableImages.value
+            }
             if (!wanted) continue
             pending.remove(id)?.job?.cancel()
             mutableImages.value += id to image
@@ -91,6 +96,7 @@ internal class TeamProfiles(
 
     fun update(team: Map<String, TeamMember>, showsPhotos: Boolean = true) {
         updated = true
+        this.showsPhotos = showsPhotos
         mutableMembers.value = team
         write { it.update(team, showsPhotos) }
         val photos = if (showsPhotos) team else emptyMap()
