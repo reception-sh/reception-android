@@ -35,3 +35,6 @@
     public java.lang.String toLanguageTags();
 }
 -dontwarn androidx.appcompat.app.AppCompatDelegate
+
+# The embedded chat recognizes a Compose Dialog's window by its content view's class (ui/EmbeddedKeyboardMode).
+-keepnames class androidx.compose.ui.window.DialogLayout

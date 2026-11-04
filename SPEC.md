@@ -149,7 +149,10 @@ insets at all, so the composer would stay behind the keyboard; while a chat is e
 per window: the window is the one that shows the composition, so a chat in a Compose `Dialog` or a platform dialog
 adjusts that dialog's window and never the activity's, `ui/KeyboardWindow`; a Compose `Dialog` measures its content
 against the display, so it cannot shrink with a resized window: its window adjusts nothing from Android 11, where the
-IME insets alone lift the composer, and pans before, where only a resize would send IME insets; only the adjust bits go back, and only while
+IME insets alone lift the composer, and pans before, where only a resize would send IME insets; a Compose `Dialog` is
+recognized by its content view's class, `DialogLayout`, whose name the consumer R8 rules keep, while every other
+`DialogWindowProvider` (a Material 3 `ModalBottomSheet` lays out across its whole window and resizes with it) follows
+the resize rule; only the adjust bits go back, and only while
 the window still carries the SDK's `adjustResize`, so a mode or state flags the host set meanwhile stay; an
 unspecified mode comes back as what Android resolves it to, resize with a shown scroll container, else pan, because
 Android keeps the last adjust mode when it is asked for "unspecified" again). On a Compose `Dialog` window this

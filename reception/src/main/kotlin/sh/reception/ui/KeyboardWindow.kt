@@ -6,15 +6,17 @@ import android.view.WindowManager
 import androidx.compose.ui.window.DialogWindowProvider
 
 /**
- * The window that shows a view, for its soft-input mode: a Compose `Dialog`'s, the activity's, or another window the
- * view's root was added with (a platform dialog's), reached through the root's window layout parameters, which are the
- * same object as that window's attributes. [root] identifies the window. Main thread only.
+ * The window that shows a view, for its soft-input mode: a [DialogWindowProvider]'s (a Compose `Dialog`, a Material 3
+ * `ModalBottomSheet`), the activity's, or another window the view's root was added with (a platform dialog's), reached
+ * through the root's window layout parameters, which are the same object as that window's attributes. [root]
+ * identifies the window. Only finds the window; [EmbeddedKeyboardMode] decides what it does for the keyboard. Main
+ * thread only.
  */
 internal class KeyboardWindow private constructor(
     val root: View,
     private val window: Window?,
-    /** A Compose `Dialog`'s window, whose content is measured against the display and never shrinks with the window. */
-    val isComposeDialog: Boolean = false,
+    /** The [DialogWindowProvider] view whose window this is; null for other windows. */
+    val provider: View? = null,
 ) {
     var softInputMode: Int
         get() = window?.attributes?.softInputMode ?: parameters?.softInputMode ?: 0
@@ -34,7 +36,7 @@ internal class KeyboardWindow private constructor(
         fun of(view: View): KeyboardWindow? {
             var current: Any? = view
             while (current is View) {
-                if (current is DialogWindowProvider) return KeyboardWindow(current.window.decorView, current.window, isComposeDialog = true)
+                if (current is DialogWindowProvider) return KeyboardWindow(current.window.decorView, current.window, current)
                 current = current.parent
             }
             val root = view.rootView.takeIf { view.isAttachedToWindow } ?: return null

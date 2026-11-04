@@ -1,6 +1,7 @@
 package sh.reception.ui
 
 import android.view.Window
+import android.widget.FrameLayout
 import android.view.WindowManager.LayoutParams
 import androidx.activity.ComponentActivity
 import androidx.activity.ComponentDialog
@@ -9,6 +10,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.Dialog
@@ -111,5 +114,47 @@ class EmbeddedKeyboardWindowsTest {
         ShadowLooper.idleMainLooper()
         assertEquals(LayoutParams.SOFT_INPUT_ADJUST_PAN, window.adjust)
         assertEquals(LayoutParams.SOFT_INPUT_ADJUST_PAN, activity.window.adjust)
+    }
+
+    @Test
+    @Config(sdk = [29])
+    @OptIn(ExperimentalMaterial3Api::class)
+    fun aChatInAModalBottomSheetResizesItsWindowBeforeAndroid11() {
+        // The sheet lays out across its whole window and resizes with it; only resizing sends IME insets here.
+        val activity = Robolectric.buildActivity(ComponentActivity::class.java).setup().get()
+        activity.window.setSoftInputMode(LayoutParams.SOFT_INPUT_ADJUST_PAN)
+        var sheetWindow: Window? = null
+        activity.setContent {
+            ModalBottomSheet(onDismissRequest = {}) {
+                sheetWindow = (LocalView.current.parent as DialogWindowProvider).window
+                EmbeddedKeyboardAdjustment()
+            }
+        }
+        ShadowLooper.idleMainLooper()
+        val window = checkNotNull(sheetWindow)
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_RESIZE, window.adjust)
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_PAN, activity.window.adjust)
+
+    }
+
+    @Test
+    @Config(sdk = [29])
+    fun anotherDialogWindowProviderFollowsTheResizeRule() {
+        // A dialog whose content view provides its window, as a bottom sheet's does, but which pans.
+        val activity = Robolectric.buildActivity(ComponentActivity::class.java).setup().get()
+        val dialog = ComponentDialog(activity)
+        val window = checkNotNull(dialog.window)
+        window.setSoftInputMode(LayoutParams.SOFT_INPUT_ADJUST_PAN)
+        val content = object : FrameLayout(activity), DialogWindowProvider {
+            override val window: Window = window
+        }
+        content.addView(ComposeView(activity).apply { setContent { EmbeddedKeyboardAdjustment() } })
+        dialog.setContentView(content)
+        dialog.show()
+        ShadowLooper.idleMainLooper()
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_RESIZE, window.adjust)
+        dialog.dismiss()
+        ShadowLooper.idleMainLooper()
+        assertEquals(LayoutParams.SOFT_INPUT_ADJUST_PAN, window.adjust)
     }
 }

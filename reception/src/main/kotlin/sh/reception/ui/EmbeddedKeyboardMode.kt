@@ -28,9 +28,10 @@ internal fun EmbeddedKeyboardAdjustment() {
  * Android 11 a window that adjusts nothing gets no IME insets at all, so the composer stays behind the keyboard. While a
  * chat is embedded in such a window, the window resizes instead. A Compose `Dialog` cannot resize its content (it is
  * measured against the display, so it would overflow the shrunk window): from Android 11 it adjusts nothing and the
- * insets alone lift the composer, before it pans, which then gives no IME insets. Counted per window (the activity's, a
- * dialog's); when the last embedded chat in it leaves, the host's adjust mode comes back, unless the host changed the
- * mode since. Main thread only.
+ * insets alone lift the composer, before it pans, which then gives no IME insets. Other dialog windows (a Material 3
+ * `ModalBottomSheet` lays out across its whole window and resizes with it) follow the resize rule. Counted per window
+ * (the activity's, a dialog's); when the last embedded chat in it leaves, the host's adjust mode comes back, unless the
+ * host changed the mode since. Main thread only.
  */
 internal object EmbeddedKeyboardMode {
     /** [installed] is the adjust mode the SDK set, null when it left the window alone. */
@@ -67,6 +68,13 @@ internal object EmbeddedKeyboardMode {
     // turns on the IME insets), and every window of an edge-to-edge activity (the chat's case) gets the insets instead.
     @Suppress("DEPRECATION")
     private const val RESIZE = LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+
+    /** Compose UI's `Dialog` content view; host apps keep its name (consumer-rules.pro). */
+    private const val COMPOSE_DIALOG_LAYOUT = "androidx.compose.ui.window.DialogLayout"
+
+    /** A Compose `Dialog`'s window: its content is measured against the display and never shrinks with the window. */
+    private val KeyboardWindow.isComposeDialog: Boolean
+        get() = provider?.javaClass?.name == COMPOSE_DIALOG_LAYOUT
 
     /** The adjust mode under which the chat's IME insets lift the composer exactly once; null keeps the host's. */
     private fun target(window: KeyboardWindow, adjust: Int): Int? {
