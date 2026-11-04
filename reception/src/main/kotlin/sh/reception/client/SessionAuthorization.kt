@@ -1,7 +1,9 @@
 package sh.reception.client
 
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.serialization.Serializable
 import sh.reception.FacadeState
@@ -55,18 +57,21 @@ internal suspend fun DeviceSession.renewedToken(replacing: String?): String {
     val secret = storedCredentials()?.sessionSecret ?: throw ReceptionAPIError("session_revoked", 401)
     // A renewal limit fails callers at once instead of holding their requests for the whole wait.
     admit(listOf(RetryScope.SESSION))
-    val task = scope.async(RequestContext.current(), start = CoroutineStart.LAZY) {
-        refreshBackoff?.awaitShared()
-        ensureActive()
-        admit(listOf(RetryScope.SESSION))
-        refreshToken(secret)
+    // The renewal belongs to the session: only its own end clears it, so a cancelled caller never lets a second
+    // renewal start (each one invalidates the previous token).
+    lateinit var task: Deferred<String>
+    task = scope.async(RequestContext.current(), start = CoroutineStart.LAZY) {
+        try {
+            refreshBackoff?.awaitShared()
+            ensureActive()
+            admit(listOf(RetryScope.SESSION))
+            refreshToken(secret)
+        } finally {
+            if (refresh === task) refresh = null
+        }
     }
     refresh = task
-    try {
-        return task.awaitShared()
-    } finally {
-        if (refresh === task) refresh = null
-    }
+    return task.awaitShared()
 }
 
 /** Keeps registrations and identity changes retryable until their credentials are safely stored. */
@@ -88,43 +93,49 @@ private class TokenResponse(val token: String)
 private class SessionSecretInput(val sessionSecret: String)
 
 private suspend fun DeviceSession.register(): String {
-    val task = scope.async(RequestContext.current(), start = CoroutineStart.LAZY) {
-        Log.debug { "Device registration started" }
-        val badge = ReceptionState.updatesAppBadge
-        val paywalls = FacadeState.paywalls
-        val language = ReceptionLocalization.appLanguage
-        val screens = FacadeState.screens
-        val subscribed = FacadeState.subscribed
-        val identityToken = stagedIdentityToken
-        val response = try {
-            api.request<RegistrationResponse>("devices", "POST",
-                body = DeviceInfo.payload(store.context, store.pending, identityToken?.value, registration = true))
-        } catch (error: ReceptionAPIError) {
-            // The send fails and keeps Retry; the next registration goes without this token.
-            if (error.rejectsIdentityToken && identityToken != null) identityRejected(identityToken, error)
-            throw error
+    // Like a renewal, the registration is cleared only when it ends, never by a cancelled caller.
+    lateinit var task: Deferred<String>
+    task = scope.async(RequestContext.current(), start = CoroutineStart.LAZY) {
+        try {
+            registerDevice()
+        } finally {
+            if (registration === task) registration = null
         }
-        ensureActive()
-        if (invalidated) throw ReceptionAPIError("cancelled", 0)
-        accessToken = response.token
-        credentials = SessionCredentials(response.sessionSecret, response.verifiedUserId)
-        credentialsUnsaved = true
-        identityToken?.let { ReceptionIdentity.sent(it) }
-        persistPendingCredentials()
-        synchronizedPaywalls = paywalls
-        synchronizedAppBadge = badge
-        synchronizedLanguage = language
-        synchronizedScreens = screens
-        synchronizedSubscribed = subscribed
-        Log.info { "Device registered" }
-        response.token
     }
     registration = task
-    try {
-        return task.awaitShared()
-    } finally {
-        if (registration === task) registration = null
+    return task.awaitShared()
+}
+
+private suspend fun DeviceSession.registerDevice(): String {
+    Log.debug { "Device registration started" }
+    val badge = ReceptionState.updatesAppBadge
+    val paywalls = FacadeState.paywalls
+    val language = ReceptionLocalization.appLanguage
+    val screens = FacadeState.screens
+    val subscribed = FacadeState.subscribed
+    val identityToken = stagedIdentityToken
+    val response = try {
+        api.request<RegistrationResponse>("devices", "POST",
+            body = DeviceInfo.payload(store.context, store.pending, identityToken?.value, registration = true))
+    } catch (error: ReceptionAPIError) {
+        // The send fails and keeps Retry; the next registration goes without this token.
+        if (error.rejectsIdentityToken && identityToken != null) identityRejected(identityToken, error)
+        throw error
     }
+    currentCoroutineContext().ensureActive()
+    if (invalidated) throw ReceptionAPIError("cancelled", 0)
+    accessToken = response.token
+    credentials = SessionCredentials(response.sessionSecret, response.verifiedUserId)
+    credentialsUnsaved = true
+    identityToken?.let { ReceptionIdentity.sent(it) }
+    persistPendingCredentials()
+    synchronizedPaywalls = paywalls
+    synchronizedAppBadge = badge
+    synchronizedLanguage = language
+    synchronizedScreens = screens
+    synchronizedSubscribed = subscribed
+    Log.info { "Device registered" }
+    return response.token
 }
 
 private suspend fun DeviceSession.refreshToken(secret: String): String {

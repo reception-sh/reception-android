@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -34,6 +35,7 @@ import sh.reception.ReceptionState
 import sh.reception.model.EmptyResponse
 import java.util.Collections
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 /** Token renewal, the `401` rules and the registration payload, against a local HTTP server. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -102,6 +104,41 @@ class SessionAuthorizationTest {
         assertEquals(listOf("Bearer fresh", "Bearer fresh"),
             requests.filter { it.path == "/v1/conversation/unread" }.map { it.getHeader("Authorization") })
         assertEquals("""{"sessionSecret":"secret"}""", requests.first { it.path == "/v1/devices/me/token" }.body.readUtf8())
+    }
+
+    @Test
+    fun aCancelledCallerLeavesTheRenewalToTheNextCaller() = runTest(dispatcher) {
+        val issued = AtomicInteger()
+        respond = { json(200, """{"token":"token-${issued.incrementAndGet()}"}""").setBodyDelay(300, TimeUnit.MILLISECONDS) }
+        val session = registeredSession()
+        val first = async { session.renewedToken(replacing = null) }
+        withContext(Dispatchers.IO) { server.takeRequest(5, TimeUnit.SECONDS) }
+        // Backgrounding cancels an unread refresh while its renewal is in flight.
+        first.cancelAndJoin()
+        val second = async { session.renewedToken(replacing = null) }
+        assertEquals("token-1", second.await())
+        assertEquals(1, requests.count { it.path == "/v1/devices/me/token" })
+        assertEquals("token-1", session.accessToken)
+        assertNull(session.refresh)
+    }
+
+    @Test
+    fun aCancelledCallerLeavesTheRegistrationToTheNextCaller() = runTest(dispatcher) {
+        val issued = AtomicInteger()
+        respond = {
+            val number = issued.incrementAndGet()
+            json(201, """{"token":"token-$number","sessionSecret":"secret-$number"}""").setBodyDelay(300, TimeUnit.MILLISECONDS)
+        }
+        val store = DeviceStore(context, "app_test${System.nanoTime()}", credentialStorage = storage)
+        val session = DeviceSession(ReceptionAPI(APP_ID, server.url("/")), store, refreshSleep = {})
+        val first = async { withContext(RequestContext(launch = true)) { session.token() } }
+        withContext(Dispatchers.IO) { server.takeRequest(5, TimeUnit.SECONDS) }
+        first.cancelAndJoin()
+        val second = async { withContext(RequestContext(launch = true)) { session.token() } }
+        assertEquals("token-1", second.await())
+        assertEquals(1, requests.count { it.path == "/v1/devices" })
+        assertEquals(SessionCredentials("secret-1"), session.storedCredentials())
+        assertNull(session.registration)
     }
 
     @Test
