@@ -10,7 +10,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import sh.reception.client.ApplicationLifecycle
 import sh.reception.client.isRegistered
-import sh.reception.client.refreshUnread
 
 /** The unread count `Reception.unreadCount` publishes, and the one refresh of the current session that updates it. */
 internal object ReceptionUnread {
@@ -36,7 +35,7 @@ internal object ReceptionUnread {
             try {
                 do {
                     val current = ReceptionState.session ?: return@launch
-                    current.refreshUnread(updateDevice, probe)
+                    ReceptionState.chatModel().refreshUnread(updateDevice, probe)
                     if (!isActive || current.halt != null || probe || current.retries["unread"]?.delay == null) return@launch
                 } while (ApplicationLifecycle.isActive)
             } finally {

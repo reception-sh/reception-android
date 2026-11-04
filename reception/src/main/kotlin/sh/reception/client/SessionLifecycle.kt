@@ -7,6 +7,9 @@ import kotlinx.coroutines.launch
 import sh.reception.Log
 import sh.reception.ReceptionState
 import sh.reception.ReceptionUnread
+import sh.reception.viewmodel.retryFailedAutomatically
+import sh.reception.viewmodel.startStream
+import sh.reception.viewmodel.suspendAutomaticRequests
 import kotlin.coroutines.cancellation.CancellationException
 
 // A session across launches and foregrounds: launch registration, foreground retries, and the halts that service

@@ -23,8 +23,8 @@ private class UnreadResponse(
 
 /**
  * The iOS `ChatModel.refreshUnread`: an optional device update, then `GET /v1/conversation/unread`. What depends on
- * the chat screen (its visibility, loading when the team wrote first, sending after a probe) goes through
- * `ReceptionState.chat`, which the chat model provides.
+ * the chat screen (its visibility, loading when the team wrote first, sending after a probe) goes to the chat model,
+ * which calls this from `ChatModel.refreshUnread`.
  */
 internal suspend fun DeviceSession.refreshUnread(updateDevice: Boolean = false, probe: Boolean = false) {
     if (!isCurrent || (halt != null && !probe) || !isRegistered || (!probe && retries["unread"]?.stopped == true)) return

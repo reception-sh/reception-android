@@ -3,6 +3,9 @@ package sh.reception
 import android.app.Application
 import android.content.Context
 import androidx.annotation.VisibleForTesting
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import sh.reception.client.ApplicationLifecycle
@@ -16,6 +19,8 @@ import sh.reception.client.Storage
 import sh.reception.client.UnreadMonitor
 import sh.reception.client.recordFailure
 import sh.reception.client.registerIfNeeded
+import sh.reception.viewmodel.ChatModel
+import sh.reception.viewmodel.startStream
 
 /** The facade's internal state and the session lifecycle behind it. Main thread only. */
 internal object ReceptionState {
@@ -24,12 +29,15 @@ internal object ReceptionState {
 
     /** The configured App ID's storage namespace, which includes the service address of a test service. */
     private var namespace: String? = null
-    var chat: ChatHooks? = null
+    /** The chat model of the current session, created on first use and replaced on every reset. */
+    var chat: ChatModel? = null
+        private set
     var updatesAppBadge: Boolean = true
     var onEvent: ((ReceptionEvent) -> Unit)? = null
     var readGeneration: Int = 0
         private set
-    var revision: Int = 0
+    /** Compose state, so an open chat rebuilds with the new session's model after a reset. */
+    var revision: Int by mutableIntStateOf(0)
         private set
     var presentationRevision: Int = 0
         private set
@@ -91,6 +99,7 @@ internal object ReceptionState {
         ReceptionUnread.cancelRefresh()
         session?.deactivate()
         session = null
+        chat?.stop()
         chat = null
         namespace = null
         storageWork = null
@@ -176,6 +185,21 @@ internal object ReceptionState {
         ReceptionAppearance.sessionResumed()
         unreadMonitor.reschedule()
         chat?.startStream()
+    }
+
+    fun chatModel(): ChatModel = chat ?: ChatModel(session).also { chat = it }
+
+    /** A read or a send confirmation makes older unread answers and reads obsolete. */
+    fun invalidateRead(): Int {
+        readGeneration += 1
+        return readGeneration
+    }
+
+    /** A read of generation [generation] reported [count]; a newer read or send has replaced an older one. */
+    fun noteRead(count: Int, generation: Int) {
+        if (generation != readGeneration) return
+        invalidateRead()
+        ReceptionUnread.set(count)
     }
 
     private fun advancePresentationRevision() {

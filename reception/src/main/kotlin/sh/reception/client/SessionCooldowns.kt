@@ -2,6 +2,7 @@ package sh.reception.client
 
 import sh.reception.Log
 import sh.reception.ReceptionState
+import sh.reception.viewmodel.cooldownsChanged
 import kotlin.math.ceil
 
 /**

@@ -5,6 +5,7 @@ import sh.reception.client.DeviceIdentity
 import sh.reception.client.DeviceSession
 import sh.reception.client.IdentityToken
 import sh.reception.client.UserIdentity
+import sh.reception.viewmodel.clearVerificationRequirement
 
 /** Identity, identity tokens and metadata behind the facade. Main thread only. */
 internal object ReceptionIdentity {
