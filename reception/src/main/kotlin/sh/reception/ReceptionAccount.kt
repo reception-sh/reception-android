@@ -39,6 +39,7 @@ internal object ReceptionAccount {
         Log.info { "Logged out, session revocation queued" }
         // The old session's credentials are deleted only after its revocation is stored.
         ReceptionState.resetLocal(after = queued)
+        ReceptionPaywalls.refresh(invalidate = true)
     }
 
     /**
@@ -79,6 +80,7 @@ internal object ReceptionAccount {
         if (ReceptionState.presentationRevision == generation) {
             ReceptionIdentity.forget()
             ReceptionState.resetLocal()
+            ReceptionPaywalls.refresh(invalidate = true)
         }
         ReceptionState.onEvent?.invoke(ReceptionEvent.DataDeleted)
     }

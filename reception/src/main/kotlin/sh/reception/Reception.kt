@@ -223,6 +223,61 @@ public object Reception {
         }
     }
 
+    /**
+     * Every paywall the app offers. Without [paywallAvailability], all of them are available; info-only entries
+     * (`presentable = false`) are always listed and never checked. Invalid and repeated entries are dropped.
+     */
+    @JvmStatic
+    public var paywalls: List<ReceptionPaywall>
+        get() = ReceptionPaywalls.registered
+        set(value) = MainThread.run { ReceptionPaywalls.register(value.toList()) }
+
+    /**
+     * Optional. Decides whether the current user can see a paywall ID, for example by asking your paywall vendor. The
+     * SDK checks at configure, foreground, chat opening and logout, on the main thread.
+     */
+    @JvmStatic
+    public var paywallAvailability: (suspend (String) -> Boolean)?
+        get() = ReceptionPaywalls.availability
+        set(value) = MainThread.run { ReceptionPaywalls.availability = value }
+
+    /** [paywalls] filtered by [paywallAvailability]: what agents can send and cards can open, plus info-only entries. */
+    @JvmStatic
+    public val availablePaywalls: List<ReceptionPaywall>
+        get() = ReceptionPaywalls.available
+
+    /**
+     * Checks [paywalls] again with [paywallAvailability]; only the latest check changes [availablePaywalls]. Pass
+     * `invalidate = true` when your vendor reports a purchase, so no paywall stays available until the check completes.
+     */
+    @JvmStatic
+    @JvmOverloads
+    public fun refreshPaywalls(invalidate: Boolean = false): Unit = MainThread.run { ReceptionPaywalls.refresh(invalidate) }
+
+    /** Called on the main thread with the paywall ID when the person taps a paywall card. Present your paywall here. */
+    @JvmStatic
+    public var onPaywall: ((String) -> Unit)?
+        get() = ReceptionPaywalls.onPaywall
+        set(value) = MainThread.run { ReceptionPaywalls.onPaywall = value }
+
+    /**
+     * Places in your app that link cards can open. The SDK reports their IDs, so the dashboard offers them by name. A
+     * screen link closes the chat the SDK presented (a [ReceptionChatView] you placed stays), then runs the screen.
+     */
+    @JvmStatic
+    public var screens: List<ReceptionScreen>
+        get() = ReceptionSettings.screens
+        set(value) = MainThread.run { ReceptionSettings.setScreens(value.toList()) }
+
+    /**
+     * Web links from link cards and message text open in the installed app that claims them, otherwise in a Custom Tab
+     * over the chat. Set false to hand them to the system browser. Default true.
+     */
+    @JvmStatic
+    public var opensWebLinksInApp: Boolean
+        get() = ReceptionSettings.opensWebLinksInApp
+        set(value) = MainThread.run { ReceptionSettings.opensWebLinksInApp = value }
+
     /** Null follows the app's language. Set a BCP 47 tag for an in-app language picker. */
     @JvmStatic
     public var languageOverride: String?

@@ -25,6 +25,19 @@ internal object ReceptionSettings {
         ReceptionState.session?.preferencesChanged()
     }
 
+    /** `Reception.screens`; the device update reports the usable ones. */
+    var screens: List<ReceptionScreen> = emptyList()
+        private set
+
+    /** `Reception.opensWebLinksInApp`. */
+    var opensWebLinksInApp: Boolean = true
+
+    fun setScreens(value: List<ReceptionScreen>) {
+        screens = value
+        FacadeState.screens = ScreenLink.report(value)
+        ReceptionState.session?.preferencesChanged()
+    }
+
     /** Release hosts cannot redirect the SDK: only a debuggable app may use another service. */
     fun configureForTesting(context: Context, appId: String, serviceUrl: String) {
         if (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0) {

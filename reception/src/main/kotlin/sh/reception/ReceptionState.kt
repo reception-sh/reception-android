@@ -88,6 +88,7 @@ internal object ReceptionState {
         unreadMonitor.setActive(active)
         if (active) session?.registerIfNeeded()
         ReceptionAppearance.updateRefresh()
+        ReceptionPaywalls.refresh()
         Log.info { "Configured, SDK ${SDKVersion.current}" }
     }
 
@@ -111,6 +112,7 @@ internal object ReceptionState {
 
     fun applicationBecameActive() {
         ReceptionAppearance.becameActive()
+        ReceptionPaywalls.refresh()
         unreadMonitor.becameActive()
         logoutRevocations?.becameActive()
     }

@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.currentStateAsState
 import sh.reception.ContrastMonitor
 import sh.reception.ReceptionAppearance
 import sh.reception.ReceptionEvent
+import sh.reception.ReceptionPaywalls
 import sh.reception.ReceptionState
 import sh.reception.ReceptionUnread
 import sh.reception.Theme
@@ -76,6 +77,7 @@ private fun ChatLifecycle(model: ChatModel) {
             if (started) return
             started = true
             ContrastMonitor.start(context)
+            ReceptionPaywalls.refresh()
             if (!model.isVisible) ReceptionState.onEvent?.invoke(ReceptionEvent.ChatOpened)
             model.markVisible(true)
         }
