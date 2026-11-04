@@ -5,6 +5,7 @@ import sh.reception.client.ReceptionAPIError
 import sh.reception.client.RequestContext
 import sh.reception.client.RequestProbe
 import sh.reception.client.isRegistered
+import sh.reception.client.revocationSecret
 import sh.reception.client.storedCredentials
 
 /** Push token, logout and data deletion behind the facade. Main thread only. */
@@ -12,7 +13,7 @@ internal object ReceptionAccount {
     private val fcmToken = Regex("^[A-Za-z0-9_:-]{1,4096}$")
 
     fun setPushToken(token: String) {
-        val store = ReceptionState.session?.store ?: run {
+        val session = ReceptionState.session ?: run {
             Log.error { "setPushToken called before configure, ignored" }
             Log.debug { "Push token ignored, not configured" }
             return
@@ -20,20 +21,15 @@ internal object ReceptionAccount {
         if (token.isEmpty()) return Log.debug { "Push token ignored, empty token" }
         if (!fcmToken.matches(token)) return Log.debug { "Push token ignored, not an FCM registration token" }
         // FCM has no sandbox; the service accepts only PRODUCTION for Android devices.
-        store.pending = store.pending.copy(pushToken = token, pushEnvironment = "PRODUCTION")
+        session.stage { it.copy(pushToken = token, pushEnvironment = "PRODUCTION") }
         Log.debug { "Push token staged, ${token.length} chars, production" }
-        if (ReceptionState.session?.isRegistered == true) ReceptionState.refreshUnread(updateDevice = true)
+        if (session.isRegistered) ReceptionState.refreshUnread(updateDevice = true)
     }
 
     /** Dismisses chat, resets locally immediately, and retries revoking the old session while the app is active. */
     fun logout() {
         val session = ReceptionState.session ?: return Log.error { "logout called before configure, ignored" }
-        val queued = try {
-            session.storedCredentials()?.sessionSecret?.let { ReceptionState.logoutRevocations?.enqueue(session.api, it) }
-        } catch (_: ReceptionAPIError) {
-            Log.error { "Session revocation skipped, secure storage unavailable" }
-            null
-        }
+        val queued = ReceptionState.logoutRevocations?.enqueue(session.api, session.revocationSecret())
         ReceptionIdentity.forget()
         Log.info { "Logged out, session revocation queued" }
         // The old session's credentials are deleted only after its revocation is stored.

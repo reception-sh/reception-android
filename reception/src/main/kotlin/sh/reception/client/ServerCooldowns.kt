@@ -38,7 +38,8 @@ internal class ServerCooldowns(
     private val revisions = mutableMapOf<RetryScope, Int>()
     private var expiry: Job? = null
 
-    init {
+    /** Loads the stored waits once the store has opened. */
+    fun restore() {
         // A clock set back must not stretch a stored wait beyond the one day the service can ask for.
         val latest = now() + ReceptionAPI.MAXIMUM_RETRY_AFTER * 1000L
         active = store.cooldowns.filter { it.until > now() }

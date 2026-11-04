@@ -17,6 +17,7 @@ import sh.reception.client.LogoutRevocations
 import sh.reception.client.ReceptionAPI
 import sh.reception.client.ReceptionAPIError
 import sh.reception.client.SecureStore
+import sh.reception.client.Storage
 import sh.reception.client.UnreadMonitor
 import sh.reception.client.isRegistered
 import sh.reception.client.refreshUnread
@@ -45,6 +46,9 @@ internal object ReceptionState {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var refreshTask: Job? = null
 
+    /** The latest deletion on the storage thread; a session opened later waits for it. */
+    private var storageWork: Job? = null
+
     fun configure(context: Context, appId: String) {
         if (!ReceptionAPI.accepts(appId)) {
             Log.error {
@@ -71,14 +75,9 @@ internal object ReceptionState {
         ReceptionIdentity.forget()
         val api = ReceptionAPI(appId)
         ReceptionAppearance.configuration.configure(context, api, appId)
-        var store = DeviceStore(context, appId + DeviceStore.generation(context, appId), deviceScope = appId)
-        if (store.hasConversation && store.credentialsMissing) {
-            // Keystore keys stay on their device, so a restored chat without its session is reset like logout.
-            store.clear()
-            store = DeviceStore(context, appId + DeviceStore.generation(context, appId, rotate = true), deviceScope = appId)
-            Log.info { "Local chat reset, its session is not stored on this device" }
-        }
-        session = DeviceSession(api, store)
+        AppLocale.prepare(context)
+        // The store opens on the storage thread; registration and every request wait for it.
+        session = DeviceSession(api, DeviceStore(context, appId), after = storageWork, checksRestoredChat = true)
         // No badge sync before the first server sync; the server value is the source of truth.
         unreadCount.value = 0
         revision += 1
@@ -111,12 +110,12 @@ internal object ReceptionState {
         val session = session ?: return
         val appId = appId ?: return
         val context = session.store.context
-        session.invalidate(after)
+        val deleted = session.invalidate(storageWork, after)
+        storageWork = deleted
         chat?.stop()
         chat = null
-        this.session = DeviceSession(session.api,
-            DeviceStore(context, appId + DeviceStore.generation(context, appId, rotate = true), deviceScope = appId),
-            halt = session.halt)
+        // The deletion rotates the generation, so the new session opens a fresh namespace after it.
+        this.session = DeviceSession(session.api, DeviceStore(context, appId), halt = session.halt, after = deleted)
         setUnread(0)
         revision += 1
         if (dismissChat) advancePresentationRevision()
@@ -125,9 +124,9 @@ internal object ReceptionState {
     fun resetChat(revision: Int, deviceDeleted: Boolean = false) {
         val session = session ?: return
         if (deviceDeleted) {
-            val identity = session.store.pending
+            val identity = session.pending
             resetLocal(dismissChat = false)
-            this.session?.store?.pending = identity
+            this.session?.stage { identity }
             return
         }
         unreadMonitor.setActive(false)
@@ -135,8 +134,11 @@ internal object ReceptionState {
         session.deactivate()
         chat?.stop()
         session.store.resetChat(revision)
+        val store = session.store
+        val cleared = Storage.launch(storageWork) { store.clearChatFiles() }
+        storageWork = cleared
         chat = null
-        this.session = DeviceSession(session.api, session.store.renewed())
+        this.session = DeviceSession(session.api, store.renewed(), after = cleared)
         setUnread(0)
         this.revision += 1
     }
@@ -150,6 +152,11 @@ internal object ReceptionState {
         Log.info { "Chat reset by the team, local history cleared, revision $resetRevision" }
         resetChat(resetRevision)
         return true
+    }
+
+    /** The current session's stored values are loaded: what configure could not do without them happens now. */
+    fun sessionPrepared() {
+        unreadMonitor.sessionPrepared()
     }
 
     fun sessionResumed() {

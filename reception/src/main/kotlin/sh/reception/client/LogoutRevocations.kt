@@ -66,11 +66,16 @@ internal class LogoutRevocations(private val secureStore: SecureStore) {
     }
 
     /**
-     * Queues the revocation of [sessionSecret]. The returned job ends once the queue is on disk (or, when secure
+     * Queues the revocation of the session secret [sessionSecret] reads. The returned job ends once the queue is on disk (or, when secure
      * storage cannot be read yet, held in memory), so the caller's local reset never outruns it.
      */
-    fun enqueue(api: ReceptionAPI, sessionSecret: String): Job = scope.launch {
-        val entry = Entry(api.appId, sessionSecret)
+    fun enqueue(api: ReceptionAPI, sessionSecret: suspend () -> String?): Job = scope.launch {
+        val secret = try {
+            sessionSecret()
+        } catch (_: ReceptionAPIError) {
+            return@launch Log.error { "Session revocation skipped, secure storage unavailable" }
+        } ?: return@launch
+        val entry = Entry(api.appId, secret)
         if (entry !in entries) {
             entries = entries + entry
             persist()

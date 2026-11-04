@@ -59,9 +59,10 @@ class AppearanceConfigurationTest {
         // A new process reads the snapshot and its ETag; the service answers 304 and nothing changes.
         server.enqueue(MockResponse().setResponseCode(304))
         val restarted = configuration("scope-1")
-        assertEquals(true, restarted.active?.showsCloseButton)
         restarted.refresh()
         assertEquals("\"a\"", server.takeRequest(5, TimeUnit.SECONDS)?.getHeader("If-None-Match"))
+        // The cached snapshot is active from the start; the refresh waited for it to load.
+        assertEquals(true, restarted.active?.showsCloseButton)
         restarted.activate()
         assertEquals(true, restarted.active?.showsCloseButton)
     }

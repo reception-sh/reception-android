@@ -97,7 +97,7 @@ class ImageUploaderTest {
         server.enqueue(MockResponse().setResponseCode(201).setBody("""{"attachmentId":"att_1","uploadUrl":"${server.url("/storage/put?sig=1")}",
             "headers":{"content-type":"image/jpeg","if-match":"\"etag\"","x-amz-meta-checksum":"abc"}}"""))
         server.enqueue(MockResponse().setResponseCode(412))
-        val store = DeviceStore(context, "app_test${System.nanoTime()}")
+        val store = DeviceStore(context, "app_test${System.nanoTime()}").apply { open() }
         store.save(SessionCredentials("secret"))
         val session = DeviceSession(ReceptionAPI("app_0123456789abcdefghijkl", server.url("/")), store, refreshSleep = {})
         session.accessToken = "token"

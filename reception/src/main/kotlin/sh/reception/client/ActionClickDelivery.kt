@@ -12,8 +12,7 @@ import kotlin.coroutines.cancellation.CancellationException
 /** What became of a link card tap; review and paywall receipts carry none. */
 internal enum class ActionOutcome(val raw: String) { HANDLED("handled"), OPENED("opened"), FAILED("failed") }
 
-internal fun DeviceSession.recordActionClick(messageId: String, outcome: ActionOutcome? = null) {
-    if (invalidated) return
+internal fun DeviceSession.recordActionClick(messageId: String, outcome: ActionOutcome? = null) = afterPrepared {
     if (messageId !in store.pendingActionClicks) store.pendingActionClicks = store.pendingActionClicks + messageId
     // A queued success is not replaced by a later failure; the service keeps the better result too.
     if (outcome != null && (outcome != ActionOutcome.FAILED || store.actionClickOutcomes[messageId] == null)) {

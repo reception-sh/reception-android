@@ -44,6 +44,9 @@ class MainActivity : ComponentActivity() {
                         OutlinedButton(onClick = { Reception.identify(userId = "android-example-user", name = "Android Example") }) {
                             Text(stringResource(R.string.identify))
                         }
+                        OutlinedButton(onClick = { Reception.logout() }) {
+                            Text(stringResource(R.string.logout))
+                        }
                         Text(stringResource(R.string.unread_count, unread))
                         Text(
                             text = stringResource(R.string.sdk_version, Reception.version),

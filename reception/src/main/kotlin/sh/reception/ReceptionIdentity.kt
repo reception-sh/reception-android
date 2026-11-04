@@ -2,10 +2,9 @@ package sh.reception
 
 import sh.reception.client.DeviceInputValidation
 import sh.reception.client.DeviceIdentity
+import sh.reception.client.DeviceSession
 import sh.reception.client.IdentityToken
-import sh.reception.client.ReceptionAPIError
 import sh.reception.client.UserIdentity
-import sh.reception.client.storedCredentials
 
 /** Identity, identity tokens and metadata behind the facade. Main thread only. */
 internal object ReceptionIdentity {
@@ -19,20 +18,17 @@ internal object ReceptionIdentity {
     fun identify(userId: String?, name: String?, email: String?) {
         val session = ReceptionState.session ?: return Log.error { "identify called before configure, ignored" }
         if (userId != null) {
-            val verified = try {
-                session.storedCredentials()?.verifiedUserId
-            } catch (_: ReceptionAPIError) {
-                null
-            }
-            if (verified != null && !UserIdentity.matches(verified, userId)) {
-                Log.error { "identify(userId) does not match the verified user; call logout() when users switch" }
+            session.afterPrepared {
+                val verified = session.credentials?.verifiedUserId
+                if (verified != null && !UserIdentity.matches(verified, userId)) {
+                    Log.error { "identify(userId) does not match the verified user; call logout() when users switch" }
+                }
             }
         }
-        session.store.pending = session.store.pending.copy(
-            externalUserId = DeviceInputValidation.checked(userId, "userId", 255),
-            name = DeviceInputValidation.checked(name, "name", 200),
-            email = DeviceInputValidation.checked(email, "email", 254),
-        )
+        val externalUserId = DeviceInputValidation.checked(userId, "userId", 255)
+        val checkedName = DeviceInputValidation.checked(name, "name", 200)
+        val checkedEmail = DeviceInputValidation.checked(email, "email", 254)
+        session.stage { it.copy(externalUserId = externalUserId, name = checkedName, email = checkedEmail) }
         Log.debug { "Identity staged" }
     }
 
@@ -45,24 +41,28 @@ internal object ReceptionIdentity {
         }
         val identityToken = IdentityToken.parse(token)
             ?: return Log.error { "Identity token ignored, its user_id could not be read" }
-        val verifiedUserId = try {
-            session.storedCredentials()?.verifiedUserId
-        } catch (_: ReceptionAPIError) {
-            return Log.error { "Identity token ignored, secure storage unavailable" }
-        }
+        // The verified user is known once the session is loaded, which every request waits for.
+        session.afterPrepared { stage(session, identityToken) }
+    }
+
+    private fun stage(session: DeviceSession, identityToken: IdentityToken) {
+        if (session !== ReceptionState.session) return
+        if (session.credentialsUnreadable) return Log.error { "Identity token ignored, secure storage unavailable" }
         // A registration or anonymous-to-verified update may still be awaiting its verified ID.
-        val sameUser = identityToken.matchesUser(verifiedUserId, session.store.pending.externalUserId, this.token?.userId)
+        val sameUser = identityToken.matchesUser(session.credentials?.verifiedUserId, session.pending.externalUserId,
+            token?.userId)
         if (!sameUser) return switchUser(identityToken)
         // Sent with the next registration or device update (launch, foreground, chat opening, send), never at once:
         // a host that answers every rejection with a new token must not start a request loop.
-        this.token = identityToken
+        token = identityToken
         ReceptionState.chat?.clearVerificationRequirement()
         Log.debug { "Identity token staged" }
     }
 
     fun setMetadata(metadata: Map<String, String>) {
         val session = ReceptionState.session ?: return Log.error { "setMetadata called before configure, ignored" }
-        session.store.pending = session.store.pending.copy(metadata = DeviceInputValidation.checked(metadata))
+        val checked = DeviceInputValidation.checked(metadata)
+        session.stage { it.copy(metadata = checked) }
         Log.debug { "Metadata staged" }
     }
 
@@ -72,10 +72,9 @@ internal object ReceptionIdentity {
      */
     fun switchUser(token: IdentityToken) {
         Log.info { "Signed-in user changed, previous session logged out" }
-        val pending = ReceptionState.session?.store?.pending
+        val pending = ReceptionState.session?.pending
         ReceptionAccount.logout()
-        ReceptionState.session?.store?.pending = DeviceIdentity(pushToken = pending?.pushToken,
-            pushEnvironment = pending?.pushEnvironment)
+        ReceptionState.session?.stage { DeviceIdentity(pushToken = pending?.pushToken, pushEnvironment = pending?.pushEnvironment) }
         this.token = token.copy(sent = false)
         lastToken = token.value
     }

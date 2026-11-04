@@ -22,7 +22,8 @@ import kotlin.coroutines.cancellation.CancellationException
 /**
  * Team names and photos: restored together from [cache], then refreshed from authoritative team details. Photos are
  * held in memory by member, keyed by their photo ID; a replacement downloads while the previous photo stays visible.
- * A failed download is not retried until the next update. Main thread only; [scope] ends every download.
+ * A failed download is not retried until the next update. Main thread only, the cache on [Storage]; [scope] ends
+ * every download.
  */
 internal class TeamProfiles(
     private val scope: CoroutineScope,
@@ -39,24 +40,33 @@ internal class TeamProfiles(
     private val loadedKeys = mutableMapOf<String, String?>()
     private val pending = mutableMapOf<String, Pending>()
     private var attempts = 0
+    private var updated = false
 
     init {
+        // The cache loads on the storage thread; team details that arrived meanwhile are newer and win.
+        if (cache != null) scope.launch { restore(Storage.run { cache.load() }) }
+    }
+
+    private suspend fun restore(entries: Map<String, TeamProfileCache.Entry>) {
         val members = mutableMapOf<String, TeamMember>()
         val images = mutableMapOf<String, Bitmap>()
-        for ((id, entry) in cache?.load().orEmpty()) {
+        for ((id, entry) in entries) {
             entry.name?.let { members[id] = TeamMember(id, it, photoId = entry.photoId) }
-            entry.data?.let(decode)?.let {
-                images[id] = it
-                loadedKeys[id] = entry.photoId
-            }
+            entry.data?.let { data -> withContext(Dispatchers.Default) { decode(data) } }?.let { images[id] = it }
         }
+        if (updated) return
         mutableMembers.value = members
-        mutableImages.value = images
+        for ((id, image) in images) {
+            if (id in mutableImages.value || id in pending) continue
+            mutableImages.value += id to image
+            loadedKeys[id] = entries[id]?.photoId
+        }
     }
 
     fun update(team: Map<String, TeamMember>, showsPhotos: Boolean = true) {
+        updated = true
         mutableMembers.value = team
-        cache?.update(team, showsPhotos)
+        cache?.let { Storage.launch { it.update(team, showsPhotos) } }
         val photos = if (showsPhotos) team else emptyMap()
         for (id in mutableImages.value.keys + pending.keys) {
             if (photos[id]?.photoId != null || photos[id]?.photoUrl != null) continue
@@ -91,7 +101,8 @@ internal class TeamProfiles(
             if (data == null || image == null) return
             mutableImages.value += id to image
             loadedKeys[id] = key
-            member.photoId?.let { cache?.save(data, it, id) }
+            val photoId = member.photoId
+            if (photoId != null && cache != null) Storage.launch { cache.save(data, photoId, id) }
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (_: IOException) {

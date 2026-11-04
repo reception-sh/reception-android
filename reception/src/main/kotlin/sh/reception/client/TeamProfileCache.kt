@@ -9,7 +9,9 @@ import sh.reception.model.TeamMember
 import java.io.File
 import java.io.IOException
 
-/** Small, session-scoped team names and photos without signed download URLs, in `noBackupFilesDir`. */
+/**
+ * Small, session-scoped team names and photos without signed download URLs, in `noBackupFilesDir`. Runs on [Storage].
+ */
 internal class TeamProfileCache(context: Context, scope: String) {
     class Entry(val name: String? = null, val photoId: String? = null, val data: ByteArray? = null)
 

@@ -23,10 +23,13 @@ import java.io.IOException
 internal class ReceptionAPI(
     val appId: String,
     val baseUrl: HttpUrl = serviceUrl,
-    val chatRevision: Int = 0,
     val session: DeviceSession? = null,
 ) {
-    fun bound(session: DeviceSession, chatRevision: Int): ReceptionAPI = ReceptionAPI(appId, baseUrl, chatRevision, session)
+    fun bound(session: DeviceSession): ReceptionAPI = ReceptionAPI(appId, baseUrl, session)
+
+    /** The support revision the session's store holds, sent with every request. */
+    private val chatRevision: Int
+        get() = session?.chatRevision ?: 0
 
     /**
      * `authenticated` requests carry the session's access token. A rejected token is replaced once and the request
@@ -43,6 +46,7 @@ internal class ReceptionAPI(
         photos: Boolean = false,
     ): Response {
         val scopes = RetryScope.gates(path, method, authenticated, photos)
+        session?.prepared()
         session?.admit(scopes)
         val token = if (authenticated) activeSession().token() else null
         val probe = session?.authorizeRequest(scopes) ?: false

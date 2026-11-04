@@ -47,10 +47,15 @@ internal class UnreadMonitor {
         ReceptionState.refreshUnread(updateDevice = !blockedProbe, probe = blockedProbe)
     }
 
+    /** The launch refresh of a stored session, which configure had to leave until its values were loaded. */
+    fun sessionPrepared() {
+        if (enabled && active) setActive(true)
+    }
+
     fun reschedule() {
         task?.cancel()
         task = null
-        val session = ReceptionState.session ?: return
+        val session = ReceptionState.session?.takeIf { it.isPrepared } ?: return
         val store = session.store
         if (!active || !ApplicationLifecycle.isActive || session.halt != null || session.retries["unread"]?.stopped == true ||
             !store.hasConversation || ReceptionState.isChatOpen.value

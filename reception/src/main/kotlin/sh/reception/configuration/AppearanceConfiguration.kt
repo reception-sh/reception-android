@@ -19,6 +19,7 @@ import sh.reception.ReceptionState
 import sh.reception.client.ReceptionAPI
 import sh.reception.client.ReceptionAPIError
 import sh.reception.client.RetryState
+import sh.reception.client.Storage
 import sh.reception.client.appearance
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -38,6 +39,7 @@ internal class AppearanceConfiguration(private val now: () -> Long = System::cur
     private var lastAttempt: Long? = null
     private var generation = 0
     private var task: Job? = null
+    private var loading: Job? = null
     private var retry = RetryState()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -47,12 +49,20 @@ internal class AppearanceConfiguration(private val now: () -> Long = System::cur
         generation += 1
         this.api = api
         val cache = AppearanceCache(context, scope).also { this.cache = it }
-        val snapshot = cache.load()
-        latest = snapshot?.envelope
+        latest = null
         activate()
-        etag = snapshot?.etag
+        etag = null
         lastAttempt = null
         retry = RetryState()
+        val generation = generation
+        // The cached snapshot loads on the storage thread; a fetch waits for it, so it can send the ETag.
+        loading = this.scope.launch {
+            val snapshot = Storage.run { cache.load() }
+            if (this@AppearanceConfiguration.generation != generation) return@launch
+            latest = snapshot?.envelope
+            activate()
+            etag = snapshot?.etag
+        }
     }
 
     fun resumed() {
@@ -82,6 +92,7 @@ internal class AppearanceConfiguration(private val now: () -> Long = System::cur
 
     /** At most one request at a time and one per five minutes, sooner only when a retry is due. */
     suspend fun refresh() {
+        loading?.join()
         task?.let { return it.join() }
         val configured = api ?: return
         // The session's API reports halts and cooldowns to that session; only a session of this App ID qualifies.
@@ -122,7 +133,8 @@ internal class AppearanceConfiguration(private val now: () -> Long = System::cur
                     return
                 }
                 latest = envelope
-                reply.body?.let { cache?.save(it, reply.etag) }
+                val cache = cache
+                reply.body?.let { body -> Storage.launch { cache?.save(body, reply.etag) } }
                 Log.debug { "Remote appearance refreshed, revision ${envelope.revision}" }
             } else {
                 Log.debug { "Remote appearance unchanged" }

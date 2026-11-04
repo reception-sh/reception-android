@@ -12,18 +12,34 @@ import sh.reception.ReceptionIdentity
 import sh.reception.ReceptionLocalization
 import sh.reception.ReceptionState
 
+/** Whether the loaded session has credentials; false until the session is prepared or while storage is unreadable. */
 internal val DeviceSession.isRegistered: Boolean
-    get() = try {
-        storedCredentials() != null
-    } catch (_: ReceptionAPIError) {
-        false
-    }
+    get() = credentials != null
 
-/** Memory first, then secure storage. Throws when secure storage cannot be read. */
-internal fun DeviceSession.storedCredentials(): SessionCredentials? {
+/** Memory first, then secure storage on the storage thread. Throws when secure storage cannot be read. */
+internal suspend fun DeviceSession.storedCredentials(): SessionCredentials? {
+    prepared()
     credentials?.let { return it }
-    credentials = store.loadCredentials()
+    if (!credentialsUnreadable) return null
+    val loaded = Storage.run { store.loadCredentials() }
+    if (invalidated) throw ReceptionAPIError("cancelled", 0)
+    credentialsUnreadable = false
+    if (credentials == null) credentials = loaded
     return credentials
+}
+
+/**
+ * The session secret a logout revokes, read on the storage thread when this session has not loaded it. It does not
+ * depend on the session's scope, which the logout cancels.
+ */
+internal fun DeviceSession.revocationSecret(): suspend () -> String? {
+    val known = credentials ?: return {
+        Storage.run {
+            store.open()
+            store.loadCredentials()?.sessionSecret
+        }
+    }
+    return { known.sessionSecret }
 }
 
 /**
@@ -33,7 +49,12 @@ internal fun DeviceSession.storedCredentials(): SessionCredentials? {
 internal suspend fun DeviceSession.token(): String {
     if (invalidated) throw ReceptionAPIError("cancelled", 0)
     val context = RequestContext.current()
-    if (!isRegistered && !store.hasStartedChat && !context.automation && !context.launch) {
+    val registered = try {
+        storedCredentials() != null
+    } catch (_: ReceptionAPIError) {
+        false
+    }
+    if (!registered && !store.hasStartedChat && !context.automation && !context.launch) {
         throw ReceptionAPIError("chat_not_started", 0)
     }
     if (halt != null && context.probe?.available != true) {
@@ -120,7 +141,7 @@ private suspend fun DeviceSession.registerDevice(): String {
     val identityToken = stagedIdentityToken
     val response = try {
         api.request<RegistrationResponse>("devices", "POST",
-            body = DeviceInfo.payload(store.context, store.pending, identityToken?.value, registration = true))
+            body = DeviceInfo.payload(store.context, pending, identityToken?.value, registration = true))
     } catch (error: ReceptionAPIError) {
         // The send fails and keeps Retry; the next registration goes without this token.
         if (error.rejectsIdentityToken && identityToken != null) identityRejected(identityToken, error)

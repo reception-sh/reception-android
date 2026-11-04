@@ -19,9 +19,9 @@ internal object Storage {
 
     suspend fun <T> run(block: () -> T): T = withContext(dispatcher) { block() }
 
-    /** Starts [block] on the storage thread once [after] has finished; independent of any session's lifetime. */
-    fun launch(after: Job? = null, block: () -> Unit): Job = scope.launch {
-        after?.join()
+    /** Starts [block] on the storage thread once [after] have finished; independent of any session's lifetime. */
+    fun launch(vararg after: Job?, block: () -> Unit): Job = scope.launch {
+        after.forEach { it?.join() }
         block()
     }
 }

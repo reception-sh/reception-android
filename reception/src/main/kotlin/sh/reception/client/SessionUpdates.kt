@@ -61,7 +61,7 @@ private suspend fun DeviceSession.sendUpdates() {
         val identityToken = if (withoutIdentityToken) null else unsentIdentityToken
         val response = try {
             api.request<UpdateResponse>("devices/me", "PATCH", authenticated = true,
-                body = DeviceInfo.payload(store.context, store.pending, identityToken?.value))
+                body = DeviceInfo.payload(store.context, pending, identityToken?.value))
         } catch (error: ReceptionAPIError) {
             if (!error.rejectsIdentityToken || identityToken == null) throw error
             identityRejected(identityToken, error)

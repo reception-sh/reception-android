@@ -7,6 +7,7 @@ import android.icu.util.ULocale
 import android.os.Build
 import android.os.LocaleList
 import androidx.annotation.RequiresApi
+import sh.reception.client.Storage
 import java.util.Locale
 
 /**
@@ -30,24 +31,43 @@ internal object AppLocale {
         return tag
     }
 
+    // The app's `localeConfig` never changes while it runs; parsing it reads the APK, so `prepare` does it off the
+    // main thread. Empty: the app declares no locale configuration.
+    @Volatile
+    private var declared: List<Locale>? = null
+
     fun invalidate() {
         cached = null
     }
 
+    /** Reads the declared locales on the storage thread, before any request needs the language. */
+    fun prepare(context: Context) {
+        Storage.launch { declaredLocales(context) }
+    }
+
     private fun systemLanguageTag(context: Context): String? {
         val system = LocaleList.getDefault()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            declaredMatch(context, system)?.let { return it.toLanguageTag() }
-        }
+        declaredMatch(declaredLocales(context), system)?.let { return it.toLanguageTag() }
         return system[0]?.toLanguageTag()
     }
 
+    private fun declaredLocales(context: Context): List<Locale> = declared ?: readDeclared(context).also { declared = it }
+
+    private fun readDeclared(context: Context): List<Locale> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return emptyList()
+        return readLocaleConfig(context)
+    }
+
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    private fun declaredMatch(context: Context, system: LocaleList): Locale? {
+    private fun readLocaleConfig(context: Context): List<Locale> {
         val config = LocaleConfig(context)
-        val declared = config.supportedLocales
-        if (config.status != LocaleConfig.STATUS_SUCCESS || declared == null || declared.isEmpty) return null
-        val supported = (0 until declared.size()).map { declared[it] }
+        val locales = config.supportedLocales
+        if (config.status != LocaleConfig.STATUS_SUCCESS || locales == null) return emptyList()
+        return (0 until locales.size()).map { locales[it] }
+    }
+
+    private fun declaredMatch(supported: List<Locale>, system: LocaleList): Locale? {
+        if (supported.isEmpty()) return null
         return (0 until system.size()).map { system[it] }.firstOrNull { locale ->
             supported.any { matches(declared = it, system = locale) }
         }

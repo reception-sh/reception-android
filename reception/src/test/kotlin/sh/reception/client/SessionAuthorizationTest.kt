@@ -79,7 +79,7 @@ class SessionAuthorizationTest {
     private fun error(status: Int, code: String) = json(status, """{"error":{"code":"$code","message":"m"}}""")
 
     private fun registeredSession(accessToken: String? = null): DeviceSession {
-        val store = DeviceStore(context, "app_test${System.nanoTime()}", credentialStorage = storage)
+        val store = DeviceStore(context, "app_test${System.nanoTime()}", credentialStorage = storage).apply { open() }
         store.save(SessionCredentials("secret"))
         val session = DeviceSession(ReceptionAPI(APP_ID, server.url("/")), store, refreshSleep = {})
         session.accessToken = accessToken
@@ -164,7 +164,7 @@ class SessionAuthorizationTest {
         savesFail = false
         assertEquals("t", withContext(RequestContext(launch = true)) { session.token() })
         assertFalse(session.credentialsUnsaved)
-        assertEquals(SessionCredentials("s"), store.loadCredentials())
+        assertEquals(SessionCredentials("s"), Storage.run { store.loadCredentials() })
         assertEquals(1, requests.count { it.path == "/v1/devices" })
     }
 
@@ -209,9 +209,11 @@ class SessionAuthorizationTest {
         ReceptionAPI.serviceUrl = server.url("/")
         ReceptionState.configure(context, "app_revokedRevokedRevoked1")
         val session = ReceptionState.session ?: error("not configured")
-        session.store.save(SessionCredentials("secret"))
+        session.prepared()
+        Storage.run { session.store.save(SessionCredentials("secret")) }
+        session.credentials = SessionCredentials("secret")
         session.store.hasConversation = true
-        session.store.pending = DeviceIdentity(name = "Ada")
+        session.stage { DeviceIdentity(name = "Ada") }
         try {
             session.api.request<EmptyResponse>("conversation/unread", authenticated = true)
             fail("expected session_revoked")
@@ -223,6 +225,8 @@ class SessionAuthorizationTest {
         assertTrue(session.invalidated)
         assertFalse(current.isRegistered)
         assertFalse(current.store.hasConversation)
+        assertEquals(DeviceIdentity(name = "Ada"), current.pending)
+        current.prepared()
         assertEquals(DeviceIdentity(name = "Ada"), current.store.pending)
         assertEquals(listOf("POST /v1/devices/me/token"), summary())
     }
@@ -238,8 +242,10 @@ class SessionAuthorizationTest {
         ReceptionAPI.serviceUrl = server.url("/")
         ReceptionState.configure(context, "app_payloadPayloadPayload1")
         val session = ReceptionState.session ?: error("not configured")
-        session.store.pending = DeviceIdentity(externalUserId = "user-1", metadata = mapOf("plan" to "pro"),
-            pushToken = "fcm:token_1", pushEnvironment = "PRODUCTION")
+        session.stage {
+            DeviceIdentity(externalUserId = "user-1", metadata = mapOf("plan" to "pro"), pushToken = "fcm:token_1",
+                pushEnvironment = "PRODUCTION")
+        }
         withContext(RequestContext(launch = true)) { session.token() }
         session.update()
 

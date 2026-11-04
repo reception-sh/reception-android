@@ -7,14 +7,16 @@ import kotlinx.serialization.SerializationException
 import sh.reception.client.CacheFiles
 import sh.reception.client.MAXIMUM_APPEARANCE_BYTES
 import sh.reception.client.ReceptionAPI
+import sh.reception.client.Storage
 
-/** The last compatible envelope of one App ID and its ETag, independent of the device session. */
+/** The last compatible envelope of one App ID and its ETag, independent of the device session. Runs on [Storage]. */
 internal class AppearanceCache(context: Context, scope: String) {
     class Snapshot(val envelope: AppearanceEnvelope, val etag: String?)
 
     private val key = CacheFiles.hash(scope)
-    private val preferences: SharedPreferences =
+    private val preferences: SharedPreferences by lazy {
         context.applicationContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+    }
 
     /** The ETag is used only together with the envelope it belongs to. */
     fun load(): Snapshot? {

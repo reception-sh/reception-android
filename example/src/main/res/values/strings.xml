@@ -4,5 +4,6 @@
     <string name="support">Support</string>
     <string name="sdk_version">Reception SDK %1$s</string>
     <string name="identify">Identify test user</string>
+    <string name="logout">Log out</string>
     <string name="unread_count">Unread: %1$d</string>
 </resources>

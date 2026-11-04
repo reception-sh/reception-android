@@ -20,8 +20,7 @@ class DeviceStoreTest {
         delete = { account -> credentials.remove(account); true },
     )
 
-    private fun store(appId: String, rotate: Boolean = false) =
-        DeviceStore(context, appId + DeviceStore.generation(context, appId, rotate), appId, storage)
+    private fun store(appId: String) = DeviceStore(context, appId, storage).apply { open() }
 
     @Test
     fun keepsTheGenerationUntilItRotates() {
@@ -44,8 +43,8 @@ class DeviceStoreTest {
         old.pending = DeviceIdentity(name = "Ada", pushToken = "token", pushEnvironment = "PRODUCTION")
         assertEquals(SessionCredentials("secret", "user-1"), old.loadCredentials())
 
-        old.clear()
-        val fresh = store("app_rotation", rotate = true)
+        old.reset()
+        val fresh = store("app_rotation")
         assertNull(fresh.loadCredentials())
         assertTrue(fresh.credentialsMissing)
         assertFalse(fresh.hasConversation)
@@ -62,7 +61,7 @@ class DeviceStoreTest {
     @Test
     fun anUnreadableSessionIsNotAMissingOne() {
         val unavailable = DeviceStore(context, "app_unavailable", credentialStorage = DeviceStore.CredentialStorage(
-            read = { SecureStore.ReadResult.Unavailable }, save = { _, _ -> false }, delete = { true }))
+            read = { SecureStore.ReadResult.Unavailable }, save = { _, _ -> false }, delete = { true })).apply { open() }
         val error = runCatching { unavailable.loadCredentials() }.exceptionOrNull() as ReceptionAPIError
         assertEquals("secure_storage_unavailable", error.code)
         assertFalse(unavailable.credentialsMissing)

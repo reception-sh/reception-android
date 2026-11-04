@@ -13,41 +13,92 @@ import java.util.UUID
 /**
  * Everything a device session keeps on disk, in a SharedPreferences namespace per session scope. A logout or reset
  * rotates the scope's generation, so a new session never reads the old one's values even if a delete failed.
+ *
+ * [open] runs on the [Storage] thread before anything else: it resolves the generation and loads the preferences file,
+ * so the main thread afterwards reads and writes memory only (writes reach the disk asynchronously). Secure storage,
+ * the caches and the deletions stay on the storage thread.
  */
-internal class DeviceStore(
+internal class DeviceStore private constructor(
     val context: Context,
-    private val scope: String,
-    /** Values about this device rather than its session, kept across logout. */
-    private val deviceScope: String = scope,
-    private val credentialStorage: CredentialStorage = CredentialStorage(SecureStore.shared(context)),
+    /** The App ID's namespace, without the generation. */
+    private val namespace: String,
+    private val credentialStorage: CredentialStorage,
+    /** Set when a reset chat keeps the session's namespace. */
+    resolvedScope: String?,
 ) {
-    /** Where the session credentials live; tests replace it. */
+    constructor(context: Context, namespace: String, credentialStorage: CredentialStorage = CredentialStorage(context)) :
+        this(context, namespace, credentialStorage, null)
+
+    /** Where the session credentials live; tests replace it. Every function blocks, so it runs on [Storage]. */
     class CredentialStorage(
         val read: (String) -> SecureStore.ReadResult,
         val save: (String, String) -> Boolean,
         val delete: (String) -> Boolean,
     ) {
         constructor(store: SecureStore) : this(store::read, { value, account -> store.save(value, account) }, store::delete)
+
+        constructor(context: Context) : this(SecureStore.shared(context))
     }
 
-    private val defaults: SharedPreferences = preferences(context)
+    private val defaults: SharedPreferences by lazy { preferences(context) }
+
     @Volatile
     private var acceptsDrafts = true
-    val chatCache: ChatCache = ChatCache(context, scope)
-    val teamProfileCache: TeamProfileCache = TeamProfileCache(context, scope)
+    private var scope: String = resolvedScope.orEmpty()
+
+    @Volatile
+    var isOpen: Boolean = false
+        private set
+    lateinit var chatCache: ChatCache
+        private set
+    lateinit var teamProfileCache: TeamProfileCache
+        private set
+
+    /**
+     * Storage thread. Resolves the generation and loads everything the main thread reads. With [checkRestoredChat], a
+     * chat restored from a backup without its session (Keystore keys stay on their device) is reset like a logout;
+     * returns true then.
+     */
+    fun open(checkRestoredChat: Boolean = false): Boolean {
+        if (isOpen) return false
+        if (scope.isEmpty()) scope = namespace + generation(context, namespace)
+        openCaches()
+        var reset = false
+        if (checkRestoredChat && hasConversation && credentialsMissing) {
+            deleteAll()
+            scope = namespace + generation(context, namespace)
+            acceptsDrafts = true
+            openCaches()
+            reset = true
+        }
+        // Old device registrations alone do not prove that the user used support.
+        if (!hasStartedChat && chatCache.latestMessageAt != null) hasStartedChat = true
+        isOpen = true
+        return reset
+    }
+
+    private fun openCaches() {
+        chatCache = ChatCache(context, scope)
+        teamProfileCache = TeamProfileCache(context, scope)
+    }
 
     var chatRevision: Int
         get() = read { getInt(key("chatRevision"), 0) } ?: 0
         set(value) = write { putInt(key("chatRevision"), value) }
 
-    fun renewed(): DeviceStore = DeviceStore(context, scope, deviceScope, credentialStorage)
+    /** The same namespace and generation for a session that continues after a chat reset. */
+    fun renewed(): DeviceStore = DeviceStore(context, namespace, credentialStorage, scope)
 
+    /** Main thread: forgets the chat's values; [clearChatFiles] deletes its files on the storage thread. */
     fun resetChat(revision: Int) {
         acceptsDrafts = false
-        chatCache.clear()
-        teamProfileCache.clear()
         remove(CHAT_KEYS)
         chatRevision = revision
+    }
+
+    fun clearChatFiles() {
+        chatCache.clear()
+        teamProfileCache.clear()
     }
 
     var hasStartedChat: Boolean
@@ -73,8 +124,8 @@ internal class DeviceStore(
 
     /** "No thanks" on the notification card, for this device and App ID; logout and chat resets keep it. */
     var pushPromptDeclined: Boolean
-        get() = read { getBoolean("$deviceScope.pushPromptDeclined", false) } == true
-        set(value) = write { putBoolean("$deviceScope.pushPromptDeclined", value) }
+        get() = read { getBoolean("$namespace.pushPromptDeclined", false) } == true
+        set(value) = write { putBoolean("$namespace.pushPromptDeclined", value) }
 
     var unreadPolling: List<UnreadStage>?
         get() = decoded("unreadPolling", ListSerializer(UnreadStage.serializer()))
@@ -121,7 +172,7 @@ internal class DeviceStore(
         get() = decoded("pending", DeviceIdentity.serializer()) ?: DeviceIdentity()
         set(value) = encoded("pending", DeviceIdentity.serializer(), value)
 
-    /** Throws when secure storage cannot be read: an unreadable session is not a missing one. */
+    /** Storage thread. Throws when secure storage cannot be read: an unreadable session is not a missing one. */
     fun loadCredentials(): SessionCredentials? = when (val result = credentialStorage.read(key("session"))) {
         SecureStore.ReadResult.Missing -> null
         SecureStore.ReadResult.Unavailable -> throw ReceptionAPIError("secure_storage_unavailable", 0)
@@ -134,9 +185,11 @@ internal class DeviceStore(
         }
     }
 
+    /** Storage thread. */
     val credentialsMissing: Boolean
         get() = credentialStorage.read(key("session")) == SecureStore.ReadResult.Missing
 
+    /** Storage thread. Throws unless the credentials reached the disk. */
     fun save(credentials: SessionCredentials) {
         val value = ReceptionAPI.json.encodeToString(SessionCredentials.serializer(), credentials)
         if (!credentialStorage.save(value, key("session"))) throw ReceptionAPIError("secure_storage_unavailable", 0)
@@ -147,13 +200,19 @@ internal class DeviceStore(
         acceptsDrafts = false
     }
 
-    fun clear() {
+    /** Storage thread: deletes this session's values and rotates the generation, so even a failed delete is never reused. */
+    fun reset() {
+        if (!isOpen) open()
+        deleteAll()
+    }
+
+    private fun deleteAll() {
         acceptsDrafts = false
         // A new namespace prevents reuse even when secure storage refuses deletion.
         credentialStorage.delete(key("session"))
-        chatCache.clear()
-        teamProfileCache.clear()
+        clearChatFiles()
         remove(CHAT_KEYS + listOf("chatRevision", "pending", "cooldowns", "lastLimitCheck", "subscriptionStates"))
+        generation(context, namespace, rotate = true)
     }
 
     private fun key(name: String): String = "$scope.$name"
@@ -197,6 +256,7 @@ internal class DeviceStore(
         private fun preferences(context: Context): SharedPreferences =
             context.applicationContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
 
+        /** Storage thread. */
         fun generation(context: Context, scope: String, rotate: Boolean = false): String {
             val defaults = preferences(context)
             val key = "$scope.generation"

@@ -14,13 +14,17 @@ import java.io.IOException
 /**
  * A per-session snapshot of the last 50 confirmed messages plus pending and failed ones, with their unconfirmed
  * photos as files. It lives in `noBackupFilesDir`, so backups never carry it; pending messages keep their client IDs
- * across launches.
+ * across launches. Everything here reads or writes files, so it runs on [Storage]; only [latestMessageAt] may be read
+ * on the main thread once the store has opened.
  */
 internal class ChatCache(context: Context, scope: String) {
     private val directory = CacheFiles.directory(context, scope, "chat")
     private val file = File(directory, "messages.json")
     private val photos = File(directory, "photos")
+    @Volatile
     private var hasLoadedLatestMessageAt = false
+
+    @Volatile
     private var cachedLatestMessageAt: Long? = null
 
     /** Messages whose photos are already on disk, by ID, so a save does not write them again. */

@@ -65,7 +65,7 @@ class AttachmentImageLoaderTest {
     private val sessions = mutableListOf<DeviceSession>()
 
     private fun loader(): AttachmentImageLoader {
-        val store = DeviceStore(context, "app_test${System.nanoTime()}")
+        val store = DeviceStore(context, "app_test${System.nanoTime()}").apply { open() }
         store.save(SessionCredentials("secret"))
         val session = DeviceSession(ReceptionAPI("app_0123456789abcdefghijkl", server.url("/")), store, refreshSleep = {})
         session.accessToken = "token"

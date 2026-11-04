@@ -18,7 +18,12 @@ import javax.crypto.SecretKey
  * Keystore and stored in SharedPreferences. Replaces the iOS Keychain items. Every method blocks on the Keystore or the
  * disk, so callers run them on [Storage]; writes are committed, and their result says whether they reached the disk.
  */
-internal class SecureStore(private val preferences: SharedPreferences, private val keys: KeySource = KeystoreKey) {
+internal class SecureStore(open: () -> SharedPreferences, private val keys: KeySource = KeystoreKey) {
+    constructor(preferences: SharedPreferences, keys: KeySource = KeystoreKey) : this({ preferences }, keys)
+
+    // Even opening the preferences touches the disk, so it waits for the first use on the storage thread.
+    private val preferences: SharedPreferences by lazy(open)
+
     /** `Unavailable` (the Keystore failed) must never be treated as "no item". */
     sealed interface ReadResult {
         data class Value(val value: String) : ReadResult
@@ -112,7 +117,7 @@ internal class SecureStore(private val preferences: SharedPreferences, private v
         var keys: KeySource = KeystoreKey
 
         fun shared(context: Context): SecureStore = shared ?: SecureStore(
-            context.applicationContext.getSharedPreferences("sh.reception.secure", Context.MODE_PRIVATE),
+            { context.applicationContext.getSharedPreferences("sh.reception.secure", Context.MODE_PRIVATE) },
             keys,
         ).also { shared = it }
     }
