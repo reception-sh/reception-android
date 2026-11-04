@@ -75,6 +75,8 @@ internal class DeviceStore private constructor(
             openCaches()
             reset = true
         }
+        // Unconditionally: the unread schedule reads it on the main thread later, where the disk is off limits.
+        chatCache.restoreLatestMessageAt()
         // Old device registrations alone do not prove that the user used support.
         if (!hasStartedChat && chatCache.latestMessageAt != null) hasStartedChat = true
         isOpen = true

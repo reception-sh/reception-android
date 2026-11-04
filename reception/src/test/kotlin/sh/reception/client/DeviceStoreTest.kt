@@ -10,6 +10,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import sh.reception.model.Message
 
 @RunWith(RobolectricTestRunner::class)
 class DeviceStoreTest {
@@ -88,6 +89,18 @@ class DeviceStoreTest {
         val error = runCatching { unavailable.loadCredentials() }.exceptionOrNull() as ReceptionAPIError
         assertEquals("secure_storage_unavailable", error.code)
         assertFalse(unavailable.credentialsMissing)
+    }
+
+    @Test
+    fun openingAStoreWithAStartedChatLoadsTheLatestMessageTime() {
+        val first = store("app_latest")
+        first.chatCache.save(listOf(Message(id = "m1", seq = 1, sender = "USER", text = "Hi", attachments = emptyList(),
+            createdAt = 1_700_000_000_000)))
+        first.hasConversation = true
+        // A relaunch: the chat counts as started already, and the getter itself never reads the disk.
+        val reopened = store("app_latest")
+        assertTrue(reopened.hasStartedChat)
+        assertEquals(1_700_000_000_000L, reopened.chatCache.latestMessageAt)
     }
 
     @Test

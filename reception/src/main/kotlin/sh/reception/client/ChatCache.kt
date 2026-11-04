@@ -14,27 +14,27 @@ import java.io.IOException
 /**
  * A per-session snapshot of the last 50 confirmed messages plus pending and failed ones, with their unconfirmed
  * photos as files. It lives in `noBackupFilesDir`, so backups never carry it; pending messages keep their client IDs
- * across launches. Everything here reads or writes files, so it runs on [Storage]; only [latestMessageAt] may be read
- * on the main thread once the store has opened.
+ * across launches. Everything here reads or writes files, so it runs on [Storage]; only [latestMessageAt], a memory
+ * value that [restoreLatestMessageAt] fills when the store opens, may be read on the main thread.
  */
 internal class ChatCache(context: Context, scope: String) {
     private val directory = CacheFiles.directory(context, scope, "chat")
     private val file = File(directory, "messages.json")
     private val photos = File(directory, "photos")
     @Volatile
-    private var hasLoadedLatestMessageAt = false
-
-    @Volatile
     private var cachedLatestMessageAt: Long? = null
 
     /** Messages whose photos are already on disk, by ID, so a save does not write them again. */
     private val storedImages = mutableMapOf<String, Int>()
 
+    /** Memory only: never reads the disk, so the main thread may ask. */
     val latestMessageAt: Long?
-        get() {
-            if (!hasLoadedLatestMessageAt) rememberLatestMessageAt(readSnapshots())
-            return cachedLatestMessageAt
-        }
+        get() = cachedLatestMessageAt
+
+    /** Storage thread. Reads the newest message time from disk; the store calls it on every open. */
+    fun restoreLatestMessageAt() {
+        rememberLatestMessageAt(readSnapshots())
+    }
 
     fun load(): List<Message> {
         val snapshots = readSnapshots()
@@ -81,7 +81,6 @@ internal class ChatCache(context: Context, scope: String) {
 
     private fun rememberLatestMessageAt(snapshots: List<Snapshot>) {
         cachedLatestMessageAt = snapshots.maxOfOrNull { it.createdAt }
-        hasLoadedLatestMessageAt = true
     }
 
     private fun readSnapshots(): List<Snapshot> = try {
