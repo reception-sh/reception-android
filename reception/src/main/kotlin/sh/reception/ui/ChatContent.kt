@@ -28,19 +28,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
-import sh.reception.ContrastMonitor
 import sh.reception.ReceptionAppearance
-import sh.reception.ReceptionEvent
-import sh.reception.ReceptionPaywalls
 import sh.reception.ReceptionState
-import sh.reception.ReceptionUnread
 import sh.reception.Theme
 import sh.reception.accent
 import sh.reception.appearance
 import sh.reception.background
 import sh.reception.viewmodel.ChatModel
-import sh.reception.viewmodel.activate
-import sh.reception.viewmodel.deactivate
 
 /**
  * The chat screen: title bar, history and composer. [showsSheetControls] adds the sheet's top inset and, when the
@@ -50,7 +44,7 @@ import sh.reception.viewmodel.deactivate
 internal fun ChatContent(showsSheetControls: Boolean, onClose: () -> Unit = {}) {
     key(ReceptionState.revision) {
         val model = remember { ReceptionState.chatModel() }
-        ChatLifecycle(model)
+        ChatLifecycleEffect(model)
         // Custom Tabs opened from this chat take its accent.
         val accent = Theme.accent.toArgb()
         SideEffect { model.links.toolbarColor = accent }
@@ -69,61 +63,18 @@ internal fun ChatContent(showsSheetControls: Boolean, onClose: () -> Unit = {}) 
     }
 }
 
-/**
- * Visibility follows the hosting lifecycle: started is on screen (`Reception.isChatOpen`), resumed is the active
- * chat that loads and listens, as iOS follows its scene's activity. A configuration change keeps both, and so does
- * the system photo picker ([sh.reception.viewmodel.ComposerModel.isPicking]), which only pauses the chat's activity.
- * The app going to the background ends both even under the picker; the chat's next start and resume begin them again.
- */
+/** Feeds the hosting and the process lifecycle to [ChatLifecycle]. */
 @Composable
-private fun ChatLifecycle(model: ChatModel) {
+private fun ChatLifecycleEffect(model: ChatModel) {
     val owner = LocalLifecycleOwner.current
     val context = LocalContext.current
     DisposableEffect(owner, model) {
-        var started = false
-        var resumed = false
-        fun appear() {
-            if (started) return
-            started = true
-            ContrastMonitor.start(context)
-            ReceptionPaywalls.refresh()
-            if (!model.isVisible) ReceptionState.onEvent?.invoke(ReceptionEvent.ChatOpened)
-            model.markVisible(true)
-        }
-        fun activate() {
-            if (resumed) return
-            resumed = true
-            model.activate()
-        }
-        fun deactivate() {
-            if (!resumed) return
-            resumed = false
-            model.deactivate(keepsPolling = context.isChangingConfigurations())
-        }
-        fun disappear() {
-            deactivate()
-            if (!started) return
-            started = false
-            ContrastMonitor.stop()
-            if (context.isChangingConfigurations()) return
-            model.markVisible(false)
-            ReceptionUnread.refresh()
-        }
-        val observer = LifecycleEventObserver { _, event ->
-            // The photo picker covers the chat like a sheet: no reload on return, the stream stays, the chat stays open.
-            val covered = model.composer.isPicking
-            when (event) {
-                Lifecycle.Event.ON_START -> appear()
-                Lifecycle.Event.ON_RESUME -> activate()
-                Lifecycle.Event.ON_PAUSE -> if (!covered) deactivate()
-                Lifecycle.Event.ON_STOP -> if (!covered) disappear()
-                else -> Unit
-            }
-        }
-        // The picker leaves the app in the foreground; Home or the lock screen do not, picker or not. On return the
-        // chat's own start shows it again, and its resume (the picker closed) loads and listens again.
+        val lifecycle = ChatLifecycle(model, context)
+        val observer = LifecycleEventObserver { _, event -> lifecycle.hostChanged(event) }
+        // The picker leaves the app in the foreground; Home or the lock screen do not. On return the chat's own start
+        // shows it again, and its resume (the picker closed) loads and listens again.
         val application = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) disappear()
+            if (event == Lifecycle.Event.ON_STOP) lifecycle.backgrounded()
         }
         val process = ProcessLifecycleOwner.get().lifecycle
         owner.lifecycle.addObserver(observer)
@@ -131,7 +82,7 @@ private fun ChatLifecycle(model: ChatModel) {
         onDispose {
             owner.lifecycle.removeObserver(observer)
             process.removeObserver(application)
-            disappear()
+            lifecycle.disposed()
         }
     }
 }
