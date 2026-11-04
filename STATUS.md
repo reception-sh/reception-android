@@ -2,6 +2,19 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-04: Fixes 9 done (see verification/fixes-9.md), one commit each. U-1 `handlePushMessage(context, data,
+  messageId)` (new overload): the SDK's service passes `RemoteMessage.messageId`, which Firebase keeps out of `data`, so
+  real redeliveries now deduplicate; U-5 one global list of 64 message IDs across configure. U-2 no token leaves an
+  ended session (checks after each suspension), and the retry after a rejected token is authorized again. U-3/U-4
+  `PendingChatOpen`: routing off cancels a tap's queued open (generation), never the host's own. U-6 a covered sheet's
+  reorder waits for its own task. U-7 the sheet starts only after its presentation record is committed, over the same
+  activity. U-8 an unread delivery stops once a listener published a newer count. U-9 the push test awaits the refresh
+  job. V-1 the permission card resolves its activity at call time (rebound `MutableContextWrapper`). V-2 the chat is
+  keyed by the session's persisted identity (`DeviceStore.chatIdentity`), so launcher keys survive a process restart.
+  W-1 `ReceptionState` split into `ReceptionResets` and `ReceptionLifecycle`. `tool/release_check.sh` passes, 5×
+  `--rerun-tasks` green; live U-1 (real FCM through the service, repeat ignored) and U-7 (restore after `am kill`)
+  StrictMode-clean; V-2 not reproducible live (translucent picker leaves the sheet without saved state). Open: the
+  customer docs should show `handlePushMessage(this, message.data, message.messageId)`.
 - 2026-11-04: Phase E done (see verification/phase-e.md): 1.0.0 is ready to publish. E-1 the setup check also starts
   from the activity a plugin hands to `noteCurrentActivity` (Flutter/RN run the same adb command). E-2 a sheet restored
   after process death waits up to 3 s for a late `configure` (logout, reconfiguration, newer presentations still finish
