@@ -1,7 +1,6 @@
 package sh.reception
 
 import android.content.Context
-import android.content.pm.ApplicationInfo
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -11,15 +10,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import sh.reception.client.ReceptionAPI
-import sh.reception.client.preferencesChanged
 import sh.reception.configuration.AppearanceIcon
 import sh.reception.strings.Strings
 
@@ -27,8 +20,6 @@ import sh.reception.strings.Strings
 public object Reception {
     /** Minimum severity of developer logs, from quietest to most detailed. */
     public enum class LogLevel { OFF, ERROR, INFO, DEBUG }
-
-    private val callbacks = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     /** Version of the SDK, for example "1.0.0". Sent with device registration and updates. */
     @JvmStatic
@@ -227,16 +218,7 @@ public object Reception {
     @JvmStatic
     public var languageOverride: String?
         get() = ReceptionLocalization.languageOverride
-        set(value) = MainThread.run {
-            if (ReceptionLocalization.languageOverride == value) return@run
-            ReceptionLocalization.languageOverride = value
-            if (value != null) {
-                Log.debug { "Language override set to ${ReceptionLocalization.canonical(value)}" }
-            } else {
-                Log.debug { "Language override cleared" }
-            }
-            ReceptionState.session?.preferencesChanged()
-        }
+        set(value) = MainThread.run { ReceptionSettings.setLanguageOverride(value) }
 
     /**
      * Shows the unread count on the SDK's notifications and removes them once read. Set to `false` if the app owns
@@ -245,11 +227,7 @@ public object Reception {
     @JvmStatic
     public var updatesAppBadge: Boolean
         get() = ReceptionState.updatesAppBadge
-        set(value) = MainThread.run {
-            if (ReceptionState.updatesAppBadge == value) return@run
-            ReceptionState.updatesAppBadge = value
-            ReceptionState.session?.preferencesChanged()
-        }
+        set(value) = MainThread.run { ReceptionSettings.setUpdatesAppBadge(value) }
 
     /** Connects your app to Reception with the App ID from your dashboard. Keeps only the application context. */
     @JvmStatic
@@ -264,12 +242,7 @@ public object Reception {
     @ReceptionInternalApi
     @JvmStatic
     public fun configureForTesting(context: Context, appId: String, serviceUrl: String): Unit = MainThread.run {
-        if (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0) {
-            return@run Log.error { "configureForTesting refused, the app is not debuggable" }
-        }
-        val url = serviceUrl.toHttpUrlOrNull() ?: return@run Log.error { "configureForTesting refused a malformed URL" }
-        ReceptionAPI.serviceUrl = url
-        ReceptionState.configure(context.applicationContext, appId)
+        ReceptionSettings.configureForTesting(context.applicationContext, appId, serviceUrl)
     }
 
     /**
@@ -313,15 +286,5 @@ public object Reception {
 
     /** [deleteData] for callers without coroutines: [callback] receives null on success, on the main thread. */
     @JvmStatic
-    public fun deleteData(callback: (ReceptionError?) -> Unit) {
-        callbacks.launch {
-            val error = try {
-                ReceptionAccount.deleteData()
-                null
-            } catch (error: ReceptionError) {
-                error
-            }
-            callback(error)
-        }
-    }
+    public fun deleteData(callback: (ReceptionError?) -> Unit): Unit = ReceptionAccount.deleteData(callback)
 }

@@ -1,5 +1,9 @@
 package sh.reception
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import sh.reception.client.ReceptionAPIError
 import sh.reception.client.RequestContext
@@ -11,6 +15,7 @@ import sh.reception.client.storedCredentials
 /** Push token, logout and data deletion behind the facade. Main thread only. */
 internal object ReceptionAccount {
     private val fcmToken = Regex("^[A-Za-z0-9_:-]{1,4096}$")
+    private val callbacks = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     fun setPushToken(token: String) {
         val session = ReceptionState.session ?: run {
@@ -76,5 +81,18 @@ internal object ReceptionAccount {
             ReceptionState.resetLocal()
         }
         ReceptionState.onEvent?.invoke(ReceptionEvent.DataDeleted)
+    }
+
+    /** [deleteData] for callers without coroutines: [callback] receives null on success, on the main thread. */
+    fun deleteData(callback: (ReceptionError?) -> Unit) {
+        callbacks.launch {
+            val error = try {
+                deleteData()
+                null
+            } catch (error: ReceptionError) {
+                error
+            }
+            callback(error)
+        }
     }
 }
