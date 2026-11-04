@@ -127,8 +127,7 @@ public object Reception {
      * stays in memory. Rejections arrive as [ReceptionEvent.IdentityRejected].
      */
     @JvmStatic
-    @JvmName("identifyWithToken")
-    public fun identify(token: String): Unit = MainThread.run { ReceptionIdentity.identify(token) }
+    public fun identifyWithToken(token: String): Unit = MainThread.run { ReceptionIdentity.identify(token) }
 
     /** Replaces the metadata sent with the next device update: up to 20 entries, keys 1–64, values up to 512. */
     @JvmStatic

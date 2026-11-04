@@ -9,11 +9,11 @@ import sh.reception.client.storedCredentials
 
 /** Identity, identity tokens and metadata behind the facade. Main thread only. */
 internal object ReceptionIdentity {
-    /** The token from `identify(token)`, in memory only. */
+    /** The token from `identifyWithToken`, in memory only. */
     var token: IdentityToken? = null
         private set
 
-    /** The last value passed to `identify(token)`; passing it again changes nothing, whatever happened to it. */
+    /** The last value passed to `identifyWithToken`; passing it again changes nothing, whatever happened to it. */
     private var lastToken: String? = null
 
     fun identify(userId: String?, name: String?, email: String?) {
@@ -37,7 +37,7 @@ internal object ReceptionIdentity {
     }
 
     fun identify(token: String) {
-        val session = ReceptionState.session ?: return Log.error { "identify(token) called before configure, ignored" }
+        val session = ReceptionState.session ?: return Log.error { "identifyWithToken called before configure, ignored" }
         if (token == lastToken) return Log.debug { "Identity token unchanged, ignored" }
         lastToken = token
         if (token.startsWith("ids_")) {

@@ -23,6 +23,6 @@ public sealed class ReceptionEvent {
     /** `deleteData()` completed, including a local-only completion. */
     public data object DataDeleted : ReceptionEvent()
 
-    /** The service rejected the token from `identify(token)`. */
+    /** The service rejected the token from `identifyWithToken`. */
     public data class IdentityRejected(public val error: ReceptionError) : ReceptionEvent()
 }

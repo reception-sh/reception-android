@@ -8,7 +8,7 @@ import okio.ByteString.Companion.decodeBase64
 import kotlin.math.abs
 
 /**
- * A token from `identify(token)`, kept in memory only. `userId` is read without verifying the signature;
+ * A token from `identifyWithToken`, kept in memory only. `userId` is read without verifying the signature;
  * the service verifies the token and applies the same `user_id` rules, so both sides compare the same string.
  */
 internal data class IdentityToken(
