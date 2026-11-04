@@ -40,6 +40,8 @@ internal object ReceptionAccount {
         // The old session's credentials are deleted only after its revocation is stored.
         ReceptionState.resetLocal(after = queued)
         ReceptionPaywalls.refresh(invalidate = true)
+        // Logout clears the staged token; the new session gets it again.
+        ReceptionPush.registerIfAuthorized()
     }
 
     /**
@@ -81,6 +83,7 @@ internal object ReceptionAccount {
             ReceptionIdentity.forget()
             ReceptionState.resetLocal()
             ReceptionPaywalls.refresh(invalidate = true)
+            ReceptionPush.registerIfAuthorized()
         }
         ReceptionState.onEvent?.invoke(ReceptionEvent.DataDeleted)
     }

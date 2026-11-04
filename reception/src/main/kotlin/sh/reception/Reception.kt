@@ -1,6 +1,7 @@
 package sh.reception
 
 import android.content.Context
+import androidx.annotation.DrawableRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -13,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
+import sh.reception.client.PushNotifications
 import sh.reception.configuration.AppearanceIcon
 import sh.reception.strings.Strings
 import sh.reception.ui.ChatPresenter
@@ -336,6 +338,63 @@ public object Reception {
     /** The FCM registration token, from `FirebaseMessaging.getToken()` or `onNewToken`. */
     @JvmStatic
     public fun setPushToken(token: String): Unit = MainThread.run { ReceptionAccount.setPushToken(token) }
+
+    /**
+     * Call from `FirebaseMessagingService.onMessageReceived` with `message.data`. For a Reception reply it shows the
+     * notification (none while the chat is open) and refreshes [unreadCount], and returns true; other messages return
+     * false and stay yours. Any thread.
+     */
+    @JvmStatic
+    public fun handlePushMessage(context: Context, data: Map<String, String>): Boolean {
+        if (PushNotifications.payload(data) == null) return false
+        val application = context.applicationContext
+        val payload = data.toMap()
+        MainThread.run { ReceptionPush.handleMessage(application, payload) }
+        return true
+    }
+
+    /**
+     * Routes a Reception notification you handled yourself: refreshes [unreadCount] and, with [openChat], opens the
+     * chat. Returns false for other payloads. Taps on the SDK's own notifications need no call.
+     */
+    @JvmStatic
+    @JvmOverloads
+    public fun handlePushNotification(data: Map<String, String>, openChat: Boolean = true): Boolean {
+        if (PushNotifications.payload(data) == null) {
+            Log.debug { "Push payload ignored, no conversation id" }
+            return false
+        }
+        val payload = data.toMap()
+        MainThread.run { ReceptionPush.handleNotification(payload, openChat) }
+        return true
+    }
+
+    /**
+     * Fetches the FCM token and hands it to Reception when notifications are allowed and Firebase Messaging is in the
+     * app. Never asks for permission. The SDK calls it at configure and every foreground; call it after your own
+     * permission flow.
+     */
+    @JvmStatic
+    public fun registerForPushIfAuthorized(): Unit = MainThread.run { ReceptionPush.registerIfAuthorized() }
+
+    /** The small icon of the SDK's notifications, a white-on-transparent drawable. Null (default) draws a bell. */
+    @JvmStatic
+    @get:DrawableRes
+    public var notificationSmallIcon: Int?
+        get() = ReceptionPush.smallIcon
+        set(value) = MainThread.run { ReceptionPush.smallIcon = value }
+
+    /**
+     * Reports that something happened in your app, for example `"paywall_declined"`. When an automation in your
+     * dashboard listens for the event, Reception sends its message and opens the chat. Other events stay on the device.
+     * With [opensChat], the chat also opens again at later events for people an enabled automation that opens the chat
+     * reached. Names use 1–64 letters, digits, underscores, dots or hyphens. Returns at once and never fails.
+     */
+    @JvmStatic
+    @JvmOverloads
+    public fun track(event: String, opensChat: Boolean = false): Unit = MainThread.run {
+        ReceptionAutomations.track(event, opensChat)
+    }
 
     /** Dismisses chat, resets locally immediately, and revokes the old session in the background. */
     @JvmStatic

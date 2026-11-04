@@ -8,6 +8,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import sh.reception.AppLocale
+import sh.reception.ReceptionPush
 import sh.reception.ReceptionState
 import java.lang.ref.WeakReference
 
@@ -49,13 +50,17 @@ internal object ApplicationLifecycle : DefaultLifecycleObserver, Application.Act
         resumed = WeakReference(activity)
         // A new per-app or system language recreates activities, so the app language is read again.
         AppLocale.invalidate()
+        ReceptionPush.activityResumed(activity)
     }
 
     override fun onActivityPaused(activity: Activity) {
         if (resumed?.get() === activity) resumed = null
     }
 
-    override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
+    override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+        ReceptionPush.activityCreated(activity, savedInstanceState)
+        SetupCheck.activityCreated(activity)
+    }
 
     override fun onActivityStarted(activity: Activity) = Unit
 
@@ -63,5 +68,7 @@ internal object ApplicationLifecycle : DefaultLifecycleObserver, Application.Act
 
     override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
 
-    override fun onActivityDestroyed(activity: Activity) = Unit
+    override fun onActivityDestroyed(activity: Activity) {
+        ReceptionPush.activityDestroyed(activity)
+    }
 }

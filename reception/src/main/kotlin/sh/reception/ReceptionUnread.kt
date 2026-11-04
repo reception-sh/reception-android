@@ -22,8 +22,10 @@ internal object ReceptionUnread {
     var readGeneration: Int = 0
         private set
 
-    fun set(count: Int) {
+    /** Without [syncsNotifications] (configure), read notifications stay until the first server answer. */
+    fun set(count: Int, syncsNotifications: Boolean = true) {
         this.count.value = maxOf(0, count)
+        if (syncsNotifications) ReceptionPush.unreadChanged(this.count.value)
     }
 
     fun cancelRefresh() {

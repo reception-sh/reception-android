@@ -63,8 +63,10 @@ internal object ReceptionIdentity {
     fun setMetadata(metadata: Map<String, String>) {
         val session = ReceptionState.session ?: return Log.error { "setMetadata called before configure, ignored" }
         val checked = DeviceInputValidation.checked(metadata)
+        val previousStatus = session.pending.metadata["subscription_status"]
         session.stage { it.copy(metadata = checked) }
         Log.debug { "Metadata staged" }
+        if (checked["subscription_status"] != previousStatus) ReceptionAutomations.automations.subscriptionChanged(session)
     }
 
     /**

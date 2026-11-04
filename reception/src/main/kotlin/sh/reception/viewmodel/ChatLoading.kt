@@ -3,7 +3,9 @@ package sh.reception.viewmodel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import sh.reception.ReceptionAutomations
 import sh.reception.ReceptionUnread
+import sh.reception.Theme
 import sh.reception.client.ApplicationLifecycle
 import sh.reception.client.ReceptionAPIError
 import sh.reception.client.RetryScope
@@ -14,6 +16,7 @@ import sh.reception.client.isRegistered
 import sh.reception.client.pushActive
 import sh.reception.client.update
 import sh.reception.model.ConversationResponse
+import sh.reception.model.Message
 import sh.reception.model.MessagesResponse
 
 /**
@@ -52,8 +55,10 @@ internal suspend fun ChatModel.load(recheckLimits: Boolean = false) {
             message.id in cachedIds && message.seq?.let { it !in incomingSequences } == true
         }
         replaceTeam((response.team ?: emptyList()).reversed().associateBy { it.id })
-        merge(response.messages)
+        val arriving = if (ReceptionAutomations.automations.takeOpenedChat()) arriving(response.messages, cachedIds) else null
+        merge(response.messages.filter { it.id != arriving?.id })
         if (response.messages.isEmpty()) saveMessages()
+        if (arriving != null) reveal(arriving)
         if (recheckLimits && isWatched) {
             if (checked.isNotEmpty()) {
                 session.cooldowns.applyRecheck(response.limits, checked)
@@ -125,3 +130,17 @@ internal suspend fun ChatModel.poll() {
 
 private suspend fun ChatModel.stillPolling(): Boolean =
     current && isChatActive && currentCoroutineContext().isActive && ApplicationLifecycle.isActive
+
+/** The newest message, when it is a team message this chat hasn't shown yet. */
+private fun arriving(messages: List<Message>, cached: Set<String>): Message? {
+    val newest = messages.maxByOrNull { it.seq ?: 0 } ?: return null
+    return newest.takeIf { it.sender == "AGENT" && it.id !in cached }
+}
+
+/** The team's typing dots for a moment, then the message, the way a reply arrives while the chat is open. */
+private suspend fun ChatModel.reveal(message: Message) {
+    setTyping(true)
+    delay(Theme.AUTOMATION_TYPING_MILLIS)
+    if (!current || !currentCoroutineContext().isActive) return
+    merge(listOf(message))
+}

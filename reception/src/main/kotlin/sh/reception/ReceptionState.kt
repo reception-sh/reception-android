@@ -15,6 +15,7 @@ import sh.reception.client.LogoutRevocations
 import sh.reception.client.ReceptionAPI
 import sh.reception.client.ReceptionAPIError
 import sh.reception.client.SecureStore
+import sh.reception.client.SetupCheck
 import sh.reception.client.Storage
 import sh.reception.client.UnreadMonitor
 import sh.reception.client.recordFailure
@@ -79,7 +80,7 @@ internal object ReceptionState {
         // The store opens on the storage thread; registration and every request wait for it.
         session = DeviceSession(api, DeviceStore(context, namespace), after = storageWork, checksRestoredChat = true)
         // No badge sync before the first server sync; the server value is the source of truth.
-        ReceptionUnread.set(0)
+        ReceptionUnread.set(0, syncsNotifications = false)
         revision += 1
         advancePresentationRevision()
         val revocations = logoutRevocations ?: LogoutRevocations(SecureStore.shared(context)).also { logoutRevocations = it }
@@ -89,7 +90,11 @@ internal object ReceptionState {
         if (active) session?.registerIfNeeded()
         ReceptionAppearance.updateRefresh()
         ReceptionPaywalls.refresh()
+        ReceptionAutomations.checkSubscriptions()
+        ReceptionPush.registerIfAuthorized()
         Log.info { "Configured, SDK ${SDKVersion.current}" }
+        ReceptionPush.configured()
+        SetupCheck.configured(context, appId)
     }
 
     /** Ends the configured session and forgets the App ID, so each test starts unconfigured. */
@@ -106,7 +111,7 @@ internal object ReceptionState {
         logoutRevocations?.suspend()
         logoutRevocations = null
         ReceptionIdentity.forget()
-        ReceptionUnread.set(0)
+        ReceptionUnread.set(0, syncsNotifications = false)
         ReceptionAPI.serviceUrl = ReceptionAPI.defaultServiceUrl
     }
 
@@ -115,6 +120,10 @@ internal object ReceptionState {
         ReceptionPaywalls.refresh()
         unreadMonitor.becameActive()
         logoutRevocations?.becameActive()
+        if (session != null) {
+            ReceptionAutomations.checkSubscriptions()
+            ReceptionPush.registerIfAuthorized()
+        }
     }
 
     fun applicationEnteredBackground() {
