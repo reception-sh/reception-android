@@ -47,23 +47,26 @@ internal object ChatPresenter {
         get() = sheet?.get() != null ||
             requestedAt?.let { SystemClock.uptimeMillis() - it < START_WINDOW_MILLIS } == true
 
-    fun present() {
+    /** Answers whether the sheet was started. */
+    fun present(): Boolean {
         if (ReceptionState.isChatOpen.value || isPresented) {
             Log.debug { "Chat presentation skipped, chat already open" }
-            return
+            return false
         }
         val host = ApplicationLifecycle.currentActivity
         if (host == null) {
             Log.debug { "Chat presentation skipped, no resumed activity" }
-            return
+            return false
         }
         ReceptionAppearance.configuration.activate()
         presentation += 1
-        try {
+        return try {
             host.startActivity(Intent(host, ReceptionChatActivity::class.java).putExtra(EXTRA_PRESENTATION, presentation))
             requestedAt = SystemClock.uptimeMillis()
+            true
         } catch (_: ActivityNotFoundException) {
             Log.error { "Chat presentation failed, ReceptionChatActivity missing from the merged manifest" }
+            false
         }
     }
 
