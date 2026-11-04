@@ -71,7 +71,8 @@ private fun Belled(text: String, modifier: Modifier) {
     })
     Text(
         buildAnnotatedString {
-            appendInlineContent(bell, "")
+            // The alternate text is never read: the whole line carries [text] as its description.
+            appendInlineContent(bell, "\uD83D\uDD14")
             append(" ")
             append(text)
         },
