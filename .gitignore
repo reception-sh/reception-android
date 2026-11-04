@@ -1,0 +1,12 @@
+# Local credentials of the test app (Firebase service account, google-services.json)
+.local/
+local.properties
+*.keystore
+*.jks
+# Gradle and IDE
+.gradle/
+build/
+.idea/
+*.iml
+.kotlin/
+.DS_Store
