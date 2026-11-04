@@ -41,7 +41,7 @@ class ChatLinksTest {
             openExternal = { opened += "external $it"; external },
             openInClaimingApp = { false },
             presentWebLink = { url, _ -> opened += "tab $url"; webPage },
-            isHostScheme = { it.startsWith("myapp:") },
+            isHostScheme = { it.startsWith("myapp:") || it.startsWith("https://host.example/app/") },
         )
         return chat
     }
@@ -97,6 +97,20 @@ class ChatLinksTest {
         chat.openLink("https://example.com/help", "m5")
         assertEquals(listOf("external https://example.com/help"), opened)
         assertEquals("m5" to "failed", receipt())
+    }
+
+    @Test
+    fun aTextLinkTheHostClaimsClosesTheChatFirstWithoutEventOrReceipt() {
+        val chat = chat()
+        chat.openTextLink("https://host.example/app/orders/7")
+        assertEquals(1, closed)
+        assertEquals(listOf("external https://host.example/app/orders/7"), opened)
+        chat.openTextLink("https://example.com/help")
+        assertEquals(1, closed)
+        assertEquals("tab https://example.com/help", opened.last())
+        harness.mainLoopUntil { true }
+        assertEquals(emptyList<ReceptionEvent>(), events)
+        assertEquals(0, harness.requests("POST", "/v1/conversation/action-click").size)
     }
 
     @Test

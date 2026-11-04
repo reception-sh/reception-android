@@ -273,6 +273,11 @@ Link taps:
    and other schemes, the URL goes to the system with `ACTION_VIEW` (Play Store links prefer the `market://` form
    when the Play Store app is installed). `ActivityNotFoundException` reports `failed`.
 
+Addresses tapped in message text take the same route, including closing the chat before a link the host app
+handles, but send no `LinkOpened` event and no receipt. Every query and launch uses the URL with its scheme in
+lowercase (`Uri.normalizeScheme`), because intent filters compare schemes case-sensitively; the allowlist itself
+ignores case.
+
 The review card opens the Play Store listing of the host (`market://details?id=<package>`, falling back to
 `https://play.google.com/store/apps/details?id=<package>`); the server builds the URL from the project's Android
 package name like it builds the App Store URL from the App Store ID. Default button texts, event and receipt rules are

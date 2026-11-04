@@ -27,19 +27,23 @@ internal fun ChatModel.isHostLink(url: String): Boolean = ScreenLink.parse(url) 
 internal fun ChatModel.openLink(url: String, messageId: String) {
     if (links.isClosingForLink) return
     ReceptionState.onEvent?.invoke(ReceptionEvent.LinkOpened)
+    follow(url, messageId)
+}
+
+/** A tapped address in message text: the same route as a link card, without its event or receipt. */
+internal fun ChatModel.openTextLink(url: String) {
+    if (!LinkPolicy.isAllowed(url) || links.isClosingForLink) return
+    follow(url, messageId = null)
+}
+
+/** Screens and the host's own links close the chat first; [messageId] is the card that receives the outcome. */
+private fun ChatModel.follow(url: String, messageId: String?) {
     when (LinkRoute.of(url, links.isHostScheme, ReceptionSettings.opensWebLinksInApp)) {
         LinkRoute.SCREEN -> closeForLink { openScreen(url, messageId) }
         LinkRoute.HOST -> closeForLink { openExternally(url, messageId) }
         LinkRoute.WEB -> if (openWebLink(url)) recordLinkOutcome(ActionOutcome.OPENED, messageId) else openExternally(url, messageId)
         LinkRoute.SYSTEM -> openExternally(url, messageId)
     }
-}
-
-/** A tapped web address in message text: the claiming app or a Custom Tab, or the system. No receipt. */
-internal fun ChatModel.openTextLink(url: String) {
-    if (!LinkPolicy.isAllowed(url)) return
-    val inApp = ReceptionSettings.opensWebLinksInApp && LinkPolicy.isWebLink(url)
-    if (!inApp || !openWebLink(url)) links.openExternal(url)
 }
 
 internal fun ChatModel.canOpenPaywall(message: Message): Boolean =
@@ -65,7 +69,7 @@ internal fun ChatModel.openReview(url: String, messageId: String) {
  * Runs the host's screen for a screen link. The service only sends one the device reported; a screen the app no longer
  * lists, or one missing its value, counts as failed.
  */
-private fun ChatModel.openScreen(url: String, messageId: String) {
+private fun ChatModel.openScreen(url: String, messageId: String?) {
     val target = ScreenLink.parse(url) ?: return recordLinkOutcome(ActionOutcome.FAILED, messageId)
     val screen = ScreenLink.usable(ReceptionSettings.screens).firstOrNull { it.id == target.id }
     if (screen == null || (screen.valueName != null && target.value == null)) {
@@ -88,12 +92,12 @@ private fun ChatModel.closeForLink(next: () -> Unit) {
 private fun ChatModel.openWebLink(url: String): Boolean =
     links.openInClaimingApp(url) || links.presentWebLink(url, links.toolbarColor)
 
-private fun ChatModel.openExternally(url: String, messageId: String) {
+private fun ChatModel.openExternally(url: String, messageId: String?) {
     recordLinkOutcome(if (links.openExternal(url)) ActionOutcome.OPENED else ActionOutcome.FAILED, messageId)
 }
 
-private fun ChatModel.recordLinkOutcome(outcome: ActionOutcome, messageId: String) {
-    if (current) session?.recordActionClick(messageId, outcome)
+private fun ChatModel.recordLinkOutcome(outcome: ActionOutcome, messageId: String?) {
+    if (messageId != null && current) session?.recordActionClick(messageId, outcome)
 }
 
 /** A card's button text: the agent's label exactly as sent, else the localized default for the card. */
