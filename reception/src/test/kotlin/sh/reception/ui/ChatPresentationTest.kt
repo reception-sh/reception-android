@@ -18,6 +18,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowAppTask
+import sh.reception.Log
+import sh.reception.Reception
 import sh.reception.ReceptionResets
 import sh.reception.ReceptionState
 import sh.reception.client.ApplicationLifecycle
@@ -35,7 +37,11 @@ class ChatPresentationTest {
     private val harness = ChatHarness()
 
     @After
-    fun tearDown() = harness.stop()
+    fun tearDown() {
+        Log.handler = null
+        Log.level = Reception.LogLevel.INFO
+        harness.stop()
+    }
 
     private fun launch(open: () -> Unit): Intent? {
         harness.start()
@@ -104,6 +110,9 @@ class ChatPresentationTest {
     @Test
     fun aScreenThatFinishesWhileTheRecordIsSavedGetsNoSheet() {
         harness.start()
+        val cancellations = mutableListOf<String>()
+        Log.level = Reception.LogLevel.DEBUG
+        Log.handler = { _, line -> if (line.startsWith("Chat presentation cancelled")) cancellations += line }
         for (destroyed in listOf(false, true)) {
             val controller = Robolectric.buildActivity(Activity::class.java).setup()
             val host = controller.get()
@@ -121,6 +130,8 @@ class ChatPresentationTest {
             assertFalse(ChatPresenter.isPresented)
             assertNull(PresentationRecord.load(RuntimeEnvironment.getApplication()))
         }
+        // One line per cancellation, with its reason.
+        assertEquals(List(2) { "Chat presentation cancelled, the screen closed before it started" }, cancellations)
     }
 
     @Test

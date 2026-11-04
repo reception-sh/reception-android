@@ -100,8 +100,7 @@ internal object ChatPresenter {
             !stillWanted() -> "it was withdrawn before it started"
             else -> return start(host, token)
         }
-        Log.debug { "Chat presentation cancelled, $reason" }
-        dismiss()
+        dismiss(reason = reason)
         return false
     }
 
@@ -186,9 +185,10 @@ internal object ChatPresenter {
 
     /**
      * Also cancels a requested sheet that has not been created yet. [then] runs once the sheet is gone, or at once when
-     * the SDK has no sheet on screen. Answers false when the SDK has not presented the chat.
+     * the SDK has no sheet on screen. Answers false when the SDK has not presented the chat. A cancellation logs
+     * [reason] on its one line.
      */
-    fun dismiss(then: (() -> Unit)? = null): Boolean {
+    fun dismiss(then: (() -> Unit)? = null, reason: String? = null): Boolean {
         val requested = requestedAt != null
         requestedAt = null
         presentation = null
@@ -197,7 +197,7 @@ internal object ChatPresenter {
         ReceptionState.session?.store?.context?.let { SheetRecord.clear(it) }
         val activity = sheet?.get()
         if (activity == null) {
-            if (requested) Log.debug { "Chat presentation cancelled" }
+            if (requested || reason != null) Log.debug { "Chat presentation cancelled" + reason?.let { ", $it" }.orEmpty() }
             then?.invoke()
             return requested
         }
