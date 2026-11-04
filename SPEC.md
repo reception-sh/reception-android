@@ -161,7 +161,7 @@ Vector icons remain resources (`reception_` prefix).
 
 ```kotlin
 Reception.setPushToken(token: String)                                   // FCM registration token
-Reception.handlePushMessage(data: Map<String, String>): Boolean         // from FirebaseMessagingService.onMessageReceived
+Reception.handlePushMessage(context: Context, data: Map<String, String>): Boolean  // from onMessageReceived, any thread
 Reception.handlePushNotification(data: Map<String, String>, openChat: Boolean = true): Boolean
 Reception.registerForPushIfAuthorized()
 Reception.updatesAppBadge: Boolean                                      // default true
@@ -176,19 +176,45 @@ Android has no APNs environment; the device update sends `pushToken` (the FCM to
 The service sends **data-only, high-priority** FCM messages (see Backend) so the SDK decides presentation, exactly
 like the iOS `willPresent` policy. The payload is `{ reception: "<conversationId>", title, body, badge?, sound? }` as data fields
 (`reception` is `brand.pushPayloadKey`), with `android.collapse_key` set to the conversation id. The host's
-`FirebaseMessagingService.onMessageReceived` calls `Reception.handlePushMessage(remoteMessage.data)`: for a
+`FirebaseMessagingService.onMessageReceived` calls `Reception.handlePushMessage(this, remoteMessage.data)`: for a
 Reception payload it sets `hasConversation`, refreshes unread and, unless the chat is open, posts a notification
 (channel `reception_replies`, name localized "Support replies", importance high, sound when `sound` is set, the
 badge number when `updatesAppBadge`, `setGroup(conversationId)`, tag `reception`, id from the conversation) whose
 content intent launches the host's launcher activity (`PackageManager.getLaunchIntentForPackage`) with the extras
 `sh.reception.conversationId` and `sh.reception.notificationId`; it returns true and the host does nothing else. Any
 other payload returns false and the host keeps its own handling. `ReceptionMessagingService` is a ready-made service
-that does only this, for hosts without a messaging service of their own; the host enables it in its manifest.
+that does only this (and forwards `onNewToken` to `setPushToken`), for hosts without a messaging service of their own.
+`handlePushMessage` takes a `Context` because FCM can start the process for a message before anything configured the
+SDK (Flutter and React Native configure from Dart/JS, which does not run for a background message); without one the
+notification could not be posted. It recognizes the payload synchronously, so it may be called from FCM's worker
+thread, and does the rest on the main thread. The library manifest declares the service `exported="false"` without an
+intent filter, so it receives nothing until the host adds the filter:
 
-Taps need no host code: `Reception`'s activity-lifecycle callback reads those extras from every created or
-re-delivered (`onNewIntent` is covered through `onActivityResumed` reading `activity.intent`) activity, deduplicates
-by notification id (last 64 keys, like the Flutter plugin's `NotificationRouting`), and routes them through
-`handlePushNotification(data, openChat = true)`. `handlePushNotification` is the iOS routing call: it recognizes
+```xml
+<service
+    android:name="sh.reception.ReceptionMessagingService"
+    android:exported="false">
+    <intent-filter>
+        <action android:name="com.google.firebase.MESSAGING_EVENT" />
+    </intent-filter>
+</service>
+```
+
+A host with its own `FirebaseMessagingService` must not add it (only one service receives FCM messages). Android
+delivers no FCM message to a force-stopped app (Settings → Force stop, `am force-stop`) until the person opens it again;
+a process the system killed receives them and starts for them.
+
+Taps need no host code: `Reception`'s activity-lifecycle callback reads those extras from every created activity
+(not one recreated from saved state or relaunched from Recents), from `onNewIntent` of every `ComponentActivity`
+(through `addOnNewIntentListener`; the content intent carries `FLAG_ACTIVITY_SINGLE_TOP`, so a running app's launcher
+activity on top receives it there) and from `activity.intent` on every resume (for other activities that call
+`setIntent`), removes them, deduplicates by notification id (last 64 keys, like the Flutter plugin's
+`NotificationRouting`; a receipt records its id, so its later tap only opens) and routes them through
+`handlePushNotification(data, openChat = true)`, which opens the chat on the next resumed activity when none is resumed
+yet. A tap read before configure waits as the pending tap and opens the chat 500 ms after configure. When another of
+the app's activities is on top of the launcher activity, the system only brings the task to the front and the chat does
+not open; plain `Activity` hosts that do not call `setIntent` in `onNewIntent` (Flutter's `FlutterActivity`) leave
+running-app taps to their plugin. `handlePushNotification` is the iOS routing call: it recognizes
 `reception`, sets `hasConversation`, opens the chat when asked, refreshes unread, returns true; it never posts a
 notification. Hosts that own their tap handling call it themselves.
 
@@ -199,8 +225,8 @@ permission. Without Firebase it logs once at debug level and does nothing. The S
 foreground, like the Flutter plugin does on iOS, so hosts that already have Firebase need no token code at all.
 
 Badge: Android launchers show counts from `NotificationCompat.setNumber` and the channel's badge setting. With
-`updatesAppBadge` true the posted notification carries the unread count and reaching zero cancels the SDK's
-notifications (`NotificationManager.cancel(tag, id)` for the stored ids); with false it does neither, and the server
+`updatesAppBadge` true the posted notification carries the unread count and reaching zero (a server answer, a read, a
+reset; not configure) cancels the SDK's delivered notifications (`activeNotifications` with tag `reception`); with false it does neither, and the server
 omits the badge field. There is no app-icon badge API beyond that on Android; the in-app `unreadCount` is unaffected.
 
 Notification card (`pushPrompt`): same rules as iOS. "Not determined" maps to: notifications enabled is false on
@@ -210,6 +236,7 @@ Continue requests `POST_NOTIFICATIONS` through the chat activity's `ActivityResu
 `ReceptionChatView` uses the host activity when it is a `ComponentActivity`, otherwise the card does not show), then
 runs `registerForPushIfAuthorized()`. No thanks stores the per-device flag under the App ID in SharedPreferences.
 The status line "You'll get a notification when we reply." follows the iOS rule with `areNotificationsEnabled()`.
+The stored answer (`<namespace>.notificationPermissionAnswered`) sits beside `pushPromptDeclined`, outside the session.
 
 ### Paywall cards, screens, links
 
@@ -297,7 +324,23 @@ own ids). Of the five store events, Android reports `subscription_cancelled` (an
 `isAutoRenewing` turned false) and `subscription_expired` (a subscription purchase disappeared from the query); trial
 and billing-issue states are not visible through Play Billing on the device and are documented as not reported
 (hosts with RevenueCat/Adapty/Superwall get them through those webhooks). Without the billing library nothing is read
-and nothing is sent, with one debug log.
+and nothing is sent, with one debug log. Billing 7+ gets `enablePendingPurchases(PendingPurchasesParams)`, 5 and 6 the
+parameterless call (removed in 8). A Play Store without a signed-in account answers `BILLING_UNAVAILABLE`: unknown.
+
+### Setup check
+
+On a debuggable host, an activity started with the string extra `ReceptionSetupCheck=<App ID>` (read in the
+activity-lifecycle callback, so `configure` must run before that activity is created, as in `Application.onCreate`)
+sends "Hello from setup" once after the app is active and logs `Setup check passed` or `Setup check failed:
+app_id_mismatch|send_not_allowed|not_delivered|timeout|app_not_active` with the iOS rules, at every log level and past
+`logHandler`, tag `Reception`:
+
+```sh
+adb shell am start -S -n <package>/<launcher activity> --es ReceptionSetupCheck <App ID>
+adb logcat -s Reception | grep "Setup check"
+```
+
+The iOS `ChatPreview` launch argument is not ported in 1.0.
 
 ### Logging
 

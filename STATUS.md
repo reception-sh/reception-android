@@ -2,6 +2,29 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-04: Phase D done (see verification/phase-d.md). Push: `ReceptionPush` (receipt, taps, registration),
+  `client/PushNotifications` (channel `reception_replies`, tag `reception`, id from the conversation, launcher intent with
+  `FLAG_ACTIVITY_SINGLE_TOP` and the two extras), `client/NotificationRouting` (port, 64 keys, pending tap drained 500 ms
+  after configure), `client/FirebaseBridge` (only Firebase touch), public `ReceptionMessagingService` (library manifest,
+  no intent filter; the snippet is in SPEC.md), `handlePushMessage(context, data)` (deviation: a `Context`, because FCM
+  can start the process before anything configured the SDK), `handlePushNotification`, `registerForPushIfAuthorized`
+  (configure, foreground, after logout and deletion; skips an unchanged token), `notificationSmallIcon`. Taps: created
+  activities, `ComponentActivity.addOnNewIntentListener`, `activity.intent` on resume. Badge: `ReceptionUnread.set`
+  cancels the SDK's active notifications at zero (not at configure). Card: `client/NotificationPermission`,
+  `viewmodel/PushPromptDecision` + `ChatPushPrompt`, `ui/PushPromptSlot`, `ui/NotificationPermissionRequest` (the
+  hosting activity's result registry; none → no card). Automations: `client/Automations` (+ `AutomationPresenter`),
+  `ReceptionAutomations`, reveal in `ChatLoading`, `subscriptionChanged` from `setMetadata`. Paid access:
+  `client/PaidAccess`, `StoreSubscriptions` (active/cancelled/expired), `PlayBillingBridge` (billing 5–8). Setup check:
+  `client/SetupCheck`, `Log.unconditional`. Example: Register for push, Track event, Delete data, Switch user (token;
+  HS256 with `.local/identity-secret.txt`, which this phase created for the local test app), Update app badge switch,
+  the SDK's messaging service enabled through a manifest placeholder (off in the bare build). Live: all FCM scenarios,
+  card (Continue/Allow, No thanks), automation with the reveal, setup check, bare build. Not live: Play purchases (no
+  Google account on the emulator), ChatPreview (not ported). Files over the guideline: `Reception.kt` 413 (nested public
+  types plus the push/track API), `Automations.kt` 224 (one iOS file). Open: hosts that configure after their activity
+  resumed (Flutter, React Native) have no current activity and miss taps read before configure, so their plugins need an
+  internal hook to hand the activity over; a tap while another app activity is above the launcher activity only brings
+  the app forward. Next, Phase E: full verification matrix (SPEC.md Verification), `tool/release_check.sh`, README,
+  CONTRIBUTING, CHANGELOG, Maven Central dry run (`publishToMavenLocal` plus the signed bundle check).
 - 2026-11-04: Fixes 4 done (see verification/fixes-4.md), one commit each. G-1: `token()`/`renewedToken()` return a
   token only through `settledToken` (no registration in flight, pending credentials saved; a failed save fails every
   waiting caller with `secure_storage_unavailable`). G-2: `ChatLifecycle` also observes `ProcessLifecycleOwner`; its
