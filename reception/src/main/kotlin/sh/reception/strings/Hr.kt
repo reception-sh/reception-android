@@ -32,7 +32,7 @@ internal object Hr : LanguageTable {
         Strings.photo to "Fotografija",
         Strings.photosCanBeSentAgainYouCanStill to "Fotografije ćete ponovno moći slati %1\$s. Tekst i dalje možete slati.",
         Strings.questionsFeedbackOrABug to "Pitanja, povratne informacije ili greška?",
-        Strings.rateOnGooglePlay to "Ocijeni na Google Playu",
+        Strings.rateOnGooglePlay to "Ocijeni u trgovini Google Play",
         Strings.rateOnTheAppStore to "Ocijeni u trgovini App Store",
         Strings.removePhoto to "Ukloni fotografiju",
         Strings.retry to "Pokušaj ponovno",

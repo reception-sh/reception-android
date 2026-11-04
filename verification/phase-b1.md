@@ -41,7 +41,26 @@ $ tool/sync_strings.py --check
 strings up to date (49 files)
 ```
 
-## Live smoke test: not run
+## Live smoke test (run by the orchestrator after installing ffmpeg and linking the JDK for the device host)
+
+```
+$ agent-device open sh.reception.receptionAndroidExample --relaunch; adb logcat -d -s Reception
+I Reception: [Reception] INFO Configured, SDK 1.0.0
+D Reception: [Reception] DEBUG Device registration started
+I Reception: [Reception] INFO Device registered
+D Reception: [Reception] DEBUG Device updated
+D Reception: [Reception] DEBUG Unread refresh, 0 unread
+$ (tap "Identify test user", Home, reopen)
+D Reception: [Reception] DEBUG Identity staged
+D Reception: [Reception] DEBUG Device updated
+D Reception: [Reception] DEBUG Unread refresh, 0 unread
+$ (Prisma query on the local database, project app_0oLy3FxjPrgypqh8StRP6t)
+{ platform: "android", sdkVersion: "1.0.0", osVersion: "16", deviceModel: "Google sdk_gphone64_arm64", appVersion: "1.0.0",
+  appBuild: "1", externalUserId: "android-example-user", name: "Android Example", language: "en-US", locale: "en-US",
+  timezone: "Europe/Berlin", capabilities: ["linkCards", "screens"], pushToken: null, bundleId: "sh.reception.receptionAndroidExample" }
+```
+
+## Original note from the implementation run (device tools were unavailable then)
 
 The example is built and installed on emulator-5554 (`adb install -r example-debug.apk` → `Success`, logcat cleared)
 with App ID `app_0oLy3FxjPrgypqh8StRP6t` from `.local/app-id.txt` and `http://10.0.2.2:3123`. The local backend

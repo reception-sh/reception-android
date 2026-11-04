@@ -125,7 +125,7 @@ deliver on the main thread. Show a badge only above zero.
 
 ```kotlin
 Reception.identify(userId: String?, name: String? = null, email: String? = null)
-Reception.identify(token: String)
+Reception.identifyWithToken(token: String)      // `identify("x")` would otherwise resolve to the token overload in Kotlin
 Reception.setMetadata(metadata: Map<String, String>)
 Reception.logout()
 suspend fun Reception.deleteData()                    // throws ReceptionError
