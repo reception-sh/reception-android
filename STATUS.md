@@ -2,6 +2,36 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-04: Phase C1 done (see verification/phase-c1.md). `viewmodel/` ports the iOS ViewModel (one file per iOS
+  file; `ChatMerge`, `ChatAutomaticRetry`, `MessagePhotos` split out). `ChatModel` holds Compose state, runs its tasks on
+  `Dispatchers.Main` (enqueued like iOS `Task {}`), restores history and draft on the storage thread after
+  `session.prepared()` (`isRestored`; nothing loads or sends before), and is `ReceptionState.chat` (created by
+  `chatModel()`, stopped and replaced on every reset; `ChatHooks` is gone). `ReceptionUnread` refreshes through
+  `ChatModel.refreshUnread`; `invalidateRead`/`noteRead` live in `ReceptionState`; `revision` is Compose state, so an open
+  chat rebuilds with the new model. `client/EventStream` (okhttp-sse) and `client/NetworkMonitor` (default network
+  callback). Presentation: `ReceptionChatActivity` (manifest: translucent `Reception.Chat` theme, `adjustResize`,
+  predictive back, not exported) + `ChatSheet` (`ModalBottomSheet`, own grabber, keyboard rule through
+  `confirmValueChange` because Material 3 1.3.1 has no `sheetGesturesEnabled`), `ChatPresenter` (open/close/dismiss,
+  `locksSheet`), `ChatRoot` (SDK theme, dark mode, contrast, layout direction, baseline-theme rule), `ChatContent`
+  (started = visible/`isChatOpen`/`ContrastMonitor`, resumed = loading and stream; a configuration change keeps both),
+  public `ReceptionChatView` composable and View, `Reception.openChat`/`closeChat`. Library manifest adds
+  `ACCESS_NETWORK_STATE` and the Custom Tabs `<queries>`. Example: Support opens the sheet with the unread badge,
+  "Embedded chat" embeds the view under the example's own theme.
+  C2 must: render cards in `MessageBubble` (REVIEW, LINK, PAYWALL fall back to a text bubble now), the lightbox
+  (confirmed photos are not tappable yet), the jump-to-latest control (`ChatScrollState` is ready, `ChatHistory` keeps
+  it), the typing indicator (`ChatModel.isTyping` is set by the stream), team avatars (`MessageLayout.authorPhoto` /
+  `showsAuthorPhoto`; the reserved column is an empty spacer), the reply haptic, `ChatModel+Links` (screens, host links,
+  link-card receipts, `opensWebLinksInApp`; `ui/TextLinks` does SPEC path 3 only), and the visual pass against the iOS
+  simulator (not done in C1): composer surface translucency, title chip material, the black status-bar strip above the
+  light sheet, message and status animations, the Sending opacity. Files over the guideline: `ChatModel.kt` 225,
+  `ReceptionState.kt` 210, `Reception.kt` 299.
+  D must: the automation reveal in `ChatLoading.load` (`takeOpenedChat`, typing then the arriving reply), the push
+  prompt (`ChatPushPrompt`, `PushPromptDecision`, notification permission through the hosting activity),
+  `refreshPaywalls()` when the chat appears, AppBadge in `ReceptionUnread.set`, notification taps opening the chat.
+  Notes: the stream's quiet refresh is a 60 s timer in the reader because okhttp-sse does not surface `: ping`
+  comments; the photo picker stops the chat activity, so returning reloads like a foreground; rotation reloads once;
+  a language change applies to layout direction on the next open (`ReceptionLocalization.layoutDirection` is not Compose
+  state). Live verification needs Gboard on the emulator (the device CLI's test IME has no insets).
 - 2026-11-04: Fixes 2 done (see verification/fixes-2.md): the Phase B2 audit plus the decided splits. LinkPolicy caches
   per complete URL (last 64; `LinkPolicy.of(context)` for tests). TeamProfiles takes `storage`/`decoding` dispatchers,
   restores asynchronously and chains cache writes after the load. `ThemeMode.kt`: `LocalReceptionDarkMode`,
