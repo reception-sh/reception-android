@@ -380,10 +380,13 @@ class SessionAuthorizationTest {
         withContext(RequestContext(automation = true)) { session.token() }
         session.update()
 
-        val registration = Json.parseToJsonElement(requests[0].body.readUtf8()).jsonObject
-        assertEquals("POST /v1/devices", "${requests[0].method} ${requests[0].path}")
-        assertEquals("app_payloadPayloadPayload1", requests[0].getHeader("X-App-Id"))
-        assertEquals("Reception-Android/1.0.0", requests[0].getHeader("User-Agent"))
+        // Configure's subscription check reads the automations on its own connection, so it can arrive first.
+        val sessionRequests = requests.filter { it.path != "/v1/automations" }
+        assertEquals(listOf("POST /v1/devices", "PATCH /v1/devices/me"), sessionRequests.map { "${it.method} ${it.path}" })
+        val (registered, updated) = sessionRequests
+        val registration = Json.parseToJsonElement(registered.body.readUtf8()).jsonObject
+        assertEquals("app_payloadPayloadPayload1", registered.getHeader("X-App-Id"))
+        assertEquals("Reception-Android/1.0.0", registered.getHeader("User-Agent"))
         assertEquals(JsonPrimitive("android"), registration["platform"])
         assertEquals(JsonPrimitive("1.0.0"), registration["sdkVersion"])
         assertEquals(JsonArray(listOf(JsonPrimitive("linkCards"), JsonPrimitive("screens"))), registration["capabilities"])
@@ -399,8 +402,8 @@ class SessionAuthorizationTest {
         assertNull(registration["pushToken"])
         assertNull(registration["pushEnvironment"])
 
-        val update = Json.parseToJsonElement(requests[1].body.readUtf8()).jsonObject
-        assertEquals("PATCH /v1/devices/me Bearer t", summary()[1])
+        val update = Json.parseToJsonElement(updated.body.readUtf8()).jsonObject
+        assertEquals("Bearer t", updated.getHeader("Authorization"))
         assertEquals(JsonPrimitive("fcm:token_1"), update["pushToken"])
         assertEquals(JsonPrimitive("PRODUCTION"), update["pushEnvironment"])
         assertEquals(JsonPrimitive("android"), update["platform"])
