@@ -22,10 +22,26 @@ internal object ReceptionUnread {
     var readGeneration: Int = 0
         private set
 
+    // `Reception.addUnreadCountListener`, for Java hosts that cannot collect the StateFlow.
+    private val listeners = mutableListOf<(Int) -> Unit>()
+
     /** Without [syncsNotifications] (configure), read notifications stay until the first server answer. */
     fun set(count: Int, syncsNotifications: Boolean = true) {
+        val previous = this.count.value
         this.count.value = maxOf(0, count)
+        if (this.count.value != previous) listeners.toList().forEach { it(this.count.value) }
         if (syncsNotifications) ReceptionPush.unreadChanged(this.count.value)
+    }
+
+    /** Delivers the current count at once and every change after it; adding the same listener again does nothing. */
+    fun addListener(listener: (Int) -> Unit) {
+        if (listeners.any { it === listener }) return
+        listeners += listener
+        listener(count.value)
+    }
+
+    fun removeListener(listener: (Int) -> Unit) {
+        listeners.removeAll { it === listener }
     }
 
     fun cancelRefresh() {

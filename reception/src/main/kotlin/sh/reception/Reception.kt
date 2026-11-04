@@ -52,6 +52,17 @@ public object Reception {
     public val unreadCount: StateFlow<Int>
         get() = ReceptionUnread.count
 
+    /**
+     * Calls [listener] on the main thread with the current [unreadCount] at once and with every change, for Java hosts
+     * that do not collect the StateFlow. Remove it with [removeUnreadCountListener].
+     */
+    @JvmStatic
+    public fun addUnreadCountListener(listener: (Int) -> Unit): Unit = MainThread.run { ReceptionUnread.addListener(listener) }
+
+    /** Stops calls to a listener added with [addUnreadCountListener]. */
+    @JvmStatic
+    public fun removeUnreadCountListener(listener: (Int) -> Unit): Unit = MainThread.run { ReceptionUnread.removeListener(listener) }
+
     /** Whether the chat is visible, not whether it was requested. */
     @JvmStatic
     public val isChatOpen: StateFlow<Boolean>

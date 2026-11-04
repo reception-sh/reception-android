@@ -91,6 +91,8 @@ Reception.openChat()
 Reception.closeChat()
 Reception.isChatOpen: StateFlow<Boolean>
 Reception.unreadCount: StateFlow<Int>
+Reception.addUnreadCountListener(listener: (Int) -> Unit)       // Java hosts; current value at once, main thread
+Reception.removeUnreadCountListener(listener: (Int) -> Unit)
 @Composable fun ReceptionChatView(modifier: Modifier = Modifier)
 class ReceptionChatView(context, attrs?) : FrameLayout   // the same screen as an Android View, for XML hosts and the
                                                         // Flutter/React Native platform views
@@ -119,7 +121,8 @@ Flutter/React Native platform view does). Neither calls `openChat()`.
 
 `unreadCount` and `isChatOpen` are `StateFlow`s: Compose hosts `collectAsState()`, View hosts collect on
 `lifecycleScope`, Java hosts call `Reception.addUnreadCountListener(listener)` / `removeUnreadCountListener`, which
-deliver on the main thread. Show a badge only above zero.
+deliver on the main thread: the current value when added, then every change (adding the same listener twice does
+nothing). Show a badge only above zero.
 
 ### Identity and metadata
 
