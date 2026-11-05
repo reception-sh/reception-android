@@ -94,6 +94,8 @@ def resolves(classes, owner, kind, name, descriptor):
 def main():
     if len(sys.argv) != 3:
         sys.exit(__doc__)
+    if not os.path.isdir(sys.argv[1]):
+        sys.exit(f"SDK classes directory missing: {sys.argv[1]}")
     classes = runtime_classes(sys.argv[2])
     missing = {}
     checked = 0
@@ -109,6 +111,9 @@ def main():
                     if not resolves(classes, owner, kind, name, descriptor):
                         missing.setdefault(f"{kind} {owner}.{name}{descriptor}", set()).add(user)
     print(f"{checked} androidx references checked against {len(classes)} runtime classes")
+    if checked == 0:
+        # An empty or stale classes directory must not pass as a clean result.
+        sys.exit("no androidx references found in the SDK classes; was the library built?")
     for member, users in sorted(missing.items()):
         print(f"Missing at runtime: {member}\n    called from {', '.join(sorted(users))}", file=sys.stderr)
     sys.exit(1 if missing else 0)
