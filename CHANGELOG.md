@@ -5,7 +5,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [1.0.0] — Unreleased
 
-First public release, with the features of the Reception iOS SDK 1.7.0. Requires Android 7.0 (API 24) or later.
+First public release, with the features of the Reception iOS SDK 1.7.0. Requires Android 7.0 (API 24) or later. Works with the Jetpack Compose your app uses, from Compose 1.7 (BOM 2024.12.01, which the SDK is built against) through Compose 1.12 (BOM 2026.09.00, which every release is tested on).
 
 ### Added
 

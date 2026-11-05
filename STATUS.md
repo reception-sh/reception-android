@@ -2,6 +2,19 @@
 
 Progress log of the Android SDK build. Newest entry first. On a restart, read this file, then SPEC.md, then continue.
 
+- 2026-11-05: Fixes 14 done (see verification/fixes-14.md), one commit each: a release blocker found in the React
+  Native example. The "Not delivered" line called the `FlowRow` overload with `FlowRowOverflow`, which Compose 1.8
+  removed, so hosts on Compose 1.8+ crashed with `NoSuchMethodError` when a failed message rendered. `ui/FittingRow`
+  (a plain `Layout`, iOS's `ViewThatFits`: one row, else a trailing column) replaces it. A binary check of every androidx
+  reference against BOMs 2025.05 through 2026.09 (Compose 1.8.1 to 1.12.1) found no other removed member.
+  `ChatScreensTest` composes every screen (embedded chat, sheet, history with each kind of message and a failed one,
+  composer, cards, lightbox), and `DeliveryStatusTest` covers the status line. `-PreceptionComposeBom=<version>` forces a
+  BOM on the unit-test runtime and the example while the library keeps 2024.12.01. The release check's new "Compose
+  compatibility" step runs `:reception:test`, `:example:assembleDebug` and `tool/compose_binary_check.py` on
+  `newest_compose_bom=2026.09.00` (AAR metadata checks off there: Compose 1.12 asks for compileSdk 37 and AGP 9.1); to
+  bump it, see CONTRIBUTING.md. Five `--rerun-tasks` runs green (540 tests each); `tool/release_check.sh` passes. Live on
+  `emulator-5556`: RN example (Compose 1.9.3) sheet and embedded chat, and the Android example built on Compose 1.12.1:
+  failed send offline, close and reopen, Retry after reconnect; 0 FATAL, 0 StrictMode lines.
 - 2026-11-05: Fixes 13 done (see verification/fixes-13.md), one commit each; 1.0.0 is a release candidate, with no
   open audit findings. AC-1 `Reception.closeChat()` advances `ReceptionState.closeRevision`, which an automation's open
   rule captures, so a presentation it cancels during the record save is not retried (a screen change still retries;

@@ -13,7 +13,7 @@ Written 2026-11-04 for SDK 1.0.0, which bundles the feature set of iOS SDK 1.7.0
 | Item | Value | Why |
 | --- | --- | --- |
 | Language | Kotlin 2.0.21, `explicitApi()` | Readable by hosts on Kotlin 2.0 (Expo modules default), 2.1 (React Native 0.86) and 2.4 (Flutter 3.47). Never raise it above the oldest host toolchain minus nothing. |
-| UI | Jetpack Compose, Compose BOM 2024.12.01, Material 3 | Google's current UI toolkit; a year old so hosts are never forced to upgrade. |
+| UI | Jetpack Compose, Compose BOM 2024.12.01, Material 3 | Google's current UI toolkit; a year old so hosts are never forced to upgrade. Hosts run it on their newer Compose, which keeps source but not always binary compatibility, so the SDK sticks to stable layout APIs (no `FlowRow`) and the release check runs it on the newest BOM (CONTRIBUTING.md, Compose compatibility). |
 | Build | AGP 8.9.3, Gradle 8.11.1, JDK 17 | The oldest AGP that supports compileSdk 36 without a suppression flag. Consumed as an AAR by AGP 8.x and 9.x hosts. |
 | minSdk / compileSdk / targetSdk | 24 / 36 / 36 | Flutter and Expo default to minSdk 24; a higher library minimum breaks the host build. |
 | Coordinates | `sh.reception:reception:<version>` on Maven Central, Kotlin package `sh.reception` | Same namespace as the iOS bundle and the service. |
