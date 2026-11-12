@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Reception Example</string>
+    <string name="support">Support</string>
+    <string name="sdk_version">Reception SDK %1$s</string>
+    <string name="embedded_chat">Embedded chat</string>
+    <string name="back">Back</string>
+    <string name="note">Note</string>
+    <string name="identify">Identify test user</string>
+    <string name="logout">Log out</string>
+    <string name="unread_count">Unread: %1$d</string>
+    <string name="language_override">Set language override (de)</string>
+    <string name="chat_appearance">Chat appearance: %1$s</string>
+    <string name="appearance_system">System</string>
+    <string name="appearance_light">Light</string>
+    <string name="appearance_dark">Dark</string>
+    <string name="ok">OK</string>
+    <string name="updates_app_badge">Update app badge</string>
+    <string name="register_push">Register for push</string>
+    <string name="track_event">Track event</string>
+    <string name="delete_data">Delete data</string>
+    <string name="second_screen">Second screen</string>
+    <string name="switch_user">Switch user (token)</string>
+    <string name="add_second_chat">Add a second chat</string>
+    <string name="remove_second_chat">Remove the second chat</string>
+</resources>

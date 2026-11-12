@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The debug tools' labels (ExampleDebugTools); release builds have neither. -->
+<resources>
+    <string name="chat_in_dialog">Chat in a dialog</string>
+    <string name="host_field">Host field</string>
+    <string name="host_sets_pan">adjustPan</string>
+    <string name="host_panned">Panning</string>
+    <string name="chat_in_full_width_dialog">Chat in a full-width dialog</string>
+    <string name="chat_in_edge_to_edge_dialog">Chat in an edge-to-edge dialog</string>
+    <string name="chat_in_full_width_edge_to_edge_dialog">Chat in a full-width edge-to-edge dialog</string>
+    <string name="chat_in_bottom_sheet">Chat in a bottom sheet</string>
+    <string name="app_notification_icon">App notification icon</string>
+    <string name="chat_above_bottom_bar">Chat above a bottom bar</string>
+    <string name="tab_chat">Chat</string>
+    <string name="tab_other">Other</string>
+    <string name="tab_taller_bar">Taller bar</string>
+    <string name="scaled_chat">Scaled chat</string>
+    <string name="smaller">Smaller</string>
+    <string name="chat_moved_into_dialog">Chat moved into a dialog</string>
+    <string name="move_chat_into_dialog">Move into a dialog</string>
+    <string name="single_task_label">Example singleTask</string>
+    <string name="single_task_title">A singleTask launcher activity</string>
+    <string name="leave_through_dialer">Leave through the dialer</string>
+    <string name="single_task_activity">singleTask launcher activity</string>
+    <string name="other_process">Second process</string>
+    <string name="other_process_title">An activity in the :other process</string>
+    <string name="open_chat_here">Open chat here</string>
+    <string name="push_message_here">Push message here</string>
+    <string name="isolated_service">Isolated service</string>
+    <string name="open_covering_screen">Open a covering screen</string>
+    <string name="single_task_cover_title">A host screen in the singleTask task</string>
+    <string name="back_to_start_clear_top">Back to the start (CLEAR_TOP)</string>
+    <string name="notify_open_start">Notify: open the start screen</string>
+    <string name="notify_launch_intent">Notify: the app\'s launch intent</string>
+    <string name="single_task_shortcut">singleTask shortcut</string>
+    <string name="host_notifications">Host notifications</string>
+</resources>

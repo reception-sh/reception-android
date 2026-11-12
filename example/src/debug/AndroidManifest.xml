@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds talk to the local backend over plain HTTP (10.0.2.2 is the host machine from the emulator). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+        android:usesCleartextTraffic="true"
+        tools:ignore="UnusedAttribute">
+        <!-- Exported in debug builds only, so verification can start it over the open chat with `adb shell am start`. -->
+        <activity
+            android:name=".SecondActivity"
+            android:exported="true"
+            tools:replace="android:exported" />
+        <!-- The embedded chat above a bottom navigation bar (ExampleDebugTools, "Chat above a bottom bar"). -->
+        <activity
+            android:name=".TabsChatActivity"
+            android:exported="false" />
+        <!-- An embedded chat the host scales (ExampleDebugTools, "Scaled chat"). -->
+        <activity
+            android:name=".ScaledChatActivity"
+            android:exported="false" />
+        <!-- A retained chat view moved into a dialog's window and back (ExampleDebugTools, "Chat moved into a dialog"). -->
+        <activity
+            android:name=".MovingChatActivity"
+            android:exported="false" />
+        <!-- A singleTask launcher activity in a task of its own, like Expo's MainActivity, with its own launcher icon
+             (ExampleDebugTools, "singleTask launcher activity"). -->
+        <activity
+            android:name=".SingleTaskActivity"
+            android:exported="true"
+            android:label="@string/single_task_label"
+            android:launchMode="singleTask"
+            android:taskAffinity="sh.reception.receptionAndroidExample.singletask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- A deep link into the root: `adb shell am start -a android.intent.action.VIEW -d receptionexample://singletask`. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="receptionexample" android:host="singletask" />
+            </intent-filter>
+        </activity>
+        <!-- A host screen in the singleTask task that covers the sheet and navigates back with CLEAR_TOP. -->
+        <activity
+            android:name=".SingleTaskCoverActivity"
+            android:exported="false" />
+        <!-- An activity and a service in a second process, where the SDK refuses to configure (ExampleDebugTools,
+             "Second process"). -->
+        <activity
+            android:name=".OtherProcessActivity"
+            android:exported="false"
+            android:process=":other" />
+        <service
+            android:name=".OtherProcessService"
+            android:exported="false"
+            android:process=":other" />
+        <!-- A service in an isolated process, where configure must be refused without a crash (…ISOLATED). -->
+        <service
+            android:name=".IsolatedService"
+            android:exported="false"
+            android:isolatedProcess="true" />
+        <!-- Verification only: `adb shell am broadcast -n …/.VerificationReceiver -a …PUSH|…ROUTING|…COVER|…LOGOUT|…CLOSE|…CLOSE_BUTTON|…TITLE|…IDENTIFY|…TRACK|…ISOLATED|…CLEAR_TOP|…LAUNCH_INTENT` (see the class). -->
+        <receiver
+            android:name=".VerificationReceiver"
+            android:exported="true"
+            tools:ignore="ExportedReceiver">
+            <intent-filter>
+                <action android:name="sh.reception.receptionAndroidExample.PUSH" />
+                <action android:name="sh.reception.receptionAndroidExample.ROUTING" />
+                <action android:name="sh.reception.receptionAndroidExample.COVER" />
+                <action android:name="sh.reception.receptionAndroidExample.LOGOUT" />
+                <action android:name="sh.reception.receptionAndroidExample.CLOSE" />
+                <action android:name="sh.reception.receptionAndroidExample.CLOSE_BUTTON" />
+                <action android:name="sh.reception.receptionAndroidExample.TITLE" />
+                <action android:name="sh.reception.receptionAndroidExample.IDENTIFY" />
+                <action android:name="sh.reception.receptionAndroidExample.TRACK" />
+                <action android:name="sh.reception.receptionAndroidExample.ISOLATED" />
+                <action android:name="sh.reception.receptionAndroidExample.CLEAR_TOP" />
+                <action android:name="sh.reception.receptionAndroidExample.LAUNCH_INTENT" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>
