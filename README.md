@@ -2,6 +2,13 @@
 
 The Reception SDK adds native in-app support chat to Android apps, with replies managed in the hosted Reception dashboard.
 
+**Reception** is a hosted support chat for mobile apps. Your customers write to you in a native chat inside your app on iOS and Android, and your team replies from the Reception dashboard, Slack or Telegram. This repository is the native Android SDK for Jetpack Compose and View-based apps, on Maven Central as `sh.reception:reception`.
+
+- **Docs:** [Android guide](https://reception.sh/docs/android) · [All guides](https://reception.sh/docs)
+- **Price:** $30 per month per organization, plus sales tax or VAT where it applies. One subscription covers every app and every team member.
+- **Free trial:** [Create an account](https://reception.sh/login) and set up your app. Your first subscription starts with a 7-day free trial: you add a card in Stripe Checkout, and nothing is charged if you cancel within the 7 days. Before you subscribe, you can reply to your own test device.
+- **Other platforms:** [iOS](https://github.com/reception-sh/reception-ios) · [Android](https://github.com/reception-sh/reception-android) · [React Native](https://github.com/reception-sh/reception-react-native) · [Flutter](https://github.com/reception-sh/reception-flutter)
+
 Requires Android 7.0 (API 24) or later, `compileSdk` 35 or later, Kotlin 2.0 or later and Android Gradle Plugin 8. Devices on Android 7.0 itself predate Let's Encrypt's root certificates: there the chat connects only if your app's [network security configuration](https://developer.android.com/privacy-and-security/security-config) adds them; Android 7.1.1 and later need nothing. The chat is drawn with Jetpack Compose and Material 3; apps built with Views use it without writing Compose code.
 
 ## Setup
